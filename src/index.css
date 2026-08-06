@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    font-family: 'Prompt', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    background-color: #FAF6F2; /* Cream Beige */
+    color: #3D3835;            /* Soft Charcoal */
+  }
+
+  h1, h2, h3, .font-serif {
+    font-family: 'Mitr', 'Newsreader', Georgia, serif;
+  }
+}
+
+/* Custom aesthetic utility classes for Soft Pink & Cream Aesthetic */
+.font-serif-italic {
+  font-family: 'Mitr', 'Newsreader', Georgia, serif;
+  font-style: normal;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #F2D5DD;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #E88D9F;
+}
+

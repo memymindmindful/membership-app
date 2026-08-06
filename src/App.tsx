@@ -1,0 +1,242 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  AppLanguage,
+  CatalogItem,
+  Client,
+  Employee,
+  RewardCatalogItem,
+  AuditLog,
+  BrandSettings,
+} from './types';
+import { api, FullClientData } from './services/api';
+import { Header } from './components/Header';
+import { CustomerApp } from './components/CustomerApp';
+import { StaffDashboard } from './components/StaffDashboard';
+import { CatalogManagement } from './components/CatalogManagement';
+import { AuditLogView } from './components/AuditLogView';
+import { Loader2 } from 'lucide-react';
+import defaultAppLogo from './assets/images/me_my_mind_logo_1785924412256.jpg';
+
+const DEFAULT_BRAND_SETTINGS: BrandSettings = {
+  brandName: 'Me.My.Mind Membership',
+  brandTagline: 'Your Daily Ritual of Self-Love',
+  logoUrl: defaultAppLogo,
+};
+
+export default function App() {
+  const [viewMode, setViewMode] = useState<'customer' | 'staff'>('customer');
+  const [activeSubView, setActiveSubView] = useState<'main' | 'catalog' | 'audit'>('main');
+  const [lang, setLang] = useState<AppLanguage>('th');
+
+  const [brandSettings, setBrandSettings] = useState<BrandSettings>(() => {
+    try {
+      const saved = localStorage.getItem('MMM_BRAND_SETTINGS');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.brandName || parsed.logoUrl) {
+          return {
+            brandName: parsed.brandName || DEFAULT_BRAND_SETTINGS.brandName,
+            brandTagline: parsed.brandTagline || DEFAULT_BRAND_SETTINGS.brandTagline,
+            logoUrl: parsed.logoUrl || DEFAULT_BRAND_SETTINGS.logoUrl,
+          };
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse saved brand settings', e);
+    }
+    return DEFAULT_BRAND_SETTINGS;
+  });
+
+  const handleUpdateBrandSettings = (newSettings: BrandSettings) => {
+    setBrandSettings(newSettings);
+    try {
+      localStorage.setItem('MMM_BRAND_SETTINGS', JSON.stringify(newSettings));
+    } catch (e) {
+      console.error('Failed to save brand settings to localStorage', e);
+    }
+  };
+
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [currentStaff, setCurrentStaff] = useState<Employee | null>(null);
+
+  const [allClients, setAllClients] = useState<Client[]>([]);
+  const [currentClient, setCurrentClient] = useState<Client | null>(null);
+  const [clientData, setClientData] = useState<FullClientData | null>(null);
+
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
+  const [rewardCatalog, setRewardCatalog] = useState<RewardCatalogItem[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load Initial Base Data
+  const loadInitialData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const [empList, clientList, catList, rewardList] = await Promise.all([
+        api.getEmployees(),
+        api.getClients(),
+        api.getCatalog(),
+        api.getRewards(),
+      ]);
+
+      setEmployees(empList);
+      // Default initial staff to Admin (Khun Nat)
+      if (!currentStaff && empList.length > 0) {
+        setCurrentStaff(empList[0]);
+      }
+
+      setAllClients(clientList);
+      if (!currentClient && clientList.length > 0) {
+        setCurrentClient(clientList[0]);
+      }
+
+      setCatalogItems(catList);
+      setRewardCatalog(rewardList);
+    } catch (err) {
+      console.error('Failed to load initial app data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Fetch Full Client Data whenever currentClient changes
+  const refreshCurrentClientData = useCallback(async () => {
+    if (!currentClient) return;
+    try {
+      const fullData = await api.getClientById(currentClient.id);
+      setClientData(fullData);
+    } catch (err) {
+      console.error('Error fetching client data:', err);
+    }
+  }, [currentClient]);
+
+  // Load audit logs when opening audit log view
+  const loadAuditLogs = useCallback(async () => {
+    try {
+      const logs = await api.getAuditLogs();
+      setAuditLogs(logs);
+    } catch (err) {
+      console.error('Error loading audit logs:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
+
+  useEffect(() => {
+    if (currentClient) {
+      refreshCurrentClientData();
+    }
+  }, [currentClient, refreshCurrentClientData]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-4 font-sans text-stone-700">
+        <div className="w-12 h-12 rounded-2xl bg-amber-800 text-amber-100 flex items-center justify-center font-serif text-2xl font-bold mb-3 shadow-inner">
+          M
+        </div>
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Loader2 className="w-5 h-5 text-amber-800 animate-spin" />
+          <span>Loading Me.My.Mind Membership App...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-stone-100 font-sans text-stone-800 selection:bg-amber-200 selection:text-amber-900">
+      {/* Universal Top Header Bar */}
+      <Header
+        viewMode={viewMode}
+        setViewMode={(mode) => {
+          setViewMode(mode);
+          setActiveSubView('main');
+        }}
+        lang={lang}
+        setLang={setLang}
+        currentStaff={currentStaff}
+        setCurrentStaff={setCurrentStaff}
+        employees={employees}
+        currentClient={currentClient}
+        setCurrentClient={(client) => {
+          setCurrentClient(client);
+        }}
+        allClients={allClients}
+        brandSettings={brandSettings}
+        onOpenCatalog={() => setActiveSubView('catalog')}
+        onOpenAuditLogs={() => {
+          loadAuditLogs();
+          setActiveSubView('audit');
+        }}
+      />
+
+      {/* Main Body View Switching */}
+      <main className="py-4">
+        {activeSubView === 'catalog' && currentStaff && currentStaff.role === 'admin' ? (
+          <CatalogManagement
+            catalogItems={catalogItems}
+            currentStaff={currentStaff}
+            lang={lang}
+            onBack={() => setActiveSubView('main')}
+            onRefreshCatalog={async () => {
+              const freshCat = await api.getCatalog();
+              setCatalogItems(freshCat);
+            }}
+          />
+        ) : activeSubView === 'audit' && currentStaff && (currentStaff.role === 'admin' || currentStaff.role === 'manager') ? (
+          <AuditLogView
+            logs={auditLogs}
+            lang={lang}
+            onBack={() => setActiveSubView('main')}
+          />
+        ) : viewMode === 'customer' && currentClient && clientData ? (
+          <CustomerApp
+            client={clientData.client}
+            coinBalance={clientData.coinBalance}
+            coinTransactions={clientData.coinTransactions}
+            pointsWallet={clientData.pointsWallet}
+            pointsTransactions={clientData.pointsTransactions}
+            packages={clientData.packages}
+            coupons={clientData.coupons}
+            notifications={clientData.notifications}
+            rewardCatalog={rewardCatalog}
+            lang={lang}
+            onRefresh={refreshCurrentClientData}
+          />
+        ) : (
+          <StaffDashboard
+            currentStaff={currentStaff}
+            setCurrentStaff={setCurrentStaff}
+            employees={employees}
+            allClients={allClients}
+            selectedClientData={clientData}
+            onSelectClient={(clientId) => {
+              const found = allClients.find((c) => c.id === clientId);
+              if (found) setCurrentClient(found);
+            }}
+            catalogItems={catalogItems}
+            lang={lang}
+            brandSettings={brandSettings}
+            onUpdateBrandSettings={handleUpdateBrandSettings}
+            onRefreshClient={async () => {
+              const freshClients = await api.getClients();
+              setAllClients(freshClients);
+              await refreshCurrentClientData();
+            }}
+            onRefreshEmployees={async () => {
+              const emps = await api.getEmployees();
+              setEmployees(emps);
+            }}
+            onOpenCatalog={() => setActiveSubView('catalog')}
+            onOpenAuditLogs={() => {
+              loadAuditLogs();
+              setActiveSubView('audit');
+            }}
+          />
+        )}
+      </main>
+    </div>
+  );
+}
