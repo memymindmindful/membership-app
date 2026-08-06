@@ -35,12 +35,16 @@ import {
   Edit3,
   Save,
   FileSpreadsheet,
+  Database,
+  Lock,
 } from 'lucide-react';
 import appLogo from '../assets/images/me_my_mind_logo_1785924412256.jpg';
 import { FinancialDashboard } from './FinancialDashboard';
 import { StaffManagementModal } from './StaffManagementModal';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { ExportClientsModal } from './ExportClientsModal';
+import { FactoryResetModal } from './FactoryResetModal';
+import { BackupSettingsModal } from './BackupSettingsModal';
 import {
   AppLanguage,
   CatalogItem,
@@ -106,6 +110,9 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   const [isStaffManagementOpen, setIsStaffManagementOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isFactoryResetOpen, setIsFactoryResetOpen] = useState(false);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
 
   // Staff Note Editing State
   const [isEditingStaffNote, setIsEditingStaffNote] = useState(false);
@@ -263,12 +270,10 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
       setLoginError('ไม่พบชื่อผู้ใช้งานนี้ในระบบ');
       return;
     }
-    setCurrentStaff(found);
-  };
-
-  // Quick Role Select Login Helper
-  const handleQuickRoleLogin = (roleTarget: EmployeeRole) => {
-    const found = employees.find((e) => e.role === roleTarget) || employees[0];
+    if (found.password && found.password !== loginPassword) {
+      setLoginError('รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบรหัสผ่านของคุณอีกครั้ง');
+      return;
+    }
     setCurrentStaff(found);
   };
 
@@ -276,114 +281,63 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   if (!currentStaff) {
     return (
       <div className="min-h-screen bg-[#FAF6F2] flex items-center justify-center p-4 py-8">
-        <div className="w-full max-w-lg bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-[#F2E3E1] space-y-6">
+        <div className="w-full max-w-md bg-white p-6 sm:p-8 rounded-3xl shadow-lg border border-[#F2E3E1] space-y-6">
           <div className="text-center space-y-2">
             <img
               src={brandSettings?.logoUrl || appLogo}
               alt="Me.My.Mind Logo"
-              className="w-16 h-16 rounded-full object-cover border-2 border-[#E88D9F] shadow-sm mx-auto"
+              className="w-20 h-20 rounded-full object-cover border-2 border-[#E88D9F] shadow-sm mx-auto"
               referrerPolicy="no-referrer"
             />
             <h1 className="text-xl font-serif font-bold text-[#3D3835]">{t.staffDashboardTitle}</h1>
-            <p className="text-xs text-[#6E6763]">เลือกบทบาทเพื่อเข้าสู่ระบบ (Select Staff Role Access)</p>
+            <p className="text-xs text-[#6E6763]">เข้าสู่ระบบสำหรับพนักงาน (Staff Portal Sign In)</p>
           </div>
 
-          {/* Quick Role Selection Cards */}
-          <div className="space-y-2 pt-2">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-[#D87085]">
-              เข้าสู่ระบบด่วนตามบทบาท (Quick Select Demo Role):
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => handleQuickRoleLogin('admin')}
-                className="p-3 bg-[#FAF0ED] hover:bg-[#F2E3E1] border border-[#F2C2CE] rounded-2xl text-left transition space-y-1 group"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#3D3835] group-hover:text-[#D87085]">Khun Nat</span>
-                  <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-[#E88D9F] text-white rounded-full">Admin</span>
-                </div>
-                <p className="text-[10px] text-[#6E6763] leading-tight">ทำได้ทุกหน้าที่ (เต็มสิทธิ์ทั้งหมด)</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickRoleLogin('manager')}
-                className="p-3 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-2xl text-left transition space-y-1 group"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-purple-900 group-hover:text-purple-700">Khun May</span>
-                  <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-purple-600 text-white rounded-full">Manager</span>
-                </div>
-                <p className="text-[10px] text-purple-700 leading-tight">ระบบสมาชิก, บัญชี, Audit Logs (ห้ามแก้ Catalogue/ตั้งค่า)</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickRoleLogin('staff')}
-                className="p-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-2xl text-left transition space-y-1 group"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-900 group-hover:text-emerald-700">Khun Joy</span>
-                  <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-emerald-600 text-white rounded-full">Staff</span>
-                </div>
-                <p className="text-[10px] text-emerald-700 leading-tight">ระบบสมาชิกอย่างเดียว (ไม่เห็นบัญชี/Catalogue/ตั้งค่า)</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickRoleLogin('accountant')}
-                className="p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-2xl text-left transition space-y-1 group"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-blue-900 group-hover:text-blue-700">Khun Pim</span>
-                  <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-blue-600 text-white rounded-full">Accountant</span>
-                </div>
-                <p className="text-[10px] text-blue-700 leading-tight">สรุปบัญชี รายรับ-รายจ่ายอย่างเดียว (ไม่เห็นระบบสมาชิก)</p>
-              </button>
-            </div>
-          </div>
-
-          <div className="relative py-2">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[#F2E3E1]"></div></div>
-            <div className="relative flex justify-center text-[10px] uppercase font-bold text-[#D87085]"><span className="bg-white px-2">หรือเข้าด้วย Username / Password</span></div>
-          </div>
-
-          <form onSubmit={handleLoginSubmit} className="space-y-4">
+          <form onSubmit={handleLoginSubmit} className="space-y-4 pt-2">
             {loginError && (
-              <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200">
+              <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200 font-medium">
                 {loginError}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#3D3835] mb-1">Username</label>
-              <input
-                type="text"
-                required
-                value={loginUsername}
-                onChange={(e) => setLoginUsername(e.target.value)}
-                placeholder="admin / manager / staff / accountant"
-                className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E88D9F]"
-              />
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#3D3835] mb-1">
+                ชื่อผู้ใช้งาน (Username)
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  value={loginUsername}
+                  onChange={(e) => setLoginUsername(e.target.value)}
+                  placeholder="admin / manager / staff / accountant"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-[#F2E3E1] rounded-xl text-sm text-[#3D3835] focus:outline-none focus:ring-2 focus:ring-[#E88D9F] focus:bg-white"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#3D3835] mb-1">Password</label>
-              <input
-                type="password"
-                required
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E88D9F]"
-              />
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#3D3835] mb-1">
+                รหัสผ่าน (Password)
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  required
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="กรอกรหัสผ่านเพื่อเข้าสู่ระบบ"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-[#F2E3E1] rounded-xl text-sm text-[#3D3835] focus:outline-none focus:ring-2 focus:ring-[#E88D9F] focus:bg-white"
+                />
+              </div>
             </div>
 
             <button
               type="submit"
-              className="w-full py-3 bg-[#E88D9F] hover:bg-[#D87085] text-white font-semibold text-sm rounded-full shadow-2xs transition"
+              className="w-full py-3 bg-[#E88D9F] hover:bg-[#D87085] text-white font-bold text-sm rounded-full shadow-md transition flex items-center justify-center gap-2 mt-2"
             >
-              Staff Sign In
+              <Lock className="w-4 h-4" />
+              <span>เข้าสู่ระบบ (Sign In)</span>
             </button>
           </form>
         </div>
@@ -440,85 +394,13 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
     <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
       
       {/* Staff Control Action Header Bar */}
-      <div className="bg-white rounded-2xl p-4 border border-[#F2E3E1] shadow-2xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center flex-wrap gap-2">
-          {canEditCatalog && (
-            <button
-              onClick={onOpenCatalog}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-[#FAF0ED] hover:bg-[#F2E3E1] text-[#3D3835] text-xs font-semibold rounded-full transition"
-            >
-              <BookOpen className="w-4 h-4 text-[#D87085]" />
-              <span>{t.viewCatalogBtn}</span>
-            </button>
-          )}
-
-          {canViewAuditLogs && (
-            <button
-              onClick={onOpenAuditLogs}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-[#FAF0ED] hover:bg-[#F2E3E1] text-[#3D3835] text-xs font-semibold rounded-full transition"
-            >
-              <ShieldCheck className="w-4 h-4 text-[#D87085]" />
-              <span>{t.viewAuditLogBtn}</span>
-            </button>
-          )}
-
-          {canManageBrand && (
-            <>
-              <button
-                onClick={() => setIsStaffManagementOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#FAF0ED] hover:bg-[#F2E3E1] text-[#3D3835] text-xs font-semibold rounded-full transition border border-[#F2C2CE]"
-                title="จัดการพนักงานและดูตารางสิทธิ์"
-              >
-                <Users className="w-4 h-4 text-[#D87085]" />
-                <span>{lang === 'th' ? 'จัดการบัญชีพนักงาน & สิทธิ์' : 'Staff & Roles'}</span>
-              </button>
-
-              <button
-                onClick={handleOpenBrandModal}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#FAF0ED] hover:bg-[#F2E3E1] text-[#3D3835] text-xs font-semibold rounded-full transition border border-[#F2E3E1]"
-                title="ตั้งค่าโลโก้และชื่อแอป"
-              >
-                <Settings className="w-4 h-4 text-[#D87085]" />
-                <span>{lang === 'th' ? 'ตั้งค่าโลโก้ & ชื่อแอป' : 'Brand & Logo Settings'}</span>
-              </button>
-            </>
-          )}
-
-          {currentStaff && (
-            <button
-              onClick={() => setIsChangePasswordOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-[#FAF0ED] hover:bg-[#F2E3E1] text-[#3D3835] text-xs font-semibold rounded-full transition border border-[#F2E3E1]"
-              title="เปลี่ยนรหัสผ่านส่วนตัว"
-            >
-              <KeyRound className="w-4 h-4 text-[#D87085]" />
-              <span>{lang === 'th' ? 'เปลี่ยนรหัสผ่าน' : 'Change Password'}</span>
-            </button>
-          )}
-
-          {(role === 'admin' || role === 'manager') && (
-            <button
-              onClick={() => setIsExportModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-[#FAF0ED] hover:bg-[#F2E3E1] text-[#3D3835] text-xs font-semibold rounded-full transition border border-[#F2E3E1]"
-              title="ส่งออกข้อมูลลูกค้าเป็น Excel (สำหรับ Admin & Manager)"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-[#D87085]" />
-              <span>Export ข้อมูลลูกค้า (Excel)</span>
-            </button>
-          )}
-
-          {!canEditCatalog && !canViewAuditLogs && !canManageBrand && (
-            <span className="text-xs text-[#6E6763] font-medium flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>โหมดพนักงานสิทธิ์จำกัด ({role.toUpperCase()})</span>
-            </span>
-          )}
-        </div>
-
+      <div className="bg-white rounded-2xl p-4 border border-[#F2E3E1] shadow-2xs flex flex-wrap items-center justify-between gap-3 relative">
+        {/* Left / Primary Quick Actions (Highlighted prominently) */}
         {canAccessClientOps && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <button
               onClick={() => setIsQrScannerOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-semibold rounded-full shadow-2xs transition"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-xl shadow-2xs transition transform active:scale-95"
             >
               <Camera className="w-4 h-4" />
               <span>{t.scanQrBtn}</span>
@@ -526,13 +408,168 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
 
             <button
               onClick={() => setShowCreateClientModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-semibold rounded-full shadow-2xs transition"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-xl shadow-2xs transition transform active:scale-95"
             >
               <UserPlus className="w-4 h-4" />
               <span>{t.addNewClientBtn}</span>
             </button>
           </div>
         )}
+
+        {/* Right / Management & Settings Dropdown Menu */}
+        <div className="relative ml-auto">
+          <button
+            onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#FAF0ED] hover:bg-[#F2E3E1] text-[#3D3835] text-xs font-bold rounded-xl border border-[#F2E3E1] transition shadow-2xs"
+          >
+            <Settings className="w-4 h-4 text-[#D87085]" />
+            <span>{lang === 'th' ? 'การจัดการระบบ & ตั้งค่า' : 'Management & Settings'}</span>
+            <ChevronDown className={`w-3.5 h-3.5 text-[#6E6763] transition-transform duration-200 ${isToolsMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Dropdown Menu Overlay */}
+          {isToolsMenuOpen && (
+            <>
+              {/* Backdrop to close menu when clicking outside */}
+              <div
+                className="fixed inset-0 z-20"
+                onClick={() => setIsToolsMenuOpen(false)}
+              />
+
+              <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-[#F2E3E1] z-30 p-2 space-y-1.5 divide-y divide-[#FAF0ED]">
+                {/* Section 1: Operations & Catalog */}
+                <div className="p-1.5 space-y-1">
+                  <div className="px-2.5 py-1 text-[10px] font-bold text-[#A89F91] uppercase tracking-wider">
+                    {lang === 'th' ? 'ข้อมูล & งานบริการ' : 'Services & Reports'}
+                  </div>
+
+                  {canEditCatalog && (
+                    <button
+                      onClick={() => {
+                        onOpenCatalog();
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left"
+                    >
+                      <BookOpen className="w-4 h-4 text-[#D87085] shrink-0" />
+                      <span>{t.viewCatalogBtn}</span>
+                    </button>
+                  )}
+
+                  {canViewAuditLogs && (
+                    <button
+                      onClick={() => {
+                        onOpenAuditLogs();
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-[#D87085] shrink-0" />
+                      <span>{t.viewAuditLogBtn}</span>
+                    </button>
+                  )}
+
+                  {(role === 'admin' || role === 'manager') && (
+                    <button
+                      onClick={() => {
+                        setIsExportModalOpen(true);
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left"
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-[#D87085] shrink-0" />
+                      <span>Export ข้อมูลลูกค้า (Excel)</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Section 2: Management & Roles */}
+                <div className="p-1.5 pt-2 space-y-1">
+                  <div className="px-2.5 py-1 text-[10px] font-bold text-[#A89F91] uppercase tracking-wider">
+                    {lang === 'th' ? 'จัดการระบบ & สิทธิ์' : 'Admin & Permissions'}
+                  </div>
+
+                  {canManageBrand && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setIsStaffManagementOpen(true);
+                          setIsToolsMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left"
+                      >
+                        <Users className="w-4 h-4 text-[#D87085] shrink-0" />
+                        <span>{lang === 'th' ? 'จัดการบัญชีพนักงาน & สิทธิ์' : 'Staff & Roles'}</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleOpenBrandModal();
+                          setIsToolsMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left"
+                      >
+                        <Settings className="w-4 h-4 text-[#D87085] shrink-0" />
+                        <span>{lang === 'th' ? 'ตั้งค่าโลโก้ & ชื่อแอป' : 'Brand Settings'}</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsBackupModalOpen(true);
+                          setIsToolsMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left"
+                      >
+                        <Database className="w-4 h-4 text-[#D87085] shrink-0" />
+                        <span>{lang === 'th' ? 'สำรองข้อมูล & รายงานอัตโนมัติ' : 'Auto Backup & Reports'}</span>
+                      </button>
+                    </>
+                  )}
+
+                  {/* Admin Only: Factory Reset / Data Purge Button */}
+                  {role === 'admin' && (
+                    <button
+                      onClick={() => {
+                        setIsFactoryResetOpen(true);
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-50 rounded-xl transition text-left group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <RotateCcw className="w-4 h-4 text-rose-600 shrink-0 group-hover:rotate-180 transition-transform duration-300" />
+                        <span className="font-bold">{lang === 'th' ? 'ล้างข้อมูลระบบ (Factory Reset)' : 'Factory Reset Data'}</span>
+                      </div>
+                      <span className="text-[9px] bg-rose-100 text-rose-700 font-extrabold px-1.5 py-0.5 rounded-md uppercase">
+                        Admin
+                      </span>
+                    </button>
+                  )}
+
+                  {currentStaff && (
+                    <button
+                      onClick={() => {
+                        setIsChangePasswordOpen(true);
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left"
+                    >
+                      <KeyRound className="w-4 h-4 text-[#D87085] shrink-0" />
+                      <span>{lang === 'th' ? 'เปลี่ยนรหัสผ่านส่วนตัว' : 'Change Password'}</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Staff Role Badge Info */}
+                <div className="px-3 py-2 bg-[#FAF0ED] rounded-xl text-[11px] text-[#6E6763] flex items-center justify-between">
+                  <span>สิทธิ์ปัจจุบัน:</span>
+                  <span className="font-bold text-[#D87085] bg-white px-2 py-0.5 rounded-md border border-[#F2C2CE] uppercase text-[10px]">
+                    {role}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Primary Tab Switcher Bar */}
@@ -2245,6 +2282,23 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         staffRole={role}
+      />
+
+      {/* Factory Reset Modal (Admin Only) */}
+      <FactoryResetModal
+        isOpen={isFactoryResetOpen}
+        onClose={() => setIsFactoryResetOpen(false)}
+        currentStaff={currentStaff}
+        onSuccess={() => {
+          onRefreshClient();
+          if (onRefreshEmployees) onRefreshEmployees();
+        }}
+      />
+
+      {/* Backup & Auto-Report Settings Modal */}
+      <BackupSettingsModal
+        isOpen={isBackupModalOpen}
+        onClose={() => setIsBackupModalOpen(false)}
       />
 
     </div>

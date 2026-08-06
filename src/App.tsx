@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import liff from '@line/liff';
 import {
   AppLanguage,
   CatalogItem,
@@ -14,6 +15,7 @@ import { CustomerApp } from './components/CustomerApp';
 import { StaffDashboard } from './components/StaffDashboard';
 import { CatalogManagement } from './components/CatalogManagement';
 import { AuditLogView } from './components/AuditLogView';
+import { ConsentModal } from './components/ConsentModal';
 import { Loader2 } from 'lucide-react';
 import defaultAppLogo from './assets/images/me_my_mind_logo_1785924412256.jpg';
 
@@ -24,9 +26,17 @@ const DEFAULT_BRAND_SETTINGS: BrandSettings = {
 };
 
 export default function App() {
-  const [viewMode, setViewMode] = useState<'customer' | 'staff'>('customer');
+  const [viewMode, setViewMode] = useState<'customer' | 'staff'>(() => {
+    if (window.location.search.includes('mode=staff') || window.location.search.includes('staff=true')) {
+      return 'staff';
+    }
+    return 'customer';
+  });
   const [activeSubView, setActiveSubView] = useState<'main' | 'catalog' | 'audit'>('main');
   const [lang, setLang] = useState<AppLanguage>('th');
+  const [isLiffLoggedIn, setIsLiffLoggedIn] = useState(false);
+  const [isLiffApp, setIsLiffApp] = useState(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
 
   const [brandSettings, setBrandSettings] = useState<BrandSettings>(() => {
     try {
@@ -121,15 +131,57 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => {
-    loadInitialData();
-  }, [loadInitialData]);
+  // Initialize LINE LIFF SDK
+  const initLiff = useCallback(async () => {
+    const liffId = import.meta.env.VITE_LIFF_ID || '2010995651-8jq2UIft';
+    if (!liffId) return;
+
+    try {
+      await liff.init({ liffId });
+      setIsLiffApp(true);
+
+      if (liff.isLoggedIn()) {
+        const profile = await liff.getProfile();
+        if (profile && profile.userId) {
+          const fullData = await api.lineLogin({
+            userId: profile.userId,
+            displayName: profile.displayName,
+            pictureUrl: profile.pictureUrl,
+          });
+          setIsLiffLoggedIn(true);
+          setCurrentClient(fullData.client);
+          setClientData(fullData);
+          if (!window.location.search.includes('staff=true')) {
+            setViewMode('customer');
+          }
+        }
+      } else {
+        if (liff.isInClient()) {
+          liff.login();
+        }
+      }
+    } catch (err) {
+      console.warn('LIFF init warning (normal if opened outside LINE app):', err);
+    }
+  }, []);
 
   useEffect(() => {
-    if (currentClient) {
+    loadInitialData();
+    initLiff();
+  }, [loadInitialData, initLiff]);
+
+  useEffect(() => {
+    const accepted = localStorage.getItem('mmm_pdpa_consent_accepted');
+    if (viewMode === 'customer' && accepted !== 'true') {
+      setShowConsentModal(true);
+    }
+  }, [viewMode]);
+
+  useEffect(() => {
+    if (currentClient && !isLiffLoggedIn) {
       refreshCurrentClientData();
     }
-  }, [currentClient, refreshCurrentClientData]);
+  }, [currentClient, isLiffLoggedIn, refreshCurrentClientData]);
 
   if (isLoading) {
     return (
@@ -170,6 +222,8 @@ export default function App() {
           loadAuditLogs();
           setActiveSubView('audit');
         }}
+        isLiffLoggedIn={isLiffLoggedIn}
+        isLiffApp={isLiffApp}
       />
 
       {/* Main Body View Switching */}
@@ -204,6 +258,7 @@ export default function App() {
             rewardCatalog={rewardCatalog}
             lang={lang}
             onRefresh={refreshCurrentClientData}
+            onOpenConsent={() => setShowConsentModal(true)}
           />
         ) : (
           <StaffDashboard
@@ -237,6 +292,16 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Consent Modal for First-time Customers */}
+      <ConsentModal
+        isOpen={showConsentModal}
+        initialLang={lang}
+        onAccept={() => {
+          localStorage.setItem('mmm_pdpa_consent_accepted', 'true');
+          setShowConsentModal(false);
+        }}
+      />
     </div>
   );
 }

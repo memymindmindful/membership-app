@@ -36,6 +36,19 @@ interface DatabaseSchema {
   clientCoupons: ClientCoupon[];
   rewardCatalogItems: RewardCatalogItem[];
   notifications: InAppNotification[];
+  backupSettings?: {
+    email: string;
+    scheduleFrequency: 'daily' | 'weekly' | 'monthly';
+    scheduleTime: string; // e.g. "00:00"
+    scheduleDayOfWeek?: string; // e.g. "1" for Monday
+    scheduleDayOfMonth?: string; // e.g. "1"
+    googleDriveAutoUpload: boolean;
+    googleDriveFolder: string;
+    includeClients: boolean;
+    includeTransactions: boolean;
+    includeCatalog: boolean;
+    lastBackupAt?: string;
+  };
   auditLogs: AuditLog[];
   financialEntries?: FinancialEntry[];
 }
@@ -739,6 +752,9 @@ class Store {
     previousData?: any,
     newData?: any
   ) {
+    if (!this.db.auditLogs) {
+      this.db.auditLogs = [];
+    }
     const log: AuditLog = {
       id: `AUDIT-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       staffId,
@@ -977,7 +993,50 @@ class Store {
   }
 
   public getClientById(id: string): Client | undefined {
-    return this.db.clients.find((c) => c.id === id || c.memberCode === id);
+    return this.db.clients.find((c) => c.id === id || c.memberCode === id || c.lineUserId === id);
+  }
+
+  public getClientByLineUserId(lineUserId: string): Client | undefined {
+    return this.db.clients.find((c) => c.lineUserId === lineUserId);
+  }
+
+  public findOrCreateClientByLineProfile(lineProfile: {
+    userId: string;
+    displayName?: string;
+    pictureUrl?: string;
+  }): Client {
+    let client = this.getClientByLineUserId(lineProfile.userId);
+    if (client) {
+      let updated = false;
+      if (lineProfile.pictureUrl && client.profilePic !== lineProfile.pictureUrl) {
+        client.profilePic = lineProfile.pictureUrl;
+        updated = true;
+      }
+      if (
+        lineProfile.displayName &&
+        (!client.displayName || client.displayName.startsWith('Member ') || client.displayName === 'Unnamed Member')
+      ) {
+        client.displayName = lineProfile.displayName;
+        updated = true;
+      }
+      if (updated) {
+        this.saveToDisk();
+      }
+      return client;
+    }
+
+    // Create new client for this LINE User ID
+    return this.createClient(
+      {
+        lineUserId: lineProfile.userId,
+        displayName: lineProfile.displayName || 'LINE Member',
+        profilePic:
+          lineProfile.pictureUrl ||
+          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+      },
+      'SYSTEM_LIFF',
+      'LIFF Auto Registration'
+    );
   }
 
   public createClient(clientData: Partial<Client>, staffId: string, staffName: string): Client {
@@ -1834,6 +1893,144 @@ class Store {
     this.logAudit(staffId, staffName, 'DELETE_FINANCIAL_ENTRY', 'financial', id, `Deleted ${removed.type} entry: ${removed.title}`, removed, null);
     this.saveToDisk();
     return true;
+  }
+
+  public purgeSystemData(
+    staffId: string,
+    password: string,
+    targets: { deleteClients?: boolean; deleteCatalog?: boolean; deleteTransactions?: boolean }
+  ) {
+    // 1. Check staff exists and is admin
+    const emp = this.db.employees.find((e) => e.id === staffId);
+    if (!emp) {
+      throw new Error('ไม่พบข้อมูลบัญชีพนักงาน');
+    }
+    if (emp.role !== 'admin') {
+      throw new Error('ไม่มีสิทธิ์ใช้งาน (เฉพาะ Admin เท่านั้นที่สามารถล้างข้อมูลระบบได้)');
+    }
+
+    // 2. Verify password
+    if (emp.password !== password) {
+      throw new Error('รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบรหัสผ่าน Admin ของคุณอีกครั้ง');
+    }
+
+    const counts = {
+      clients: 0,
+      catalog: 0,
+      transactions: 0,
+    };
+
+    // 3. Purge Clients
+    if (targets.deleteClients) {
+      counts.clients = this.db.clients.length;
+      this.db.clients = [];
+      this.db.coinWallets = {};
+      this.db.pointsWallets = {};
+      this.db.clientPackages = [];
+      this.db.clientCoupons = [];
+      this.db.notifications = [];
+    }
+
+    // 4. Purge Catalog & Rewards
+    if (targets.deleteCatalog) {
+      counts.catalog = this.db.catalogItems.length + (this.db.rewardCatalogItems ? this.db.rewardCatalogItems.length : 0);
+      this.db.catalogItems = [];
+      this.db.rewardCatalogItems = [];
+    }
+
+    // 5. Purge Transactions & Financials & Audit Logs
+    if (targets.deleteTransactions) {
+      counts.transactions =
+        (this.db.coinTransactions ? this.db.coinTransactions.length : 0) +
+        (this.db.pointsTransactions ? this.db.pointsTransactions.length : 0) +
+        (this.db.financialEntries ? this.db.financialEntries.length : 0) +
+        (this.db.auditLogs ? this.db.auditLogs.length : 0);
+      this.db.coinTransactions = [];
+      this.db.pointsTransactions = [];
+      this.db.financialEntries = [];
+      this.db.auditLogs = [];
+    }
+
+    // Log this system purge action
+    this.logAudit(
+      emp.id,
+      emp.displayName,
+      'SYSTEM_FACTORY_RESET',
+      'staff',
+      'GLOBAL',
+      `Purged system data with targets: ${JSON.stringify(targets)}`,
+      null,
+      counts
+    );
+
+    this.saveToDisk();
+
+    return {
+      success: true,
+      deletedCounts: counts,
+      message: 'ล้างข้อมูลระบบสำเร็จเรียบร้อยแล้ว',
+    };
+  }
+
+  public getBackupSettings() {
+    if (!this.db.backupSettings) {
+      this.db.backupSettings = {
+        email: 'me.my.mind.facialmassage@gmail.com',
+        scheduleFrequency: 'daily',
+        scheduleTime: '00:00',
+        scheduleDayOfWeek: '1',
+        scheduleDayOfMonth: '1',
+        googleDriveAutoUpload: true,
+        googleDriveFolder: 'Me.My.Mind_Membership_Backups',
+        includeClients: true,
+        includeTransactions: true,
+        includeCatalog: true,
+        lastBackupAt: new Date().toISOString(),
+      };
+    }
+    return this.db.backupSettings;
+  }
+
+  public saveBackupSettings(settings: any) {
+    this.db.backupSettings = {
+      ...this.getBackupSettings(),
+      ...settings,
+      updatedAt: new Date().toISOString(),
+    };
+    this.saveToDisk();
+    return this.db.backupSettings;
+  }
+
+  public getFullBackupData() {
+    const timestamp = new Date().toISOString();
+    return {
+      appName: 'Me.My.Mind Membership',
+      backupTimestamp: timestamp,
+      summary: {
+        totalClients: this.db.clients.length,
+        totalCoinTransactions: this.db.coinTransactions ? this.db.coinTransactions.length : 0,
+        totalPointsTransactions: this.db.pointsTransactions ? this.db.pointsTransactions.length : 0,
+        totalFinancialEntries: this.db.financialEntries ? this.db.financialEntries.length : 0,
+        totalCatalogItems: this.db.catalogItems.length,
+      },
+      clients: this.db.clients.map((c) => ({
+        ...c,
+        coinBalance: this.db.coinWallets[c.id] || 0,
+        pointsWallet: this.db.pointsWallets[c.id] || { totalPoints: 0, currentTier: 'SILVER' },
+        activePackagesCount: (this.db.clientPackages || []).filter((p) => p.clientId === c.id && p.status === 'active').length,
+        activeCouponsCount: (this.db.clientCoupons || []).filter((cpn) => cpn.clientId === c.id && cpn.status === 'active').length,
+      })),
+      coinWallets: this.db.coinWallets,
+      pointsWallets: this.db.pointsWallets,
+      clientPackages: this.db.clientPackages,
+      clientCoupons: this.db.clientCoupons,
+      coinTransactions: this.db.coinTransactions,
+      pointsTransactions: this.db.pointsTransactions,
+      financialEntries: this.db.financialEntries,
+      catalogItems: this.db.catalogItems,
+      rewardCatalogItems: this.db.rewardCatalogItems,
+      backupSettings: this.getBackupSettings(),
+    };
   }
 }
 

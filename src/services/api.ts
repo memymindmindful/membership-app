@@ -488,4 +488,73 @@ export const api = {
     const data = await res.json();
     return data.imageUrl;
   },
+
+  async lineLogin(lineProfile: {
+    userId: string;
+    displayName?: string;
+    pictureUrl?: string;
+  }): Promise<FullClientData> {
+    const res = await fetch('/api/clients/line-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(lineProfile),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed LINE login');
+    }
+    return res.json();
+  },
+
+  async purgeSystemData(
+    staffId: string,
+    password: string,
+    targets: { deleteClients?: boolean; deleteCatalog?: boolean; deleteTransactions?: boolean }
+  ): Promise<{ success: boolean; message: string; deletedCounts: Record<string, number> }> {
+    const res = await fetch('/api/admin/purge-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staffId, password, targets }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to purge system data');
+    }
+    return res.json();
+  },
+
+  async getBackupSettings(): Promise<any> {
+    const res = await fetch('/api/admin/backup-settings');
+    if (!res.ok) throw new Error('Failed to load backup settings');
+    return res.json();
+  },
+
+  async saveBackupSettings(settings: any): Promise<any> {
+    const res = await fetch('/api/admin/backup-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    });
+    if (!res.ok) throw new Error('Failed to save backup settings');
+    return res.json();
+  },
+
+  async getBackupExportData(): Promise<any> {
+    const res = await fetch('/api/admin/backup-export');
+    if (!res.ok) throw new Error('Failed to export backup data');
+    return res.json();
+  },
+
+  async sendBackupEmail(email?: string): Promise<any> {
+    const res = await fetch('/api/admin/send-backup-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to send backup email');
+    }
+    return res.json();
+  },
 };

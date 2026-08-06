@@ -53,6 +53,7 @@ interface CustomerAppProps {
   rewardCatalog: RewardCatalogItem[];
   lang: AppLanguage;
   onRefresh: () => void;
+  onOpenConsent?: () => void;
 }
 
 type TabType = 'home' | 'packages' | 'coupons' | 'coin' | 'points' | 'history' | 'qr' | 'notifications';
@@ -69,6 +70,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
   rewardCatalog,
   lang,
   onRefresh,
+  onOpenConsent,
 }) => {
   const t = translations[lang];
   const [activeTab, setActiveTab] = useState<TabType>('home');
@@ -758,6 +760,23 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
                   ))
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Privacy Policy & Terms Footer Button */}
+          {onOpenConsent && (
+            <div className="pt-8 pb-4 text-center">
+              <button
+                onClick={onOpenConsent}
+                className="inline-flex items-center gap-1.5 text-[11px] text-[#8C827A] hover:text-[#D87085] transition underline underline-offset-4"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-[#E88D9F]" />
+                <span>
+                  {lang === 'th'
+                    ? 'นโยบายความเป็นส่วนตัว (PDPA) & ข้อกำหนดการใช้งาน'
+                    : 'Privacy Policy (PDPA) & Terms of Use'}
+                </span>
+              </button>
             </div>
           )}
 

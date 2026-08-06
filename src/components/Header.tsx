@@ -18,6 +18,8 @@ interface HeaderProps {
   brandSettings?: BrandSettings;
   onOpenAuditLogs?: () => void;
   onOpenCatalog?: () => void;
+  isLiffLoggedIn?: boolean;
+  isLiffApp?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -34,11 +36,20 @@ export const Header: React.FC<HeaderProps> = ({
   brandSettings,
   onOpenAuditLogs,
   onOpenCatalog,
+  isLiffLoggedIn = false,
+  isLiffApp = false,
 }) => {
   const t = translations[lang];
   const displayLogo = brandSettings?.logoUrl || appLogo;
   const displayName = brandSettings?.brandName || 'Me.My.Mind Membership';
   const displayTagline = brandSettings?.brandTagline || 'Your Daily Ritual of Self-Love';
+
+  // Customers accessing through LINE LIFF will never see the Staff Dashboard button
+  const isLiffCustomer = isLiffLoggedIn || isLiffApp;
+  const isStaffRequested = window.location.search.includes('staff=true') || window.location.search.includes('mode=staff');
+  
+  // Hide mode switcher for LINE customers in production, show only for staff or in web preview
+  const showModeSwitcher = !isLiffCustomer || isStaffRequested;
 
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md text-[#3D3835] shadow-2xs border-b border-[#F2E3E1]">
@@ -64,37 +75,48 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Center / Right Action Controls */}
         <div className="flex items-center flex-wrap gap-2 sm:gap-3">
-          {/* Mode Switcher Pills */}
-          <div className="bg-[#FAF0ED] p-1 rounded-full flex items-center text-xs font-medium border border-[#F2E3E1]">
-            <button
-              onClick={() => setViewMode('customer')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition ${
-                viewMode === 'customer'
-                  ? 'bg-[#E88D9F] text-white shadow-xs font-semibold'
-                  : 'text-[#6E6763] hover:text-[#3D3835]'
-              }`}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>Customer App (LIFF)</span>
-            </button>
-            <button
-              onClick={() => setViewMode('staff')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition ${
-                viewMode === 'staff'
-                  ? 'bg-[#E88D9F] text-white shadow-xs font-semibold'
-                  : 'text-[#6E6763] hover:text-[#3D3835]'
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span>Staff Dashboard</span>
-            </button>
-          </div>
+          {/* Mode Switcher Pills (Automatically hidden for LINE customers in production) */}
+          {showModeSwitcher && (
+            <div className="bg-[#FAF0ED] p-1 rounded-full flex items-center text-xs font-medium border border-[#F2E3E1]">
+              <button
+                onClick={() => setViewMode('customer')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition ${
+                  viewMode === 'customer'
+                    ? 'bg-[#E88D9F] text-white shadow-xs font-semibold'
+                    : 'text-[#6E6763] hover:text-[#3D3835]'
+                }`}
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>Customer App</span>
+              </button>
+              <button
+                onClick={() => setViewMode('staff')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition ${
+                  viewMode === 'staff'
+                    ? 'bg-[#E88D9F] text-white shadow-xs font-semibold'
+                    : 'text-[#6E6763] hover:text-[#3D3835]'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>Staff Dashboard</span>
+              </button>
+            </div>
+          )}
 
-          {/* If in Customer Mode: Customer Account Simulator Selector */}
-          {viewMode === 'customer' && (
+          {/* Customer Profile Indicator in LIFF / Customer Mode */}
+          {viewMode === 'customer' && isLiffLoggedIn && currentClient && (
+            <div className="flex items-center gap-2 bg-[#FAF0ED] px-3.5 py-1.5 rounded-full border border-[#F2E3E1] text-xs font-medium text-[#3D3835]">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="font-semibold text-[#3D3835]">{currentClient.displayName}</span>
+              <span className="text-[10px] text-[#D87085] font-bold">({currentClient.memberCode})</span>
+            </div>
+          )}
+
+          {/* Demo Customer Selector (Only in Demo Mode or when ?demo=true) */}
+          {viewMode === 'customer' && !isLiffLoggedIn && (!isLiffCustomer || window.location.search.includes('demo=true')) && (
             <div className="flex items-center gap-1.5 bg-[#FAF0ED] px-3 py-1.5 rounded-full border border-[#F2E3E1] text-xs">
               <UserCheck className="w-3.5 h-3.5 text-[#D87085]" />
-              <span className="text-[#6E6763] font-bold uppercase tracking-wider text-[10px] hidden md:inline">LINE User:</span>
+              <span className="text-[#6E6763] font-bold uppercase tracking-wider text-[10px] hidden md:inline">Demo User:</span>
               <select
                 value={currentClient?.id || ''}
                 onChange={(e) => {

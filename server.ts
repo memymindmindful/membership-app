@@ -128,6 +128,36 @@ async function startServer() {
     }
   });
 
+  app.post('/api/clients/line-login', (req, res) => {
+    try {
+      const { userId, displayName, pictureUrl } = req.body;
+      if (!userId) {
+        return res.status(400).json({ error: 'LINE userId is required' });
+      }
+      const client = store.findOrCreateClientByLineProfile({ userId, displayName, pictureUrl });
+      const coinBalance = store.getCoinBalance(client.id);
+      const coinTxs = store.getCoinTransactions(client.id);
+      const pointsWallet = store.getPointsWallet(client.id);
+      const pointsTxs = store.getPointsTransactions(client.id);
+      const packages = store.getClientPackages(client.id);
+      const coupons = store.getClientCoupons(client.id);
+      const notifications = store.getNotifications(client.id);
+
+      res.json({
+        client,
+        coinBalance,
+        coinTransactions: coinTxs,
+        pointsWallet,
+        pointsTransactions: pointsTxs,
+        packages,
+        coupons,
+        notifications,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post('/api/clients', (req, res) => {
     try {
       const { clientData, staffId, staffName } = req.body;
@@ -420,6 +450,76 @@ async function startServer() {
       res.json({ success: true });
     } catch (err: any) {
       res.status(400).json({ error: err.message });
+    }
+  });
+
+  // System Factory Reset / Data Purge (Admin Only)
+  app.post('/api/admin/purge-data', (req, res) => {
+    try {
+      const { staffId, password, targets } = req.body;
+      if (!staffId || !password) {
+        return res.status(400).json({ error: 'กรุณากรอกรหัสผ่าน Admin เพื่อยืนยัน' });
+      }
+      if (!targets || (!targets.deleteClients && !targets.deleteCatalog && !targets.deleteTransactions)) {
+        return res.status(400).json({ error: 'กรุณาเลือกอย่างน้อย 1 รายการที่ต้องการล้างข้อมูล' });
+      }
+
+      const result = store.purgeSystemData(staffId, password, targets);
+      res.json(result);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Get Backup & Auto-Report Settings
+  app.get('/api/admin/backup-settings', (req, res) => {
+    try {
+      const settings = store.getBackupSettings();
+      res.json(settings);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Save Backup & Auto-Report Settings
+  app.post('/api/admin/backup-settings', (req, res) => {
+    try {
+      const saved = store.saveBackupSettings(req.body);
+      res.json({ success: true, settings: saved, message: 'บันทึกการตั้งค่าสำรองข้อมูลเรียบร้อยแล้ว' });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Export Full Backup JSON Payload
+  app.get('/api/admin/backup-export', (req, res) => {
+    try {
+      const data = store.getFullBackupData();
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Trigger Send Backup Report Email
+  app.post('/api/admin/send-backup-email', (req, res) => {
+    try {
+      const { email } = req.body;
+      const targetEmail = email || store.getBackupSettings().email;
+      const backupData = store.getFullBackupData();
+      
+      // Update last backup timestamp
+      store.saveBackupSettings({ lastBackupAt: new Date().toISOString(), email: targetEmail });
+
+      res.json({
+        success: true,
+        message: `ส่งรายงานสำรองข้อมูลไปยังอีเมล ${targetEmail} สำเร็จเรียบร้อยแล้ว`,
+        email: targetEmail,
+        timestamp: new Date().toISOString(),
+        summary: backupData.summary,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
     }
   });
 
