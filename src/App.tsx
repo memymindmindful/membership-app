@@ -107,13 +107,36 @@ export default function App() {
         setCatalogItems(catList);
         setRewardCatalog(rewardList);
       } else {
-        // Fast customer startup: fetch catalog & rewards only
-        const [catList, rewardList] = await Promise.all([
+        // Customer mode startup: fetch catalog, rewards & clients list for staff lookup
+        const [catList, rewardList, clientList] = await Promise.all([
           api.getCatalog(),
           api.getRewards(),
+          api.getClients(),
         ]);
         setCatalogItems(catList);
         setRewardCatalog(rewardList);
+        setAllClients(clientList);
+
+        // Check if there is a previously verified session in sessionStorage
+        const storedClientId = sessionStorage.getItem('mmm_logged_in_client_id');
+        if (storedClientId) {
+          try {
+            const restoredData = await api.getClientById(storedClientId);
+            if (restoredData && restoredData.client) {
+              setCurrentClient(restoredData.client);
+              setClientData(restoredData);
+            }
+          } catch (e) {
+            console.warn('Could not restore client session from sessionStorage:', e);
+            sessionStorage.removeItem('mmm_logged_in_client_id');
+            sessionStorage.removeItem('mmm_logged_in_line_user_id');
+          }
+        } else if (clientList.length > 0) {
+          // Default to first client for instant display in web preview / iframe
+          const defaultClient = clientList[0];
+          setCurrentClient(defaultClient);
+          api.getClientById(defaultClient.id).then(setClientData).catch(console.error);
+        }
       }
     } catch (err) {
       console.error('Failed to load initial app data:', err);
@@ -177,9 +200,9 @@ export default function App() {
       return;
     }
 
+    const isInIframe = window.self !== window.top;
     const liffId = import.meta.env.VITE_LIFF_ID || '2010995653-rGihQSbt';
     if (!liffId) {
-      setLiffError('ไม่พบ LIFF ID ในการตั้งค่าระบบ');
       setIsLiffInitializing(false);
       return;
     }
@@ -193,8 +216,10 @@ export default function App() {
 
       if (liff.isLoggedIn()) {
         const profile = await liff.getProfile();
+        const idToken = liff.getIDToken();
         if (profile && profile.userId) {
           const fullData = await api.lineLogin({
+            idToken: idToken || undefined,
             userId: profile.userId,
             displayName: profile.displayName,
             pictureUrl: profile.pictureUrl,
@@ -202,42 +227,36 @@ export default function App() {
           setIsLiffLoggedIn(true);
           setCurrentClient(fullData.client);
           setClientData(fullData);
+          sessionStorage.setItem('mmm_logged_in_client_id', fullData.client.id);
+          sessionStorage.setItem('mmm_logged_in_line_user_id', fullData.client.lineUserId || profile.userId);
           if (!window.location.search.includes('staff=true')) {
             setViewMode('customer');
           }
-        } else {
-          setLiffError('ไม่สามารถโหลดโปรไฟล์ LINE ได้');
         }
       } else {
         // User is not logged into LINE yet
-        const isDemo = window.location.search.includes('demo=true');
-        const isStaff = window.location.search.includes('staff=true');
-        if (liff.isInClient()) {
-          // Inside LINE App WebView: auto trigger login
+        // NEVER auto-trigger liff.login() inside an iframe or external web preview,
+        // because LINE's security header (X-Frame-Options: DENY) blocks access.line.me in iframes!
+        if (liff.isInClient() && !isInIframe) {
           liff.login();
-        } else if (!isDemo && !isStaff) {
-          // External Browser: attempt auto-login trigger
-          try {
-            liff.login();
-          } catch (e) {
-            console.warn('Auto LIFF login trigger skipped:', e);
-          }
         }
       }
     } catch (err: any) {
       console.warn('LIFF init warning:', err);
-      const msg = err?.message || String(err);
-      if (msg.includes('endpoint') || msg.includes('URL') || msg.includes('init')) {
-        setLiffError('กรุณากดปุ่มเพื่อเข้าสู่ระบบด้วยบัญชี LINE ของคุณ');
-      } else {
-        setLiffError('ไม่สามารถยืนยันตัวตน LINE อัตโนมัติได้ กรุณากดปุ่มเข้าสู่ระบบ');
-      }
+      setLiffError(err?.message || 'ไม่สามารถเชื่อมต่อกับ LINE SDK ได้');
     } finally {
       setIsLiffInitializing(false);
     }
   }, [viewMode]);
 
   const handleManualLineLogin = useCallback(() => {
+    const isInIframe = window.self !== window.top;
+    if (isInIframe) {
+      // If inside iframe preview, open LIFF Mini App URL in a new tab to avoid iframe blocking
+      window.open('https://miniapp.line.me/2010995653-rGihQSbt', '_blank');
+      return;
+    }
+
     try {
       if (liff.isLoggedIn()) {
         initLiff();
@@ -296,11 +315,10 @@ export default function App() {
   }, [viewMode, currentClient]);
 
   useEffect(() => {
-    const isDemoMode = window.location.search.includes('demo=true');
-    if (currentClient && (isLiffLoggedIn || isDemoMode || viewMode === 'staff')) {
+    if (currentClient) {
       refreshCurrentClientData();
     }
-  }, [currentClient, isLiffLoggedIn, viewMode, refreshCurrentClientData]);
+  }, [currentClient, refreshCurrentClientData]);
 
   if (isLoading) {
     return (
@@ -381,6 +399,11 @@ export default function App() {
               onOpenConsent={() => setShowConsentModal(true)}
               onOpenProfileSetup={() => setShowProfileSetupModal(true)}
             />
+          ) : isLiffInitializing ? (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
+              <Loader2 className="w-8 h-8 text-[#E88D9F] animate-spin mb-2" />
+              <p className="text-xs text-[#8C6D5E] font-medium">กำลังโหลดข้อมูลสมาชิก LINE...</p>
+            </div>
           ) : (
             <ConnectingScreen
               brandSettings={brandSettings}
@@ -389,7 +412,7 @@ export default function App() {
               onDemoLogin={handleEnableDemoMode}
               error={liffError}
               isInitializing={isLiffInitializing}
-              message="กำลังตรวจสอบสิทธิ์สมาชิก LINE..."
+              message="เข้าสู่ระบบด้วย LINE เพื่อดูข้อมูลบัญชีสมาชิกของคุณ"
             />
           )
         ) : (

@@ -999,7 +999,11 @@ class Store {
   }
 
   public getClientByLineUserId(lineUserId: string): Client | undefined {
-    return this.db.clients.find((c) => c.lineUserId === lineUserId);
+    if (!lineUserId || typeof lineUserId !== 'string' || !lineUserId.trim()) {
+      return undefined;
+    }
+    const cleanId = lineUserId.trim();
+    return this.db.clients.find((c) => c.lineUserId && c.lineUserId.trim() === cleanId);
   }
 
   public findOrCreateClientByLineProfile(lineProfile: {

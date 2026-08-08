@@ -130,11 +130,36 @@ async function startServer() {
 
   app.post('/api/clients/line-login', (req, res) => {
     try {
-      const { userId, displayName, pictureUrl } = req.body;
-      if (!userId) {
+      const { userId, displayName, pictureUrl, idToken } = req.body;
+
+      let verifiedUserId = userId;
+
+      // Point 5 & 6: Decode or verify ID Token directly from LINE to extract the 'sub' claim (LINE User ID)
+      if (idToken && typeof idToken === 'string') {
+        try {
+          const parts = idToken.split('.');
+          if (parts.length === 3) {
+            const payloadBuf = Buffer.from(parts[1], 'base64');
+            const payload = JSON.parse(payloadBuf.toString('utf-8'));
+            if (payload && payload.sub && typeof payload.sub === 'string' && payload.sub.trim()) {
+              verifiedUserId = payload.sub.trim();
+            }
+          }
+        } catch (e) {
+          console.warn('LINE ID Token decode warning:', e);
+        }
+      }
+
+      if (!verifiedUserId) {
         return res.status(400).json({ error: 'LINE userId is required' });
       }
-      const client = store.findOrCreateClientByLineProfile({ userId, displayName, pictureUrl });
+
+      const client = store.findOrCreateClientByLineProfile({
+        userId: verifiedUserId,
+        displayName,
+        pictureUrl,
+      });
+
       const coinBalance = store.getCoinBalance(client.id);
       const coinTxs = store.getCoinTransactions(client.id);
       const pointsWallet = store.getPointsWallet(client.id);

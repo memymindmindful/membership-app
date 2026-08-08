@@ -527,6 +527,7 @@ export const api = {
   },
 
   async lineLogin(lineProfile: {
+    idToken?: string;
     userId: string;
     displayName?: string;
     pictureUrl?: string;
