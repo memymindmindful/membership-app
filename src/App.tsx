@@ -259,6 +259,9 @@ export default function App() {
           setIsLiffLoggedIn(true);
           setCurrentClient(fullData.client);
           setClientData(fullData);
+          if (fullData.token || fullData.sessionToken) {
+            sessionStorage.setItem('mmm_session_token', fullData.token || fullData.sessionToken || '');
+          }
           sessionStorage.setItem('mmm_logged_in_client_id', fullData.client.id);
           sessionStorage.setItem('mmm_logged_in_line_user_id', fullData.client.lineUserId || profile.userId);
           if (!window.location.search.includes('staff=true')) {

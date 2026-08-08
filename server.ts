@@ -1,7 +1,53 @@
 import express from 'express';
 import path from 'path';
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import { createServer as createViteServer } from 'vite';
 import { store } from './server/store';
+
+const JWT_SECRET = process.env.SESSION_JWT_SECRET || process.env.SESSION_SECRET || 'mmm-facial-massage-session-secret-2026';
+
+export function createSessionToken(clientId: string, lineUserId: string): string {
+  return jwt.sign(
+    { clientId, lineUserId },
+    JWT_SECRET,
+    { expiresIn: '30d' }
+  );
+}
+
+export function verifySessionToken(token: string): { clientId: string; lineUserId: string } | null {
+  try {
+    if (!token || typeof token !== 'string') return null;
+    const decoded = jwt.verify(token, JWT_SECRET) as { clientId: string; lineUserId: string };
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+export function authenticateClientToken(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: Missing Authorization header' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = verifySessionToken(token);
+    if (!decoded || !decoded.clientId) {
+      return res.status(401).json({ error: 'Unauthorized: Invalid token signature or expired' });
+    }
+    (req as any).authenticatedClientId = decoded.clientId;
+    (req as any).authenticatedLineUserId = decoded.lineUserId;
+    next();
+  } catch (err: any) {
+    return res.status(401).json({ error: 'Unauthorized: Token verification failed' });
+  }
+}
 
 async function startServer() {
   const app = express();
@@ -107,9 +153,10 @@ async function startServer() {
     }
   });
 
-  app.get('/api/clients/:id', (req, res) => {
+  app.get('/api/clients/:id', authenticateClientToken, (req, res) => {
     try {
-      const client = store.getClientById(req.params.id);
+      const clientIdToUse = (req as any).authenticatedClientId;
+      const client = store.getClientById(clientIdToUse);
       if (!client) {
         return res.status(404).json({ error: 'Client not found' });
       }
@@ -199,7 +246,11 @@ async function startServer() {
       const coupons = store.getClientCoupons(client.id);
       const notifications = store.getNotifications(client.id);
 
+      const sessionToken = createSessionToken(client.id, verifiedUserId);
+
       res.json({
+        token: sessionToken,
+        sessionToken,
         client,
         coinBalance,
         coinTransactions: coinTxs,
@@ -227,11 +278,12 @@ async function startServer() {
     }
   });
 
-  app.put('/api/clients/:id/profile', (req, res) => {
+  app.put('/api/clients/:id/profile', authenticateClientToken, (req, res) => {
     try {
       const { phone, birthday, nickname, displayName, staffId, staffName } = req.body;
+      const clientIdToUse = (req as any).authenticatedClientId;
       const updatedClient = store.updateClientProfile(
-        req.params.id,
+        clientIdToUse,
         { phone, birthday, nickname, displayName },
         staffId || 'SYSTEM_USER',
         staffName || 'Member Self Service'

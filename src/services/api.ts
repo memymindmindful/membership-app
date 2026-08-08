@@ -21,6 +21,8 @@ import {
 } from '../types';
 
 export interface FullClientData {
+  token?: string;
+  sessionToken?: string;
   client: Client;
   coinBalance: number;
   coinTransactions: CoinTransaction[];
@@ -29,6 +31,15 @@ export interface FullClientData {
   packages: ClientPackage[];
   coupons: ClientCoupon[];
   notifications: InAppNotification[];
+}
+
+function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
+  const token = sessionStorage.getItem('mmm_session_token');
+  const headers: Record<string, string> = { ...extraHeaders };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
 }
 
 export const api = {
@@ -125,7 +136,9 @@ export const api = {
   },
 
   async getClientById(id: string): Promise<FullClientData> {
-    const res = await fetch(`/api/clients/${id}`);
+    const res = await fetch(`/api/clients/${id}`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Client profile not found');
     return res.json();
   },
@@ -137,7 +150,7 @@ export const api = {
   ): Promise<Client> {
     const res = await fetch('/api/clients', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ clientData, staffId, staffName }),
     });
     if (!res.ok) {
@@ -153,7 +166,7 @@ export const api = {
   ): Promise<Client> {
     const res = await fetch(`/api/clients/${clientId}/profile`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(profileData),
     });
     if (!res.ok) {
