@@ -146,25 +146,38 @@ async function startServer() {
     }
   });
 
-  app.post('/api/clients/line-login', (req, res) => {
+  app.post('/api/clients/line-login', async (req, res) => {
     try {
       const { userId, displayName, pictureUrl, idToken } = req.body;
 
-      let verifiedUserId = userId;
+      let verifiedUserId = '';
 
-      // Point 5 & 6: Decode or verify ID Token directly from LINE to extract the 'sub' claim (LINE User ID)
-      if (idToken && typeof idToken === 'string') {
+      // Verify ID Token directly with official LINE platform API endpoint
+      if (idToken && typeof idToken === 'string' && idToken.trim()) {
         try {
-          const parts = idToken.split('.');
-          if (parts.length === 3) {
-            const payloadBuf = Buffer.from(parts[1], 'base64');
-            const payload = JSON.parse(payloadBuf.toString('utf-8'));
-            if (payload && payload.sub && typeof payload.sub === 'string' && payload.sub.trim()) {
-              verifiedUserId = payload.sub.trim();
+          const channelId = process.env.LINE_CHANNEL_ID || '';
+          const bodyParams = new URLSearchParams({ id_token: idToken.trim() });
+          if (channelId) {
+            bodyParams.append('client_id', channelId);
+          }
+
+          const verifyRes = await fetch('https://api.line.me/oauth2/v2.1/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: bodyParams,
+          });
+
+          if (verifyRes.ok) {
+            const verifyData: any = await verifyRes.json();
+            if (verifyData && verifyData.sub && typeof verifyData.sub === 'string') {
+              verifiedUserId = verifyData.sub.trim();
             }
+          } else {
+            console.warn('LINE ID Token verification failed with status:', verifyRes.status);
+            return res.status(401).json({ error: 'LINE token verification failed' });
           }
         } catch (e) {
-          console.warn('LINE ID Token decode warning:', e);
+          console.warn('LINE ID Token verify request failed:', e);
         }
       }
 
