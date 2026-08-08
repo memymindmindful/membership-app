@@ -40,7 +40,10 @@ export const Header: React.FC<HeaderProps> = ({
   isLiffApp = false,
 }) => {
   const t = translations[lang];
-  const displayLogo = (brandSettings?.logoUrl && brandSettings.logoUrl.trim()) ? brandSettings.logoUrl : appLogo;
+  const rawLogo = (brandSettings?.logoUrl && brandSettings.logoUrl.trim()) ? brandSettings.logoUrl : appLogo;
+  const displayLogo = rawLogo.startsWith('data:')
+    ? rawLogo
+    : `${rawLogo}${rawLogo.includes('?') ? '&' : '?'}v=${brandSettings?.updatedAt || 1}`;
   const displayName = brandSettings?.brandName || 'Me.My.Mind Membership';
   const displayTagline = brandSettings?.brandTagline || 'Your Daily Ritual of Self-Love';
 

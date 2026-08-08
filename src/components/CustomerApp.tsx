@@ -52,6 +52,7 @@ interface CustomerAppProps {
   notifications: InAppNotification[];
   rewardCatalog: RewardCatalogItem[];
   lang: AppLanguage;
+  brandSettings?: { brandName?: string; brandTagline?: string; logoUrl?: string; promoPosterUrl?: string; updatedAt?: number };
   onRefresh: () => void;
   onOpenConsent?: () => void;
   onOpenProfileSetup?: () => void;
@@ -70,6 +71,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
   notifications,
   rewardCatalog,
   lang,
+  brandSettings,
   onRefresh,
   onOpenConsent,
   onOpenProfileSetup,
@@ -501,6 +503,20 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
                 <ShieldCheck className="w-5 h-5 text-[#E88D9F] shrink-0 mt-0.5" />
                 <p className="font-medium text-[#3D3835] leading-relaxed">{t.coinNoticeBanner}</p>
               </div>
+
+              {/* Promotion Poster Banner (Shown between Coin Balance/Notice and Transaction History) */}
+              {brandSettings?.promoPosterUrl && brandSettings.promoPosterUrl.trim() !== '' && (
+                <div className="rounded-2xl overflow-hidden border border-[#F2E3E1] shadow-xs bg-white">
+                  <img
+                    src={brandSettings.promoPosterUrl.startsWith('data:')
+                      ? brandSettings.promoPosterUrl
+                      : `${brandSettings.promoPosterUrl}${brandSettings.promoPosterUrl.includes('?') ? '&' : '?'}v=${brandSettings.updatedAt || 1}`}
+                    alt="Promotion Poster"
+                    className="w-full h-auto object-cover max-h-72"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              )}
 
               {/* Coin Transactions */}
               <div className="bg-white rounded-2xl p-4 border border-[#F2E3E1] shadow-2xs space-y-3">

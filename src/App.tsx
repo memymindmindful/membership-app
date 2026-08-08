@@ -53,6 +53,8 @@ export default function App() {
             brandName: parsed.brandName || DEFAULT_BRAND_SETTINGS.brandName,
             brandTagline: parsed.brandTagline || DEFAULT_BRAND_SETTINGS.brandTagline,
             logoUrl: parsed.logoUrl || DEFAULT_BRAND_SETTINGS.logoUrl,
+            promoPosterUrl: parsed.promoPosterUrl || '',
+            updatedAt: parsed.updatedAt || Date.now(),
           };
         }
       }
@@ -63,23 +65,26 @@ export default function App() {
   });
 
   const handleUpdateBrandSettings = async (newSettings: BrandSettings) => {
-    setBrandSettings(newSettings);
-    try {
-      localStorage.setItem('MMM_BRAND_SETTINGS', JSON.stringify(newSettings));
-    } catch (e) {
-      console.error('Failed to save brand settings to localStorage', e);
-    }
     try {
       const updated = await api.updateBrandSettings(newSettings);
-      if (updated && (updated.brandName || updated.logoUrl)) {
-        setBrandSettings({
-          brandName: updated.brandName || DEFAULT_BRAND_SETTINGS.brandName,
-          brandTagline: updated.brandTagline || DEFAULT_BRAND_SETTINGS.brandTagline,
-          logoUrl: updated.logoUrl || DEFAULT_BRAND_SETTINGS.logoUrl,
-        });
+      const merged: BrandSettings = {
+        brandName: updated.brandName || DEFAULT_BRAND_SETTINGS.brandName,
+        brandTagline: updated.brandTagline || DEFAULT_BRAND_SETTINGS.brandTagline,
+        logoUrl: updated.logoUrl || DEFAULT_BRAND_SETTINGS.logoUrl,
+        promoPosterUrl: updated.promoPosterUrl || '',
+        updatedAt: updated.updatedAt || Date.now(),
+      };
+      setBrandSettings(merged);
+      try {
+        localStorage.setItem('MMM_BRAND_SETTINGS', JSON.stringify(merged));
+      } catch (e) {
+        console.warn('Failed to cache brand settings in localStorage:', e);
       }
     } catch (e) {
       console.error('Failed to save brand settings to backend:', e);
+      // Fallback local update if backend call fails
+      const fallback = { ...newSettings, updatedAt: Date.now() };
+      setBrandSettings(fallback);
     }
   };
 
@@ -105,14 +110,20 @@ export default function App() {
       // Sync Brand Settings from Backend Server
       try {
         const serverBrand = await api.getBrandSettings();
-        if (serverBrand && (serverBrand.brandName || serverBrand.logoUrl)) {
-          const merged = {
+        if (serverBrand && (serverBrand.brandName || serverBrand.logoUrl || serverBrand.promoPosterUrl)) {
+          const merged: BrandSettings = {
             brandName: serverBrand.brandName || DEFAULT_BRAND_SETTINGS.brandName,
             brandTagline: serverBrand.brandTagline || DEFAULT_BRAND_SETTINGS.brandTagline,
             logoUrl: serverBrand.logoUrl || DEFAULT_BRAND_SETTINGS.logoUrl,
+            promoPosterUrl: serverBrand.promoPosterUrl || '',
+            updatedAt: serverBrand.updatedAt || Date.now(),
           };
           setBrandSettings(merged);
-          localStorage.setItem('MMM_BRAND_SETTINGS', JSON.stringify(merged));
+          try {
+            localStorage.setItem('MMM_BRAND_SETTINGS', JSON.stringify(merged));
+          } catch (e) {
+            console.warn('Failed to save merged settings to localStorage:', e);
+          }
         }
       } catch (e) {
         console.warn('Could not load brand settings from backend:', e);
@@ -436,6 +447,7 @@ export default function App() {
               notifications={clientData.notifications}
               rewardCatalog={rewardCatalog}
               lang={lang}
+              brandSettings={brandSettings}
               onRefresh={refreshCurrentClientData}
               onOpenConsent={() => setShowConsentModal(true)}
               onOpenProfileSetup={() => setShowProfileSetupModal(true)}

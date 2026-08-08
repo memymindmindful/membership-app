@@ -144,14 +144,37 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   const [editBrandName, setEditBrandName] = useState('');
   const [editBrandTagline, setEditBrandTagline] = useState('');
   const [editLogoUrl, setEditLogoUrl] = useState('');
+  const [editPromoPosterUrl, setEditPromoPosterUrl] = useState('');
   const [logoUploadError, setLogoUploadError] = useState<string | null>(null);
+  const [posterUploadError, setPosterUploadError] = useState<string | null>(null);
 
   const handleOpenBrandModal = () => {
     setEditBrandName(brandSettings?.brandName || 'Me.My.Mind Membership');
     setEditBrandTagline(brandSettings?.brandTagline || 'Your Daily Ritual of Self-Love');
     setEditLogoUrl(brandSettings?.logoUrl || appLogo);
+    setEditPromoPosterUrl(brandSettings?.promoPosterUrl || '');
     setLogoUploadError(null);
+    setPosterUploadError(null);
     setShowBrandModal(true);
+  };
+
+  const handlePosterFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      setPosterUploadError('ขนาดไฟล์โปสเตอร์ต้องไม่เกิน 8MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setEditPromoPosterUrl(reader.result);
+        setPosterUploadError(null);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -180,6 +203,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
         brandName: editBrandName.trim() || 'Me.My.Mind Membership',
         brandTagline: editBrandTagline.trim() || 'Your Daily Ritual of Self-Love',
         logoUrl: editLogoUrl || appLogo,
+        promoPosterUrl: editPromoPosterUrl.trim(),
       });
     }
     setShowBrandModal(false);
@@ -2243,6 +2267,75 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                   onChange={(e) => setEditBrandTagline(e.target.value)}
                   className="w-full px-3.5 py-2.5 text-xs border border-[#F2E3E1] rounded-xl focus:outline-none focus:border-[#E88D9F] text-[#3D3835]"
                 />
+              </div>
+
+              {/* Promotion Poster Upload Section (For Customer Coin Page) */}
+              <div className="space-y-2 pt-2 border-t border-[#FAF0ED]">
+                <label className="block text-xs font-bold text-[#3D3835]">
+                  {lang === 'th' ? 'รูปภาพ Promotion Poster (แสดงในหน้า Coin ของลูกค้า)' : 'Promotion Poster Image (Shown on Customer Coin Page)'}
+                </label>
+                
+                {editPromoPosterUrl ? (
+                  <div className="relative rounded-2xl overflow-hidden border border-[#F2E3E1] bg-stone-50 max-h-48 flex items-center justify-center">
+                    <img
+                      src={editPromoPosterUrl}
+                      alt="Promotion Poster Preview"
+                      className="max-h-48 w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditPromoPosterUrl('')}
+                      className="absolute top-2 right-2 bg-rose-500 text-white p-1.5 rounded-full hover:bg-rose-600 shadow-md transition cursor-pointer"
+                      title="ลบรูปโปสเตอร์"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-xs text-[#8C827A] italic bg-[#FAF0ED]/50 p-2.5 rounded-xl border border-dashed border-[#F2E3E1]">
+                    {lang === 'th' ? 'ยังไม่ได้ตั้งค่ารูปโปรโมชัน (หน้า Coin จะไม่แสดงกล่องโปสเตอร์)' : 'No poster configured (Coin page will omit the poster banner)'}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 pt-1">
+                  <label className="cursor-pointer px-3 py-1.5 bg-[#FAF0ED] hover:bg-[#F2E3E1] text-[#D87085] rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-[#F2E3E1]">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{lang === 'th' ? 'อัปโหลดรูปโปสเตอร์' : 'Upload Poster Image'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePosterFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {editPromoPosterUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setEditPromoPosterUrl('')}
+                      className="px-3 py-1.5 text-xs text-rose-600 hover:text-rose-800 font-semibold cursor-pointer"
+                    >
+                      {lang === 'th' ? 'ลบรูปออก' : 'Clear Poster'}
+                    </button>
+                  )}
+                </div>
+
+                {posterUploadError && (
+                  <p className="text-xs text-red-500 font-semibold">{posterUploadError}</p>
+                )}
+
+                <div className="space-y-1">
+                  <span className="text-[11px] text-[#6E6763]">
+                    {lang === 'th' ? 'หรือใส่ URL รูปภาพโปรโมชัน:' : 'Or enter Promotion Poster Image URL:'}
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="https://example.com/poster.jpg"
+                    value={editPromoPosterUrl}
+                    onChange={(e) => setEditPromoPosterUrl(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-[#F2E3E1] rounded-xl focus:outline-none focus:border-[#E88D9F] font-mono"
+                  />
+                </div>
               </div>
 
               {/* Actions Buttons */}

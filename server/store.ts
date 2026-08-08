@@ -57,6 +57,8 @@ interface DatabaseSchema {
     brandName: string;
     brandTagline: string;
     logoUrl: string;
+    promoPosterUrl?: string;
+    updatedAt?: number;
   };
 }
 
@@ -2277,17 +2279,21 @@ class Store {
         brandName: 'Me.My.Mind Membership',
         brandTagline: 'Your Daily Ritual of Self-Love',
         logoUrl: '',
+        promoPosterUrl: '',
+        updatedAt: Date.now(),
       };
     }
     return this.db.brandSettings;
   }
 
-  public updateBrandSettings(settings: { brandName?: string; brandTagline?: string; logoUrl?: string }) {
+  public updateBrandSettings(settings: { brandName?: string; brandTagline?: string; logoUrl?: string; promoPosterUrl?: string }) {
     const current = this.getBrandSettings();
     this.db.brandSettings = {
       brandName: settings.brandName !== undefined ? settings.brandName : current.brandName,
       brandTagline: settings.brandTagline !== undefined ? settings.brandTagline : current.brandTagline,
       logoUrl: settings.logoUrl !== undefined ? settings.logoUrl : current.logoUrl,
+      promoPosterUrl: settings.promoPosterUrl !== undefined ? settings.promoPosterUrl : current.promoPosterUrl,
+      updatedAt: Date.now(),
     };
     this.saveToDisk();
     return this.db.brandSettings;

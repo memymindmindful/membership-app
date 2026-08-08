@@ -19,6 +19,8 @@ export interface BrandSettings {
   brandName: string;
   brandTagline: string;
   logoUrl: string;
+  promoPosterUrl?: string;
+  updatedAt?: number;
 }
 
 export interface Client {
