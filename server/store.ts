@@ -17,6 +17,8 @@ import {
   PointsWallet,
   RewardCatalogItem,
   ItemStatus,
+  FollowUpStatus,
+  ExpiringItemTask,
   FinancialEntry
 } from '../src/types';
 import { getTierFromPoints } from '../src/lib/translations';
@@ -1674,6 +1676,143 @@ class Store {
     this.notifyClient(cpn.clientId, 'ตัดใช้สิทธิ์คูปองเรียบร้อย', `พนักงานได้ทำการตัดใช้สิทธิ์ 1 ครั้งสำหรับคูปอง "${cpn.name}" คงเหลืออีก ${cpn.remainingQuantity} สิทธิ์`);
     this.logAudit(staffId, staffName, 'REDEEM_COUPON_UNIT', 'coupon', cpn.id, note || `Redeemed unit ${redemptionNumber}`, null, log);
 
+    this.saveToDisk();
+    return cpn;
+  }
+
+  // Expiring Items & Follow-Up Tasks
+  public getExpiringTasks(): ExpiringItemTask[] {
+    this.refreshItemStatuses();
+    const tasks: ExpiringItemTask[] = [];
+    const nowMs = Date.now();
+
+    const clientMap = new Map<string, Client>();
+    this.db.clients.forEach((c) => clientMap.set(c.id, c));
+
+    // Process Packages
+    this.db.clientPackages.forEach((pkg) => {
+      if (pkg.remainingSessions <= 0) return;
+      const client = clientMap.get(pkg.clientId);
+      if (!client) return;
+
+      const expMs = new Date(pkg.expiryDate).getTime();
+      const daysRemaining = Math.ceil((expMs - nowMs) / (1000 * 60 * 60 * 24));
+
+      tasks.push({
+        id: pkg.id,
+        itemType: 'package',
+        catalogId: pkg.catalogId,
+        name: pkg.name,
+        description: pkg.description,
+        imageUrl: pkg.imageUrl,
+        clientId: client.id,
+        clientName: client.displayName,
+        clientNickname: client.nickname || '',
+        memberCode: client.memberCode,
+        clientPhone: client.phone || '',
+        clientProfilePic: client.profilePic,
+        clientLineUserId: client.lineUserId,
+        expiryDate: pkg.expiryDate,
+        daysRemaining,
+        remainingDetails: `คงเหลือ ${pkg.remainingSessions}/${pkg.totalSessions} ครั้ง`,
+        followUpStatus: pkg.followUpStatus || 'not_contacted',
+        followUpNote: pkg.followUpNote || '',
+        followUpUpdatedAt: pkg.followUpUpdatedAt,
+        followUpUpdatedByStaffName: pkg.followUpUpdatedByStaffName,
+      });
+    });
+
+    // Process Coupons
+    this.db.clientCoupons.forEach((cpn) => {
+      if (cpn.remainingQuantity <= 0) return;
+      const client = clientMap.get(cpn.clientId);
+      if (!client) return;
+
+      const expMs = new Date(cpn.expiryDate).getTime();
+      const daysRemaining = Math.ceil((expMs - nowMs) / (1000 * 60 * 60 * 24));
+
+      tasks.push({
+        id: cpn.id,
+        itemType: 'coupon',
+        catalogId: cpn.catalogId,
+        name: cpn.name,
+        description: cpn.description,
+        imageUrl: cpn.imageUrl,
+        clientId: client.id,
+        clientName: client.displayName,
+        clientNickname: client.nickname || '',
+        memberCode: client.memberCode,
+        clientPhone: client.phone || '',
+        clientProfilePic: client.profilePic,
+        clientLineUserId: client.lineUserId,
+        expiryDate: cpn.expiryDate,
+        daysRemaining,
+        remainingDetails: `คงเหลือ ${cpn.remainingQuantity}/${cpn.totalQuantity} ใบ`,
+        followUpStatus: cpn.followUpStatus || 'not_contacted',
+        followUpNote: cpn.followUpNote || '',
+        followUpUpdatedAt: cpn.followUpUpdatedAt,
+        followUpUpdatedByStaffName: cpn.followUpUpdatedByStaffName,
+      });
+    });
+
+    tasks.sort((a, b) => a.daysRemaining - b.daysRemaining);
+    return tasks;
+  }
+
+  public updatePackageFollowUp(
+    packageId: string,
+    followUpStatus: FollowUpStatus,
+    followUpNote: string,
+    staffId: string,
+    staffName: string
+  ): ClientPackage {
+    const pkg = this.db.clientPackages.find((p) => p.id === packageId);
+    if (!pkg) throw new Error('Client package not found');
+
+    pkg.followUpStatus = followUpStatus;
+    pkg.followUpNote = followUpNote;
+    pkg.followUpUpdatedAt = new Date().toISOString();
+    pkg.followUpUpdatedByStaffName = staffName;
+
+    this.logAudit(
+      staffId,
+      staffName,
+      'UPDATE_PACKAGE_FOLLOWUP',
+      'package',
+      pkg.id,
+      `Follow-up status: ${followUpStatus}, Note: ${followUpNote}`,
+      null,
+      { followUpStatus, followUpNote }
+    );
+    this.saveToDisk();
+    return pkg;
+  }
+
+  public updateCouponFollowUp(
+    couponId: string,
+    followUpStatus: FollowUpStatus,
+    followUpNote: string,
+    staffId: string,
+    staffName: string
+  ): ClientCoupon {
+    const cpn = this.db.clientCoupons.find((c) => c.id === couponId);
+    if (!cpn) throw new Error('Client coupon not found');
+
+    cpn.followUpStatus = followUpStatus;
+    cpn.followUpNote = followUpNote;
+    cpn.followUpUpdatedAt = new Date().toISOString();
+    cpn.followUpUpdatedByStaffName = staffName;
+
+    this.logAudit(
+      staffId,
+      staffName,
+      'UPDATE_COUPON_FOLLOWUP',
+      'coupon',
+      cpn.id,
+      `Follow-up status: ${followUpStatus}, Note: ${followUpNote}`,
+      null,
+      { followUpStatus, followUpNote }
+    );
     this.saveToDisk();
     return cpn;
   }

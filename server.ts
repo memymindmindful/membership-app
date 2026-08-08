@@ -383,6 +383,42 @@ async function startServer() {
     }
   });
 
+  // Expiring Items & Follow-Up Tasks
+  app.get('/api/expiring-tasks', (req, res) => {
+    try {
+      const tasks = store.getExpiringTasks();
+      res.json(tasks);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/packages/:id/follow-up', (req, res) => {
+    try {
+      const { status, note, staffId, staffName } = req.body;
+      if (!status || !staffId || !staffName) {
+        return res.status(400).json({ error: 'Status, staffId, and staffName are required' });
+      }
+      const pkg = store.updatePackageFollowUp(req.params.id, status, note || '', staffId, staffName);
+      res.json(pkg);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/coupons/:id/follow-up', (req, res) => {
+    try {
+      const { status, note, staffId, staffName } = req.body;
+      if (!status || !staffId || !staffName) {
+        return res.status(400).json({ error: 'Status, staffId, and staffName are required' });
+      }
+      const cpn = store.updateCouponFollowUp(req.params.id, status, note || '', staffId, staffName);
+      res.json(cpn);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   // Rewards
   app.get('/api/rewards', (req, res) => {
     try {

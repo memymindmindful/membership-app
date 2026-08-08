@@ -15,6 +15,8 @@ import {
   PointsTransaction,
   PointsWallet,
   RewardCatalogItem,
+  FollowUpStatus,
+  ExpiringItemTask,
 } from '../types';
 
 export interface FullClientData {
@@ -554,6 +556,50 @@ export const api = {
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Failed to send backup email');
+    }
+    return res.json();
+  },
+
+  async getExpiringTasks(): Promise<ExpiringItemTask[]> {
+    const res = await fetch('/api/expiring-tasks');
+    if (!res.ok) throw new Error('Failed to fetch expiring tasks');
+    return res.json();
+  },
+
+  async updatePackageFollowUp(
+    id: string,
+    status: FollowUpStatus,
+    note: string,
+    staffId: string,
+    staffName: string
+  ): Promise<ClientPackage> {
+    const res = await fetch(`/api/packages/${id}/follow-up`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, note, staffId, staffName }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to update package follow-up');
+    }
+    return res.json();
+  },
+
+  async updateCouponFollowUp(
+    id: string,
+    status: FollowUpStatus,
+    note: string,
+    staffId: string,
+    staffName: string
+  ): Promise<ClientCoupon> {
+    const res = await fetch(`/api/coupons/${id}/follow-up`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, note, staffId, staffName }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to update coupon follow-up');
     }
     return res.json();
   },

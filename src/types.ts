@@ -102,6 +102,7 @@ export interface CatalogItem {
 }
 
 export type ItemStatus = 'active' | 'expiring_soon' | 'used_up';
+export type FollowUpStatus = 'not_contacted' | 'contacted' | 'resolved';
 
 export interface ClientPackage {
   id: string;
@@ -119,6 +120,10 @@ export interface ClientPackage {
   usedUpAt?: string;
   createdAt: string;
   usageLogs: PackageUsageLog[];
+  followUpStatus?: FollowUpStatus;
+  followUpNote?: string;
+  followUpUpdatedAt?: string;
+  followUpUpdatedByStaffName?: string;
 }
 
 export interface PackageUsageLog {
@@ -150,6 +155,33 @@ export interface ClientCoupon {
   usedUpAt?: string;
   createdAt: string;
   redemptionLogs: CouponRedemptionLog[];
+  followUpStatus?: FollowUpStatus;
+  followUpNote?: string;
+  followUpUpdatedAt?: string;
+  followUpUpdatedByStaffName?: string;
+}
+
+export interface ExpiringItemTask {
+  id: string;
+  itemType: 'package' | 'coupon';
+  catalogId: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+  clientId: string;
+  clientName: string;
+  clientNickname: string;
+  memberCode: string;
+  clientPhone: string;
+  clientProfilePic?: string;
+  clientLineUserId?: string;
+  expiryDate: string;
+  daysRemaining: number;
+  remainingDetails: string;
+  followUpStatus: FollowUpStatus;
+  followUpNote: string;
+  followUpUpdatedAt?: string;
+  followUpUpdatedByStaffName?: string;
 }
 
 export interface CouponRedemptionLog {

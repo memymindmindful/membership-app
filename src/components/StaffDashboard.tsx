@@ -45,6 +45,7 @@ import { ChangePasswordModal } from './ChangePasswordModal';
 import { ExportClientsModal } from './ExportClientsModal';
 import { FactoryResetModal } from './FactoryResetModal';
 import { BackupSettingsModal } from './BackupSettingsModal';
+import { ExpiringAlertTasks } from './ExpiringAlertTasks';
 import {
   AppLanguage,
   CatalogItem,
@@ -620,8 +621,20 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
       {activeTab === 'financial' ? (
         <FinancialDashboard currentStaff={currentStaff || { id: 'EMP-01', username: 'staff', displayName: 'Staff', role: 'staff' }} lang={lang} />
       ) : (
-      /* Main Workspace Layout: Left Sidebar Client Search, Right Main Profile */
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="space-y-6">
+        {/* EXPIRING PACKAGES & VOUCHERS ALERT TASK BOARD */}
+        <ExpiringAlertTasks
+          currentStaff={currentStaff || { id: 'EMP-01', username: 'staff', displayName: 'Staff', role: 'staff' }}
+          onSelectClient={onSelectClient}
+          onRefreshData={() => {
+            if (selectedClientData) {
+              onSelectClient(selectedClientData.client.id);
+            }
+          }}
+        />
+
+        {/* Main Workspace Layout: Left Sidebar Client Search, Right Main Profile */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         {/* LEFT COLUMN: Client Search & Selection (4 cols) */}
         <div className="lg:col-span-4 space-y-4">
@@ -1183,6 +1196,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
           )}
         </div>
 
+      </div>
       </div>
       )}
 
