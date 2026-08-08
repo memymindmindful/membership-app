@@ -1098,6 +1098,52 @@ class Store {
       throw new Error('ไม่พบข้อมูลลูกค้ารายนี้');
     }
 
+    const trimmedPhone = profileData.phone ? profileData.phone.trim() : '';
+
+    // Smart Account Binding: If customer is setting/updating phone number and has a lineUserId,
+    // check if there's an existing staff-created profile with this phone number but no lineUserId yet.
+    if (trimmedPhone && client.lineUserId) {
+      const normalizedInput = trimmedPhone.replace(/[^0-9]/g, '');
+      const existingWithPhone = this.db.clients.find(
+        (c) =>
+          c.id !== client.id &&
+          c.phone &&
+          c.phone.replace(/[^0-9]/g, '') === normalizedInput &&
+          !c.lineUserId
+      );
+
+      if (existingWithPhone) {
+        // Link the lineUserId to the existing staff-created client profile
+        existingWithPhone.lineUserId = client.lineUserId;
+        if (client.profilePic) existingWithPhone.profilePic = client.profilePic;
+        if (profileData.birthday) existingWithPhone.birthday = profileData.birthday;
+        if (profileData.nickname) existingWithPhone.nickname = profileData.nickname;
+        if (profileData.displayName && profileData.displayName.trim()) {
+          existingWithPhone.displayName = profileData.displayName.trim();
+        }
+
+        // Remove the temporary auto-created client profile
+        const index = this.db.clients.findIndex((c) => c.id === client.id);
+        if (index !== -1) {
+          this.db.clients.splice(index, 1);
+        }
+
+        this.logAudit(
+          staffId,
+          staffName,
+          'UPDATE_CLIENT_PROFILE',
+          'client',
+          existingWithPhone.id,
+          `เชื่อมต่อบัญชี LINE ของสมาชิกเข้ากับประวัติเดิมผ่านเบอร์โทรศัพท์ (${trimmedPhone})`,
+          null,
+          existingWithPhone
+        );
+
+        this.saveToDisk();
+        return existingWithPhone;
+      }
+    }
+
     const prevData = { phone: client.phone, birthday: client.birthday, nickname: client.nickname, displayName: client.displayName };
 
     if (profileData.phone !== undefined) client.phone = profileData.phone.trim();

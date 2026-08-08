@@ -135,12 +135,14 @@ export default function App() {
         setEmployees(empList);
         if (!currentStaff && empList.length > 0) setCurrentStaff(empList[0]);
         setAllClients(clientList);
-        if (!currentClient && clientList.length > 0) setCurrentClient(clientList[0]);
+        if (viewMode === 'staff' && !currentClient && clientList.length > 0) {
+          setCurrentClient(clientList[0]);
+        }
       } catch (err) {
         console.error('Error loading staff background data:', err);
       }
     }
-  }, [employees.length, allClients.length, currentStaff, currentClient]);
+  }, [employees.length, allClients.length, currentStaff, currentClient, viewMode]);
 
   useEffect(() => {
     if (viewMode === 'staff') {
@@ -194,7 +196,10 @@ export default function App() {
           }
         }
       } else {
-        if (liff.isInClient()) {
+        // Auto-trigger LINE Login for unauthenticated users so each device gets its own LINE ID account
+        const isDemo = window.location.search.includes('demo=true');
+        const isStaff = window.location.search.includes('staff=true');
+        if (!isDemo && !isStaff) {
           liff.login();
         }
       }
@@ -208,9 +213,10 @@ export default function App() {
     initLiff();
   }, [loadInitialData, initLiff]);
 
-  // Fallback for non-LIFF customer preview in standard web browser
+  // Fallback ONLY for explicit demo mode in web browser (?demo=true)
   useEffect(() => {
-    if (viewMode === 'customer' && !clientData && !isLiffLoggedIn && !isLoading) {
+    const isDemoMode = window.location.search.includes('demo=true');
+    if (isDemoMode && viewMode === 'customer' && !clientData && !isLiffLoggedIn && !isLoading) {
       api.getClients().then((clients) => {
         if (clients.length > 0) {
           setCurrentClient(clients[0]);
@@ -232,10 +238,11 @@ export default function App() {
   }, [viewMode, currentClient]);
 
   useEffect(() => {
-    if (currentClient && !isLiffLoggedIn) {
+    const isDemoMode = window.location.search.includes('demo=true');
+    if (currentClient && (isLiffLoggedIn || isDemoMode || viewMode === 'staff')) {
       refreshCurrentClientData();
     }
-  }, [currentClient, isLiffLoggedIn, refreshCurrentClientData]);
+  }, [currentClient, isLiffLoggedIn, viewMode, refreshCurrentClientData]);
 
   if (isLoading) {
     return (

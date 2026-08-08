@@ -125,9 +125,6 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] text-rose-100 font-bold uppercase tracking-wider">LINE Connected</span>
-                <span className="text-[9px] bg-white/20 text-white px-1.5 py-0.2 rounded-full border border-white/30 font-mono font-medium">
-                  LIFF v2
-                </span>
               </div>
               <h2 className="text-sm font-bold font-serif text-white tracking-tight flex items-center gap-1">
                 {client.displayName}
