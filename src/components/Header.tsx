@@ -44,12 +44,15 @@ export const Header: React.FC<HeaderProps> = ({
   const displayName = brandSettings?.brandName || 'Me.My.Mind Membership';
   const displayTagline = brandSettings?.brandTagline || 'Your Daily Ritual of Self-Love';
 
-  // Customers accessing through LINE LIFF will never see the Staff Dashboard button
-  const isLiffCustomer = isLiffLoggedIn || isLiffApp;
+  // Check URL parameters for explicit staff or demo mode
   const isStaffRequested = window.location.search.includes('staff=true') || window.location.search.includes('mode=staff');
+  const isDemoRequested = window.location.search.includes('demo=true') || window.location.search.includes('dev=true');
   
-  // Hide mode switcher for LINE customers in production, show only for staff or in web preview
-  const showModeSwitcher = !isLiffCustomer || isStaffRequested;
+  // Mode switcher is shown ONLY if staff mode is explicitly requested or in staff view or demo URL parameter
+  const showModeSwitcher = isStaffRequested || isDemoRequested || viewMode === 'staff';
+
+  // Demo user selector shown ONLY when explicitly requested with ?demo=true in URL (never to real customers)
+  const showDemoSelector = viewMode === 'customer' && !isLiffLoggedIn && isDemoRequested;
 
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md text-[#3D3835] shadow-2xs border-b border-[#F2E3E1]">
@@ -112,8 +115,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
 
-          {/* Demo Customer Selector (Only in Demo Mode or when ?demo=true) */}
-          {viewMode === 'customer' && !isLiffLoggedIn && (!isLiffCustomer || window.location.search.includes('demo=true')) && (
+          {/* Demo Customer Selector (Only when explicitly requested with ?demo=true in URL) */}
+          {showDemoSelector && (
             <div className="flex items-center gap-1.5 bg-[#FAF0ED] px-3 py-1.5 rounded-full border border-[#F2E3E1] text-xs">
               <UserCheck className="w-3.5 h-3.5 text-[#D87085]" />
               <span className="text-[#6E6763] font-bold uppercase tracking-wider text-[10px] hidden md:inline">Demo User:</span>
