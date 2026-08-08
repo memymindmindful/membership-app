@@ -38,6 +38,8 @@ export default function App() {
   const [lang, setLang] = useState<AppLanguage>('th');
   const [isLiffLoggedIn, setIsLiffLoggedIn] = useState(false);
   const [isLiffApp, setIsLiffApp] = useState(false);
+  const [liffError, setLiffError] = useState<string | null>(null);
+  const [isLiffInitializing, setIsLiffInitializing] = useState(true);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [showProfileSetupModal, setShowProfileSetupModal] = useState(false);
 
@@ -97,10 +99,6 @@ export default function App() {
         ]);
 
         setEmployees(empList);
-        if (empList.length > 0) {
-          setCurrentStaff(empList[0]);
-        }
-
         setAllClients(clientList);
         if (clientList.length > 0) {
           setCurrentClient(clientList[0]);
@@ -133,7 +131,6 @@ export default function App() {
           api.getClients(),
         ]);
         setEmployees(empList);
-        if (!currentStaff && empList.length > 0) setCurrentStaff(empList[0]);
         setAllClients(clientList);
         if (viewMode === 'staff' && !currentClient && clientList.length > 0) {
           setCurrentClient(clientList[0]);
@@ -142,7 +139,7 @@ export default function App() {
         console.error('Error loading staff background data:', err);
       }
     }
-  }, [employees.length, allClients.length, currentStaff, currentClient, viewMode]);
+  }, [employees.length, allClients.length, currentClient, viewMode]);
 
   useEffect(() => {
     if (viewMode === 'staff') {
@@ -173,10 +170,24 @@ export default function App() {
 
   // Initialize LINE LIFF SDK
   const initLiff = useCallback(async () => {
+    // Staff mode bypasses LINE LIFF completely
+    const isStaff = viewMode === 'staff' || window.location.search.includes('mode=staff') || window.location.search.includes('staff=true');
+    if (isStaff) {
+      setIsLiffInitializing(false);
+      return;
+    }
+
     const liffId = import.meta.env.VITE_LIFF_ID || '2010995653-rGihQSbt';
-    if (!liffId) return;
+    if (!liffId) {
+      setLiffError('ไม่พบ LIFF ID ในการตั้งค่าระบบ');
+      setIsLiffInitializing(false);
+      return;
+    }
 
     try {
+      setIsLiffInitializing(true);
+      setLiffError(null);
+
       await liff.init({ liffId });
       setIsLiffApp(true);
 
@@ -194,17 +205,64 @@ export default function App() {
           if (!window.location.search.includes('staff=true')) {
             setViewMode('customer');
           }
+        } else {
+          setLiffError('ไม่สามารถโหลดโปรไฟล์ LINE ได้');
         }
       } else {
-        // Auto-trigger LINE Login for unauthenticated users so each device gets its own LINE ID account
+        // User is not logged into LINE yet
         const isDemo = window.location.search.includes('demo=true');
         const isStaff = window.location.search.includes('staff=true');
-        if (!isDemo && !isStaff) {
+        if (liff.isInClient()) {
+          // Inside LINE App WebView: auto trigger login
           liff.login();
+        } else if (!isDemo && !isStaff) {
+          // External Browser: attempt auto-login trigger
+          try {
+            liff.login();
+          } catch (e) {
+            console.warn('Auto LIFF login trigger skipped:', e);
+          }
         }
       }
+    } catch (err: any) {
+      console.warn('LIFF init warning:', err);
+      const msg = err?.message || String(err);
+      if (msg.includes('endpoint') || msg.includes('URL') || msg.includes('init')) {
+        setLiffError('กรุณากดปุ่มเพื่อเข้าสู่ระบบด้วยบัญชี LINE ของคุณ');
+      } else {
+        setLiffError('ไม่สามารถยืนยันตัวตน LINE อัตโนมัติได้ กรุณากดปุ่มเข้าสู่ระบบ');
+      }
+    } finally {
+      setIsLiffInitializing(false);
+    }
+  }, [viewMode]);
+
+  const handleManualLineLogin = useCallback(() => {
+    try {
+      if (liff.isLoggedIn()) {
+        initLiff();
+      } else {
+        liff.login({ redirectUri: window.location.href });
+      }
     } catch (err) {
-      console.warn('LIFF init warning (normal if opened outside LINE app):', err);
+      console.warn('Manual LINE login exception:', err);
+      initLiff();
+    }
+  }, [initLiff]);
+
+  const handleEnableDemoMode = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const clients = await api.getClients();
+      if (clients.length > 0) {
+        setCurrentClient(clients[0]);
+        const fullData = await api.getClientById(clients[0].id);
+        setClientData(fullData);
+      }
+    } catch (err) {
+      console.error('Demo mode error:', err);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -327,6 +385,11 @@ export default function App() {
             <ConnectingScreen
               brandSettings={brandSettings}
               onRetry={initLiff}
+              onLineLogin={handleManualLineLogin}
+              onDemoLogin={handleEnableDemoMode}
+              error={liffError}
+              isInitializing={isLiffInitializing}
+              message="กำลังตรวจสอบสิทธิ์สมาชิก LINE..."
             />
           )
         ) : (
