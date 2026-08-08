@@ -4,6 +4,7 @@
 
 import {
   AuditLog,
+  BrandSettings,
   CatalogItem,
   Client,
   ClientCoupon,
@@ -636,6 +637,25 @@ export const api = {
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Failed to update coupon follow-up');
+    }
+    return res.json();
+  },
+
+  async getBrandSettings(): Promise<BrandSettings> {
+    const res = await fetch('/api/brand-settings');
+    if (!res.ok) throw new Error('Failed to fetch brand settings');
+    return res.json();
+  },
+
+  async updateBrandSettings(settings: Partial<BrandSettings>): Promise<BrandSettings> {
+    const res = await fetch('/api/brand-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to update brand settings');
     }
     return res.json();
   },

@@ -62,12 +62,24 @@ export default function App() {
     return DEFAULT_BRAND_SETTINGS;
   });
 
-  const handleUpdateBrandSettings = (newSettings: BrandSettings) => {
+  const handleUpdateBrandSettings = async (newSettings: BrandSettings) => {
     setBrandSettings(newSettings);
     try {
       localStorage.setItem('MMM_BRAND_SETTINGS', JSON.stringify(newSettings));
     } catch (e) {
       console.error('Failed to save brand settings to localStorage', e);
+    }
+    try {
+      const updated = await api.updateBrandSettings(newSettings);
+      if (updated && (updated.brandName || updated.logoUrl)) {
+        setBrandSettings({
+          brandName: updated.brandName || DEFAULT_BRAND_SETTINGS.brandName,
+          brandTagline: updated.brandTagline || DEFAULT_BRAND_SETTINGS.brandTagline,
+          logoUrl: updated.logoUrl || DEFAULT_BRAND_SETTINGS.logoUrl,
+        });
+      }
+    } catch (e) {
+      console.error('Failed to save brand settings to backend:', e);
     }
   };
 
@@ -89,6 +101,22 @@ export default function App() {
     try {
       setIsLoading(true);
       const isStaffMode = window.location.search.includes('mode=staff') || window.location.search.includes('staff=true');
+
+      // Sync Brand Settings from Backend Server
+      try {
+        const serverBrand = await api.getBrandSettings();
+        if (serverBrand && (serverBrand.brandName || serverBrand.logoUrl)) {
+          const merged = {
+            brandName: serverBrand.brandName || DEFAULT_BRAND_SETTINGS.brandName,
+            brandTagline: serverBrand.brandTagline || DEFAULT_BRAND_SETTINGS.brandTagline,
+            logoUrl: serverBrand.logoUrl || DEFAULT_BRAND_SETTINGS.logoUrl,
+          };
+          setBrandSettings(merged);
+          localStorage.setItem('MMM_BRAND_SETTINGS', JSON.stringify(merged));
+        }
+      } catch (e) {
+        console.warn('Could not load brand settings from backend:', e);
+      }
 
       if (isStaffMode) {
         const [empList, clientList, catList, rewardList] = await Promise.all([

@@ -17,6 +17,24 @@ async function startServer() {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
+  // Brand Settings
+  app.get('/api/brand-settings', (req, res) => {
+    try {
+      res.json(store.getBrandSettings());
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/brand-settings', (req, res) => {
+    try {
+      const updated = store.updateBrandSettings(req.body);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   // Employees
   app.get('/api/employees', (req, res) => {
     try {

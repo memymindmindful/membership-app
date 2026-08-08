@@ -53,6 +53,11 @@ interface DatabaseSchema {
   };
   auditLogs: AuditLog[];
   financialEntries?: FinancialEntry[];
+  brandSettings?: {
+    brandName: string;
+    brandTagline: string;
+    logoUrl: string;
+  };
 }
 
 // Initial Seed Data
@@ -2264,6 +2269,28 @@ class Store {
     };
     this.saveToDisk();
     return this.db.backupSettings;
+  }
+
+  public getBrandSettings() {
+    if (!this.db.brandSettings) {
+      this.db.brandSettings = {
+        brandName: 'Me.My.Mind Membership',
+        brandTagline: 'Your Daily Ritual of Self-Love',
+        logoUrl: '',
+      };
+    }
+    return this.db.brandSettings;
+  }
+
+  public updateBrandSettings(settings: { brandName?: string; brandTagline?: string; logoUrl?: string }) {
+    const current = this.getBrandSettings();
+    this.db.brandSettings = {
+      brandName: settings.brandName !== undefined ? settings.brandName : current.brandName,
+      brandTagline: settings.brandTagline !== undefined ? settings.brandTagline : current.brandTagline,
+      logoUrl: settings.logoUrl !== undefined ? settings.logoUrl : current.logoUrl,
+    };
+    this.saveToDisk();
+    return this.db.brandSettings;
   }
 
   public getFullBackupData() {
