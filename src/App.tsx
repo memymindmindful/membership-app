@@ -17,6 +17,7 @@ import { CatalogManagement } from './components/CatalogManagement';
 import { AuditLogView } from './components/AuditLogView';
 import { ConsentModal } from './components/ConsentModal';
 import { ProfileSetupModal } from './components/ProfileSetupModal';
+import { ConnectingScreen } from './components/ConnectingScreen';
 import { Loader2 } from 'lucide-react';
 import defaultAppLogo from './assets/images/me_my_mind_logo_1785924412256.jpg';
 
@@ -85,32 +86,67 @@ export default function App() {
   const loadInitialData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [empList, clientList, catList, rewardList] = await Promise.all([
-        api.getEmployees(),
-        api.getClients(),
-        api.getCatalog(),
-        api.getRewards(),
-      ]);
+      const isStaffMode = window.location.search.includes('mode=staff') || window.location.search.includes('staff=true');
 
-      setEmployees(empList);
-      // Default initial staff to Admin (Khun Nat)
-      if (!currentStaff && empList.length > 0) {
-        setCurrentStaff(empList[0]);
+      if (isStaffMode) {
+        const [empList, clientList, catList, rewardList] = await Promise.all([
+          api.getEmployees(),
+          api.getClients(),
+          api.getCatalog(),
+          api.getRewards(),
+        ]);
+
+        setEmployees(empList);
+        if (empList.length > 0) {
+          setCurrentStaff(empList[0]);
+        }
+
+        setAllClients(clientList);
+        if (clientList.length > 0) {
+          setCurrentClient(clientList[0]);
+        }
+
+        setCatalogItems(catList);
+        setRewardCatalog(rewardList);
+      } else {
+        // Fast customer startup: fetch catalog & rewards only
+        const [catList, rewardList] = await Promise.all([
+          api.getCatalog(),
+          api.getRewards(),
+        ]);
+        setCatalogItems(catList);
+        setRewardCatalog(rewardList);
       }
-
-      setAllClients(clientList);
-      if (!currentClient && clientList.length > 0) {
-        setCurrentClient(clientList[0]);
-      }
-
-      setCatalogItems(catList);
-      setRewardCatalog(rewardList);
     } catch (err) {
       console.error('Failed to load initial app data:', err);
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  // Ensure staff directory is loaded when switching to staff dashboard
+  const ensureStaffData = useCallback(async () => {
+    if (employees.length === 0 || allClients.length === 0) {
+      try {
+        const [empList, clientList] = await Promise.all([
+          api.getEmployees(),
+          api.getClients(),
+        ]);
+        setEmployees(empList);
+        if (!currentStaff && empList.length > 0) setCurrentStaff(empList[0]);
+        setAllClients(clientList);
+        if (!currentClient && clientList.length > 0) setCurrentClient(clientList[0]);
+      } catch (err) {
+        console.error('Error loading staff background data:', err);
+      }
+    }
+  }, [employees.length, allClients.length, currentStaff, currentClient]);
+
+  useEffect(() => {
+    if (viewMode === 'staff') {
+      ensureStaffData();
+    }
+  }, [viewMode, ensureStaffData]);
 
   // Fetch Full Client Data whenever currentClient changes
   const refreshCurrentClientData = useCallback(async () => {
@@ -135,7 +171,7 @@ export default function App() {
 
   // Initialize LINE LIFF SDK
   const initLiff = useCallback(async () => {
-    const liffId = import.meta.env.VITE_LIFF_ID || '2010995651-8jq2UIft';
+    const liffId = import.meta.env.VITE_LIFF_ID || '2010995653-rGihQSbt';
     if (!liffId) return;
 
     try {
@@ -171,6 +207,18 @@ export default function App() {
     loadInitialData();
     initLiff();
   }, [loadInitialData, initLiff]);
+
+  // Fallback for non-LIFF customer preview in standard web browser
+  useEffect(() => {
+    if (viewMode === 'customer' && !clientData && !isLiffLoggedIn && !isLoading) {
+      api.getClients().then((clients) => {
+        if (clients.length > 0) {
+          setCurrentClient(clients[0]);
+          api.getClientById(clients[0].id).then(setClientData).catch(console.error);
+        }
+      }).catch(console.error);
+    }
+  }, [viewMode, clientData, isLiffLoggedIn, isLoading]);
 
   useEffect(() => {
     const accepted = localStorage.getItem('mmm_pdpa_consent_accepted');
@@ -251,22 +299,29 @@ export default function App() {
             lang={lang}
             onBack={() => setActiveSubView('main')}
           />
-        ) : viewMode === 'customer' && currentClient && clientData ? (
-          <CustomerApp
-            client={clientData.client}
-            coinBalance={clientData.coinBalance}
-            coinTransactions={clientData.coinTransactions}
-            pointsWallet={clientData.pointsWallet}
-            pointsTransactions={clientData.pointsTransactions}
-            packages={clientData.packages}
-            coupons={clientData.coupons}
-            notifications={clientData.notifications}
-            rewardCatalog={rewardCatalog}
-            lang={lang}
-            onRefresh={refreshCurrentClientData}
-            onOpenConsent={() => setShowConsentModal(true)}
-            onOpenProfileSetup={() => setShowProfileSetupModal(true)}
-          />
+        ) : viewMode === 'customer' ? (
+          clientData ? (
+            <CustomerApp
+              client={clientData.client}
+              coinBalance={clientData.coinBalance}
+              coinTransactions={clientData.coinTransactions}
+              pointsWallet={clientData.pointsWallet}
+              pointsTransactions={clientData.pointsTransactions}
+              packages={clientData.packages}
+              coupons={clientData.coupons}
+              notifications={clientData.notifications}
+              rewardCatalog={rewardCatalog}
+              lang={lang}
+              onRefresh={refreshCurrentClientData}
+              onOpenConsent={() => setShowConsentModal(true)}
+              onOpenProfileSetup={() => setShowProfileSetupModal(true)}
+            />
+          ) : (
+            <ConnectingScreen
+              brandSettings={brandSettings}
+              onRetry={initLiff}
+            />
+          )
         ) : (
           <StaffDashboard
             currentStaff={currentStaff}
