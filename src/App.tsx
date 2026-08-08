@@ -146,6 +146,7 @@ export default function App() {
         setAllClients(clientList);
 
         // Check if there is a previously verified session in sessionStorage
+        const isDemoMode = window.location.search.includes('demo=true') || window.location.search.includes('dev=true');
         const storedClientId = sessionStorage.getItem('mmm_logged_in_client_id');
         if (storedClientId) {
           try {
@@ -159,8 +160,8 @@ export default function App() {
             sessionStorage.removeItem('mmm_logged_in_client_id');
             sessionStorage.removeItem('mmm_logged_in_line_user_id');
           }
-        } else if (clientList.length > 0) {
-          // Default to first client for instant display in web preview / iframe
+        } else if (isDemoMode && clientList.length > 0) {
+          // Default to first client ONLY for explicit web demo mode (?demo=true)
           const defaultClient = clientList[0];
           setCurrentClient(defaultClient);
           api.getClientById(defaultClient.id).then(setClientData).catch(console.error);
@@ -238,6 +239,9 @@ export default function App() {
     try {
       setIsLiffInitializing(true);
       setLiffError(null);
+      // Immediately reset client state to null before token retrieval or login verification
+      setCurrentClient(null);
+      setClientData(null);
 
       await liff.init({ liffId });
       setIsLiffApp(true);
@@ -260,8 +264,14 @@ export default function App() {
           if (!window.location.search.includes('staff=true')) {
             setViewMode('customer');
           }
+        } else {
+          setIsLiffLoggedIn(false);
         }
       } else {
+        // Clear stale client data if user is not logged into LINE
+        setCurrentClient(null);
+        setClientData(null);
+        setIsLiffLoggedIn(false);
         // User is not logged into LINE yet
         // NEVER auto-trigger liff.login() inside an iframe or external web preview,
         // because LINE's security header (X-Frame-Options: DENY) blocks access.line.me in iframes!
@@ -427,21 +437,17 @@ export default function App() {
               onOpenConsent={() => setShowConsentModal(true)}
               onOpenProfileSetup={() => setShowProfileSetupModal(true)}
             />
-          ) : isLiffInitializing ? (
-            <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
-              <Loader2 className="w-8 h-8 text-[#E88D9F] animate-spin mb-2" />
-              <p className="text-xs text-[#8C6D5E] font-medium">กำลังโหลดข้อมูลสมาชิก LINE...</p>
-            </div>
           ) : (
-            <ConnectingScreen
-              brandSettings={brandSettings}
-              onRetry={initLiff}
-              onLineLogin={handleManualLineLogin}
-              onDemoLogin={handleEnableDemoMode}
-              error={liffError}
-              isInitializing={isLiffInitializing}
-              message="เข้าสู่ระบบด้วย LINE เพื่อดูข้อมูลบัญชีสมาชิกของคุณ"
-            />
+            <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center bg-stone-50">
+              <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-800 flex items-center justify-center mb-4 shadow-sm border border-amber-200/60">
+                <Loader2 className="w-7 h-7 animate-spin text-[#E88D9F]" />
+              </div>
+              <p className="text-sm font-medium text-stone-700 max-w-xs leading-relaxed">
+                {lang === 'th'
+                  ? 'กำลังเชื่อมต่อข้อมูลสมาชิกของคุณ กรุณารอสักครู่...'
+                  : 'Connecting to your membership account, please wait...'}
+              </p>
+            </div>
           )
         ) : (
           <StaffDashboard
