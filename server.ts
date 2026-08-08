@@ -171,6 +171,21 @@ async function startServer() {
     }
   });
 
+  app.put('/api/clients/:id/profile', (req, res) => {
+    try {
+      const { phone, birthday, nickname, displayName, staffId, staffName } = req.body;
+      const updatedClient = store.updateClientProfile(
+        req.params.id,
+        { phone, birthday, nickname, displayName },
+        staffId || 'SYSTEM_USER',
+        staffName || 'Member Self Service'
+      );
+      res.json(updatedClient);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   app.put('/api/clients/:id/notes', (req, res) => {
     try {
       const { notes, staffId, staffName } = req.body;
@@ -305,6 +320,25 @@ async function startServer() {
       const { updates, staffId, staffName } = req.body;
       const item = store.updateCatalogItem(req.params.id, updates, staffId, staffName);
       res.json(item);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/catalog/bulk-price', (req, res) => {
+    try {
+      const { itemIds, adjustmentType, value, staffId, staffName } = req.body;
+      if (!Array.isArray(itemIds) || !itemIds.length || !adjustmentType || value === undefined) {
+        return res.status(400).json({ error: 'Invalid parameters for bulk price adjustment' });
+      }
+      const updatedItems = store.bulkUpdateCatalogPrices(
+        itemIds,
+        adjustmentType,
+        Number(value),
+        staffId,
+        staffName
+      );
+      res.json(updatedItems);
     } catch (err: any) {
       res.status(400).json({ error: err.message });
     }

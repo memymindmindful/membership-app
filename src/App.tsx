@@ -16,6 +16,7 @@ import { StaffDashboard } from './components/StaffDashboard';
 import { CatalogManagement } from './components/CatalogManagement';
 import { AuditLogView } from './components/AuditLogView';
 import { ConsentModal } from './components/ConsentModal';
+import { ProfileSetupModal } from './components/ProfileSetupModal';
 import { Loader2 } from 'lucide-react';
 import defaultAppLogo from './assets/images/me_my_mind_logo_1785924412256.jpg';
 
@@ -37,6 +38,7 @@ export default function App() {
   const [isLiffLoggedIn, setIsLiffLoggedIn] = useState(false);
   const [isLiffApp, setIsLiffApp] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
+  const [showProfileSetupModal, setShowProfileSetupModal] = useState(false);
 
   const [brandSettings, setBrandSettings] = useState<BrandSettings>(() => {
     try {
@@ -172,10 +174,14 @@ export default function App() {
 
   useEffect(() => {
     const accepted = localStorage.getItem('mmm_pdpa_consent_accepted');
-    if (viewMode === 'customer' && accepted !== 'true') {
-      setShowConsentModal(true);
+    if (viewMode === 'customer') {
+      if (accepted !== 'true') {
+        setShowConsentModal(true);
+      } else if (currentClient && (!currentClient.phone || !currentClient.birthday)) {
+        setShowProfileSetupModal(true);
+      }
     }
-  }, [viewMode]);
+  }, [viewMode, currentClient]);
 
   useEffect(() => {
     if (currentClient && !isLiffLoggedIn) {
@@ -259,6 +265,7 @@ export default function App() {
             lang={lang}
             onRefresh={refreshCurrentClientData}
             onOpenConsent={() => setShowConsentModal(true)}
+            onOpenProfileSetup={() => setShowProfileSetupModal(true)}
           />
         ) : (
           <StaffDashboard
@@ -300,8 +307,26 @@ export default function App() {
         onAccept={() => {
           localStorage.setItem('mmm_pdpa_consent_accepted', 'true');
           setShowConsentModal(false);
+          if (currentClient && (!currentClient.phone || !currentClient.birthday)) {
+            setShowProfileSetupModal(true);
+          }
         }}
       />
+
+      {/* Profile Setup Modal for Phone & Birthdate */}
+      {currentClient && (
+        <ProfileSetupModal
+          isOpen={showProfileSetupModal && !showConsentModal}
+          client={currentClient}
+          allowClose={Boolean(currentClient.phone && currentClient.birthday)}
+          onClose={() => setShowProfileSetupModal(false)}
+          onSaved={(updatedClient) => {
+            setCurrentClient(updatedClient);
+            setShowProfileSetupModal(false);
+            refreshCurrentClientData();
+          }}
+        />
+      )}
     </div>
   );
 }

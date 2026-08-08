@@ -146,6 +146,22 @@ export const api = {
     return res.json();
   },
 
+  async updateClientProfile(
+    clientId: string,
+    profileData: { phone?: string; birthday?: string; nickname?: string; displayName?: string }
+  ): Promise<Client> {
+    const res = await fetch(`/api/clients/${clientId}/profile`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to update client profile');
+    }
+    return res.json();
+  },
+
   async updateClientNotes(
     clientId: string,
     notes: string,
@@ -314,6 +330,25 @@ export const api = {
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Failed to update catalog service');
+    }
+    return res.json();
+  },
+
+  async bulkUpdateCatalogPrices(
+    itemIds: string[],
+    adjustmentType: 'percent' | 'fixed',
+    value: number,
+    staffId: string,
+    staffName: string
+  ): Promise<CatalogItem[]> {
+    const res = await fetch('/api/catalog/bulk-price', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemIds, adjustmentType, value, staffId, staffName }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to bulk update catalog prices');
     }
     return res.json();
   },

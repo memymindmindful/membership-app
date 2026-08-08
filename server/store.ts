@@ -1087,6 +1087,39 @@ class Store {
     return newClient;
   }
 
+  public updateClientProfile(
+    clientId: string,
+    profileData: { phone?: string; birthday?: string; nickname?: string; displayName?: string },
+    staffId: string = 'SYSTEM_USER',
+    staffName: string = 'Member Self Service'
+  ): Client {
+    const client = this.db.clients.find((c) => c.id === clientId || c.memberCode === clientId);
+    if (!client) {
+      throw new Error('ไม่พบข้อมูลลูกค้ารายนี้');
+    }
+
+    const prevData = { phone: client.phone, birthday: client.birthday, nickname: client.nickname, displayName: client.displayName };
+
+    if (profileData.phone !== undefined) client.phone = profileData.phone.trim();
+    if (profileData.birthday !== undefined) client.birthday = profileData.birthday;
+    if (profileData.nickname !== undefined) client.nickname = profileData.nickname.trim();
+    if (profileData.displayName !== undefined && profileData.displayName.trim()) client.displayName = profileData.displayName.trim();
+
+    this.logAudit(
+      staffId,
+      staffName,
+      'UPDATE_CLIENT_PROFILE',
+      'client',
+      client.id,
+      `อัปเดตข้อมูลส่วนตัวสมาชิก ${client.displayName} (เบอร์โทร: ${client.phone || '-'}, วันเกิด: ${client.birthday || '-'})`,
+      prevData,
+      { phone: client.phone, birthday: client.birthday, nickname: client.nickname, displayName: client.displayName }
+    );
+
+    this.saveToDisk();
+    return client;
+  }
+
   public updateClientNotes(
     clientId: string,
     notes: string,
@@ -1475,6 +1508,8 @@ class Store {
       price: data.price,
       validityDays: data.validityDays,
       defaultSessions: data.type === 'package' ? data.defaultSessions || 1 : undefined,
+      category: data.category || '',
+      keywords: Array.isArray(data.keywords) ? data.keywords : [],
       active: data.active ?? true,
       createdAt: new Date().toISOString(),
     };
@@ -1500,6 +1535,47 @@ class Store {
     this.logAudit(staffId, staffName, 'UPDATE_CATALOG_ITEM', 'catalog', item.id, 'Catalog service updated', prev, item);
     this.saveToDisk();
     return item;
+  }
+
+  public bulkUpdateCatalogPrices(
+    itemIds: string[],
+    adjustmentType: 'percent' | 'fixed',
+    value: number,
+    staffId: string,
+    staffName: string
+  ): CatalogItem[] {
+    const updatedItems: CatalogItem[] = [];
+
+    itemIds.forEach((id) => {
+      const item = this.db.catalogItems.find((c) => c.id === id);
+      if (!item) return;
+
+      const prevPrice = item.price;
+      let newPrice = prevPrice;
+
+      if (adjustmentType === 'percent') {
+        newPrice = Math.round(prevPrice * (1 + value / 100));
+      } else if (adjustmentType === 'fixed') {
+        newPrice = Math.max(0, Math.round(prevPrice + value));
+      }
+
+      item.price = newPrice;
+      updatedItems.push(item);
+
+      this.logAudit(
+        staffId,
+        staffName,
+        'BULK_UPDATE_CATALOG_PRICE',
+        'catalog',
+        item.id,
+        `Price adjusted from ฿${prevPrice} to ฿${newPrice} (${adjustmentType === 'percent' ? `${value}%` : `฿${value}`})`,
+        { price: prevPrice },
+        { price: newPrice }
+      );
+    });
+
+    this.saveToDisk();
+    return updatedItems;
   }
 
   // Sell/Issue Packages to Clients

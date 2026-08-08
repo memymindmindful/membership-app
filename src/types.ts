@@ -97,6 +97,8 @@ export interface CatalogItem {
   price: number;
   validityDays: number;
   defaultSessions?: number; // Only for packages
+  category?: string; // e.g. "Guasha", "Kansa Wands", "Facial Massage"
+  keywords?: string[]; // e.g. ["Guasha", "Facial"]
   active: boolean;
   createdAt: string;
 }

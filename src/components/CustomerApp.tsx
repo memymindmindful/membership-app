@@ -54,6 +54,7 @@ interface CustomerAppProps {
   lang: AppLanguage;
   onRefresh: () => void;
   onOpenConsent?: () => void;
+  onOpenProfileSetup?: () => void;
 }
 
 type TabType = 'home' | 'packages' | 'coupons' | 'coin' | 'points' | 'history' | 'qr' | 'notifications';
@@ -71,6 +72,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
   lang,
   onRefresh,
   onOpenConsent,
+  onOpenProfileSetup,
 }) => {
   const t = translations[lang];
   const [activeTab, setActiveTab] = useState<TabType>('home');
@@ -147,6 +149,31 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
                 {unreadCount}
               </span>
             )}
+          </button>
+        </div>
+
+        {/* Member Profile Quick Status Bar */}
+        <div className="bg-[#FAF0ED] px-4 py-2 border-b border-[#F2E3E1] flex items-center justify-between text-xs text-[#3D3835]">
+          <div className="flex items-center gap-3 overflow-hidden text-[11px]">
+            <span className="font-semibold text-[#8C6D5E] shrink-0">ข้อมูลสมาชิก:</span>
+            {client.phone ? (
+              <span className="truncate font-mono text-[#4A4441]">
+                📞 {client.phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}
+                {client.birthday && <span className="ml-2 text-[#8C6D5E]">🎂 {client.birthday}</span>}
+              </span>
+            ) : (
+              <span className="text-rose-600 font-semibold flex items-center gap-1 animate-pulse">
+                ⚠️ ยังไม่ได้ระบุเบอร์โทรศัพท์ & วันเกิด
+              </span>
+            )}
+          </div>
+
+          <button
+            onClick={onOpenProfileSetup}
+            className="shrink-0 px-2.5 py-1 bg-white hover:bg-[#FFF8F7] text-[#D87085] font-bold rounded-lg border border-[#F2E3E1] hover:border-[#E88D9F] transition text-[11px] shadow-2xs flex items-center gap-1 cursor-pointer"
+          >
+            <User className="w-3 h-3" />
+            <span>{client.phone && client.birthday ? 'แก้ไข' : 'กรอกข้อมูล'}</span>
           </button>
         </div>
 
