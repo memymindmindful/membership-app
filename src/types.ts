@@ -34,6 +34,8 @@ export interface Client {
   profilePic?: string;
   notes?: string;
   createdAt: string;
+  consentAccepted?: boolean;
+  consentAcceptedAt?: string;
 }
 
 export interface CoinWallet {

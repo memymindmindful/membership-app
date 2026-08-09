@@ -378,11 +378,10 @@ export default function App() {
   }, [viewMode, clientData, isLiffLoggedIn, isLoading]);
 
   useEffect(() => {
-    const accepted = localStorage.getItem('mmm_pdpa_consent_accepted');
-    if (viewMode === 'customer') {
-      if (accepted !== 'true') {
+    if (viewMode === 'customer' && currentClient) {
+      if (!currentClient.consentAccepted) {
         setShowConsentModal(true);
-      } else if (currentClient && (!currentClient.phone || !currentClient.birthday)) {
+      } else if (!currentClient.phone || !currentClient.birthday) {
         setShowProfileSetupModal(true);
       }
     }
@@ -526,10 +525,19 @@ export default function App() {
       <ConsentModal
         isOpen={showConsentModal}
         initialLang={lang}
-        onAccept={() => {
-          localStorage.setItem('mmm_pdpa_consent_accepted', 'true');
+        onAccept={async () => {
+          let updatedClient = currentClient;
+          if (currentClient) {
+            try {
+              updatedClient = await api.acceptConsent(currentClient.id);
+              setCurrentClient(updatedClient);
+            } catch (err) {
+              console.error('Failed to save consent on server:', err);
+            }
+          }
           setShowConsentModal(false);
-          if (currentClient && (!currentClient.phone || !currentClient.birthday)) {
+          const targetClient = updatedClient || currentClient;
+          if (targetClient && (!targetClient.phone || !targetClient.birthday)) {
             setShowProfileSetupModal(true);
           }
         }}

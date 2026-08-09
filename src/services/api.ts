@@ -203,6 +203,18 @@ export const api = {
     return res.json();
   },
 
+  async acceptConsent(clientId: string): Promise<Client> {
+    const res = await fetch(`/api/clients/${clientId}/accept-consent`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to accept consent');
+    }
+    return res.json();
+  },
+
   async updateClientNotes(
     clientId: string,
     notes: string,

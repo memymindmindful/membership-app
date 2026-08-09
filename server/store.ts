@@ -1220,6 +1220,17 @@ class Store {
     return client;
   }
 
+  public acceptConsent(clientId: string): Client {
+    const client = this.db.clients.find((c) => c.id === clientId || c.memberCode === clientId);
+    if (!client) {
+      throw new Error('ไม่พบข้อมูลลูกค้ารายนี้');
+    }
+    client.consentAccepted = true;
+    client.consentAcceptedAt = new Date().toISOString();
+    this.saveToDisk();
+    return client;
+  }
+
   // Coin Wallet Operations
   public getCoinBalance(clientId: string): number {
     return this.db.coinWallets[clientId] ?? 0;

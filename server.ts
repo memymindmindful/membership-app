@@ -88,6 +88,34 @@ export function authenticateStaff(
   next();
 }
 
+export function authenticateClientOrStaff(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: Authentication required' });
+  }
+  const token = authHeader.split(' ')[1];
+
+  // ลองตรวจสอบว่าเป็น staff token ก่อน
+  const staffDecoded = verifyStaffToken(token);
+  if (staffDecoded && staffDecoded.staffId) {
+    (req as any).authenticatedStaff = staffDecoded;
+    return next();
+  }
+
+  // ถ้าไม่ใช่ staff token ลองตรวจสอบว่าเป็น customer token
+  const clientDecoded = verifySessionToken(token);
+  if (clientDecoded && clientDecoded.clientId) {
+    (req as any).authenticatedClientId = clientDecoded.clientId;
+    return next();
+  }
+
+  return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -225,9 +253,13 @@ async function startServer() {
     }
   });
 
-  app.get('/api/clients/:id', authenticateClientToken, (req, res) => {
+  app.get('/api/clients/:id', authenticateClientOrStaff, (req, res) => {
     try {
-      const clientIdToUse = (req as any).authenticatedClientId;
+      const reqAny = req as any;
+      const clientIdToUse = reqAny.authenticatedStaff
+        ? req.params.id
+        : reqAny.authenticatedClientId;
+
       const client = store.getClientById(clientIdToUse);
       if (!client) {
         return res.status(404).json({ error: 'Client not found' });
@@ -361,6 +393,20 @@ async function startServer() {
         staffName || 'Member Self Service'
       );
       res.json(updatedClient);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/clients/:id/accept-consent', authenticateClientOrStaff, (req, res) => {
+    try {
+      const reqAny = req as any;
+      const clientId = reqAny.authenticatedClientId;
+      if (!clientId) {
+        return res.status(403).json({ error: 'Only authenticated clients can accept consent' });
+      }
+      const updated = store.acceptConsent(clientId);
+      res.json(updated);
     } catch (err: any) {
       res.status(400).json({ error: err.message });
     }
