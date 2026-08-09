@@ -60,6 +60,7 @@ import {
   PointsWallet,
   BrandSettings,
   BAHT_PER_POINT,
+  RewardCatalogItem,
 } from '../types';
 import { translations, formatDate, formatShortDate, formatCurrency, translateTxNote } from '../lib/translations';
 import { api, FullClientData } from '../services/api';
@@ -74,6 +75,7 @@ interface StaffDashboardProps {
   selectedClientData: FullClientData | null;
   onSelectClient: (clientId: string) => void;
   catalogItems: CatalogItem[];
+  rewardCatalog?: RewardCatalogItem[];
   lang: AppLanguage;
   brandSettings?: BrandSettings;
   onUpdateBrandSettings?: (newSettings: BrandSettings) => void;
@@ -91,6 +93,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   selectedClientData,
   onSelectClient,
   catalogItems,
+  rewardCatalog = [],
   lang,
   brandSettings,
   onUpdateBrandSettings,
@@ -1479,24 +1482,13 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                       className="w-full px-3 py-2 border border-[#F2E3E1] rounded-xl text-xs font-semibold text-[#3D3835] bg-white focus:outline-none focus:ring-2 focus:ring-[#E88D9F] shadow-2xs"
                     >
                       <option value="">-- พิมพ์ชื่อเอง หรือเลือกบริการจากรายการ --</option>
-                      <optgroup label="✨ บริการรายครั้ง (One-Time Services - แนะนำตัด Coin)">
-                        {catalogItems
-                          .filter((c) => c.active && (c.type === 'onetime' || !c.type))
-                          .map((cat) => (
-                            <option key={cat.id} value={cat.name}>
-                              {cat.name} — ฿{formatCurrency(cat.price)}
-                            </option>
-                          ))}
-                      </optgroup>
-                      <optgroup label="📦 คอร์ส & แพ็กเกจอื่น ๆ (Packages)">
-                        {catalogItems
-                          .filter((c) => c.active && c.type === 'package')
-                          .map((cat) => (
-                            <option key={cat.id} value={cat.name}>
-                              {cat.name} — ฿{formatCurrency(cat.price)}
-                            </option>
-                          ))}
-                      </optgroup>
+                      {catalogItems
+                        .filter((c) => c.active && (c.type === 'onetime' || !c.type))
+                        .map((cat) => (
+                          <option key={cat.id} value={cat.name}>
+                            {cat.name} — ฿{formatCurrency(cat.price)}
+                          </option>
+                        ))}
                     </select>
                   </div>
 
@@ -1833,37 +1825,48 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                 className="w-full px-3 py-2 border border-[#F2E3E1] rounded-xl text-xs font-medium text-[#3D3835] bg-white focus:outline-none focus:ring-2 focus:ring-[#E88D9F]"
               />
 
-              {/* Preset Tier Quick Selection Buttons */}
+              {/* Preset Tier Quick Selection Buttons from Real Reward Catalog */}
               <div className="mt-2 space-y-1">
                 <span className="text-[10px] font-bold text-[#D87085] block">
-                  ตัวเลือกด่วนตาม Tier / สิทธิ์ประโยชน์:
+                  ตัวเลือกด่วนจาก Reward Catalog:
                 </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { label: `สิทธิ์ ${selectedClientData.pointsWallet.tier} Tier: ส่วนลดบริการ 10%`, pts: 100 },
-                    { label: `สิทธิ์ ${selectedClientData.pointsWallet.tier} Tier: ส่วนลดบริการ 15%`, pts: 200 },
-                    { label: `แลกรับบริการนวดหน้าฟรี 1 ครั้ง`, pts: 500 },
-                    { label: `แลกคูปองส่วนลด 100 บาท`, pts: 100 },
-                    { label: `แลกคูปองส่วนลด 300 บาท`, pts: 300 },
-                  ].map((preset, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        setPtsRedeemTierItem(preset.label);
-                        setPointsAmount(preset.pts);
-                      }}
-                      className={`text-[11px] px-2.5 py-1.5 rounded-lg border transition text-left ${
-                        ptsRedeemTierItem === preset.label
-                          ? 'bg-[#E88D9F] text-white border-[#D87085] font-bold shadow-2xs'
-                          : 'bg-[#FAF0ED] text-[#D87085] border-[#F2E3E1] hover:bg-[#F2E3E1] font-medium'
-                      }`}
-                    >
-                      <span>{preset.label}</span>
-                      <span className="ml-1 opacity-90 font-mono text-[10px]">({preset.pts} pts)</span>
-                    </button>
-                  ))}
-                </div>
+                {rewardCatalog.filter((r) => r.active).length === 0 ? (
+                  <p className="text-[11px] text-[#9C948E] italic py-1">
+                    ยังไม่มีรายการรางวัลในระบบ (สามารถตั้งค่าเพิ่มได้ที่หน้า Catalog Management)
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
+                    {rewardCatalog
+                      .filter((r) => r.active)
+                      .map((reward) => ({ label: reward.name, pts: reward.pointsCost, minTier: reward.minTier }))
+                      .map((preset, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setPtsRedeemTierItem(preset.label);
+                            setPointsAmount(preset.pts);
+                          }}
+                          className={`text-[11px] px-2.5 py-1.5 rounded-lg border transition text-left flex items-center gap-1.5 ${
+                            ptsRedeemTierItem === preset.label
+                              ? 'bg-[#E88D9F] text-white border-[#D87085] font-bold shadow-2xs'
+                              : 'bg-[#FAF0ED] text-[#D87085] border-[#F2E3E1] hover:bg-[#F2E3E1] font-medium'
+                          }`}
+                        >
+                          <Award className="w-3 h-3 text-[#E88D9F] shrink-0" />
+                          <span>{preset.label}</span>
+                          {preset.minTier && (
+                            <span className="text-[9px] bg-[#E88D9F]/20 text-[#D87085] px-1 rounded font-semibold">
+                              {preset.minTier}
+                            </span>
+                          )}
+                          <span className="ml-0.5 opacity-90 font-mono text-[10px] bg-white/70 text-[#D87085] px-1 py-0.2 rounded font-bold">
+                            {preset.pts} pts
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                )}
               </div>
             </div>
 

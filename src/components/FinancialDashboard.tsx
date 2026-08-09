@@ -56,6 +56,7 @@ const CATEGORY_LABEL_MAP: Record<FinancialEntryCategory, { label: string; isInco
   supplies: { label: 'ค่าอุปกรณ์ / ผลิตภัณฑ์', isIncome: false },
   salary: { label: 'เงินเดือน / ค่าคอมพนักงาน', isIncome: false },
   marketing: { label: 'ค่าการตลาด / Bonus Coins CRM', isIncome: false },
+  marketing_voucher_cost: { label: 'ต้นทุนคูปองการตลาด (แจกฟรี)', isIncome: false },
   other_expense: { label: 'รายจ่ายอื่น ๆ', isIncome: false },
 };
 

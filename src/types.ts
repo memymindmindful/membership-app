@@ -116,6 +116,7 @@ export interface CatalogItem {
   keywords?: string[]; // e.g. ["Guasha", "Facial"]
   active: boolean;
   createdAt: string;
+  isCrmMarketingVoucher?: boolean;
 }
 
 export type ItemStatus = 'active' | 'expiring_soon' | 'used_up';
@@ -176,6 +177,7 @@ export interface ClientCoupon {
   followUpNote?: string;
   followUpUpdatedAt?: string;
   followUpUpdatedByStaffName?: string;
+  isCrmMarketingVoucher?: boolean;
 }
 
 export interface ExpiringItemTask {
@@ -258,6 +260,7 @@ export type FinancialEntryCategory =
   | 'supplies'           // ค่าอุปกรณ์ / น้ำมันนวด / ผลิตภัณฑ์
   | 'salary'             // เงินเดือน / ค่าคอมมิชชัน พนักงาน
   | 'marketing'          // ค่าการตลาด / โฆษณา
+  | 'marketing_voucher_cost' // ต้นทุนคูปองการตลาด (แจกฟรี)
   | 'other_expense';     // รายจ่ายอื่น ๆ
 
 export type FinancialEntryType = 'income' | 'expense';

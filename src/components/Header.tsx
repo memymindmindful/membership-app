@@ -1,5 +1,5 @@
-import React from 'react';
-import { Sparkles, Globe, UserCheck, Shield, Smartphone, LogOut } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sparkles, Globe, UserCheck, Shield, Smartphone, LogOut, RefreshCw } from 'lucide-react';
 import { AppLanguage, Employee, Client, BrandSettings } from '../types';
 import { translations } from '../lib/translations';
 import appLogo from '../assets/images/me_my_mind_logo_1785924412256.jpg';
@@ -20,6 +20,7 @@ interface HeaderProps {
   onOpenCatalog?: () => void;
   isLiffLoggedIn?: boolean;
   isLiffApp?: boolean;
+  onRefreshStaffData?: () => Promise<void> | void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -38,7 +39,21 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCatalog,
   isLiffLoggedIn = false,
   isLiffApp = false,
+  onRefreshStaffData,
 }) => {
+  const [isRefreshingStaff, setIsRefreshingStaff] = useState(false);
+
+  const handleStaffRefresh = async () => {
+    if (!onRefreshStaffData || isRefreshingStaff) return;
+    setIsRefreshingStaff(true);
+    try {
+      await onRefreshStaffData();
+    } catch (err) {
+      console.error('Failed to refresh staff data:', err);
+    } finally {
+      setTimeout(() => setIsRefreshingStaff(false), 500);
+    }
+  };
   const t = translations[lang];
   const rawLogo = (brandSettings?.logoUrl && brandSettings.logoUrl.trim()) ? brandSettings.logoUrl : appLogo;
   const displayLogo = rawLogo.startsWith('data:')
@@ -107,6 +122,18 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="hidden xs:inline">Staff</span>
               </button>
             </div>
+          )}
+
+          {/* Refresh Button for Staff Mode */}
+          {viewMode === 'staff' && onRefreshStaffData && (
+            <button
+              onClick={handleStaffRefresh}
+              disabled={isRefreshingStaff}
+              className="p-1.5 sm:p-2 bg-[#FAF0ED] text-[#6E6763] hover:text-[#3D3835] hover:bg-[#F2E3E1] rounded-full transition border border-[#F2E3E1] shadow-2xs cursor-pointer disabled:opacity-60"
+              title="รีเฟรชข้อมูล"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#D87085] ${isRefreshingStaff ? 'animate-spin' : ''}`} />
+            </button>
           )}
 
           {/* Customer Profile Indicator in LIFF / Customer Mode */}

@@ -64,6 +64,7 @@ export const CatalogManagement: React.FC<CatalogManagementProps> = ({
   const [validityDays, setValidityDays] = useState<number | ''>(90);
   const [imageUrl, setImageUrl] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isCrmMarketingVoucher, setIsCrmMarketingVoucher] = useState(false);
 
   // Filter & Keyword Search State
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -115,6 +116,7 @@ export const CatalogManagement: React.FC<CatalogManagementProps> = ({
     setValidityDays(90);
     setImageUrl('');
     setImagePreview(null);
+    setIsCrmMarketingVoucher(false);
     setEditingItemId(null);
     setError(null);
   };
@@ -178,6 +180,7 @@ export const CatalogManagement: React.FC<CatalogManagementProps> = ({
     setValidityDays(item.validityDays);
     setImageUrl(item.imageUrl);
     setImagePreview(item.imageUrl);
+    setIsCrmMarketingVoucher(item.isCrmMarketingVoucher || false);
     setShowAddForm(true);
   };
 
@@ -213,6 +216,7 @@ export const CatalogManagement: React.FC<CatalogManagementProps> = ({
         defaultSessions: serviceType === 'package' ? Number(defaultSessions) || 1 : undefined,
         imageUrl: imageUrl || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80',
         active: true,
+        isCrmMarketingVoucher: serviceType === 'coupon' ? isCrmMarketingVoucher : false,
       };
 
       if (editingItemId) {
@@ -559,6 +563,25 @@ export const CatalogManagement: React.FC<CatalogManagementProps> = ({
                   </button>
                 </div>
               </div>
+
+              {/* CRM Marketing Voucher Option (Only for Coupons) */}
+              {serviceType === 'coupon' && (
+                <div className="p-3.5 bg-[#FAF0ED] rounded-xl border border-[#F2E3E1] flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="isCrmMarketingVoucher"
+                    checked={isCrmMarketingVoucher}
+                    onChange={(e) => setIsCrmMarketingVoucher(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 text-[#8C6D5E] border-[#D1CEC7] rounded focus:ring-[#8C6D5E] cursor-pointer"
+                  />
+                  <label htmlFor="isCrmMarketingVoucher" className="text-xs cursor-pointer select-none">
+                    <span className="font-bold text-[#3D3835] block">เป็น CRM Marketing Voucher (แจกฟรีเพื่อการตลาด)</span>
+                    <span className="text-[11px] text-[#6E6763] block mt-0.5">
+                      คูปองนี้ใช้สำหรับแจกฟรีทางการตลาด — ตอนออกคูปองจะไม่บันทึกเป็นรายรับ และจะบันทึกเป็นรายจ่าย (ต้นทุนบริการ) เมื่อลูกค้านำสิทธิ์มา Redeem จริงเท่านั้น
+                    </span>
+                  </label>
+                </div>
+              )}
 
               {/* Title & Price */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1038,6 +1061,12 @@ export const CatalogManagement: React.FC<CatalogManagementProps> = ({
                         {item.category && (
                           <span className="text-[9px] bg-[#8C6D5E]/10 text-[#8C6D5E] font-bold px-2 py-0.5 rounded-full border border-[#8C6D5E]/20">
                             {item.category}
+                          </span>
+                        )}
+
+                        {item.isCrmMarketingVoucher && (
+                          <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full border border-amber-300">
+                            CRM Marketing Voucher (แจกฟรี)
                           </span>
                         )}
 

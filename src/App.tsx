@@ -434,6 +434,15 @@ export default function App() {
         }}
         isLiffLoggedIn={isLiffLoggedIn}
         isLiffApp={isLiffApp}
+        onRefreshStaffData={async () => {
+          const [freshClients, freshEmps] = await Promise.all([
+            api.getClients().catch(() => []),
+            api.getEmployees().catch(() => []),
+          ]);
+          if (freshClients.length > 0) setAllClients(freshClients);
+          if (freshEmps.length > 0) setEmployees(freshEmps);
+          await refreshStaffClientData();
+        }}
       />
 
       {/* Main Body View Switching */}
@@ -500,6 +509,7 @@ export default function App() {
               }
             }}
             catalogItems={catalogItems}
+            rewardCatalog={rewardCatalog}
             lang={lang}
             brandSettings={brandSettings}
             onUpdateBrandSettings={handleUpdateBrandSettings}

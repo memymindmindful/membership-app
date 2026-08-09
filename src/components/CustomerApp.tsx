@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   User,
   ShieldCheck,
+  RefreshCw,
 } from 'lucide-react';
 import {
   AppLanguage,
@@ -80,6 +81,19 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copiedCode, setCopiedCode] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    if (isRefreshing || !onRefresh) return;
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } catch (err) {
+      console.error('Failed to refresh customer data:', err);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
   // Filter active/expiring_soon packages & coupons (used_up items are hidden from customer active view)
   const activePackages = packages.filter((p) => p.status !== 'used_up');
@@ -138,17 +152,28 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={() => setActiveTab('notifications')}
-            className="relative p-2 bg-white/20 text-white hover:bg-white/30 rounded-full transition border border-white/30 shadow-2xs"
-          >
-            <Bell className="w-5 h-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-white text-[#D87085] text-[10px] font-bold rounded-full flex items-center justify-center animate-bounce shadow-xs">
-                {unreadCount}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="relative p-2 bg-white/20 text-white hover:bg-white/30 rounded-full transition border border-white/30 shadow-2xs cursor-pointer disabled:opacity-60"
+              title="รีเฟรชข้อมูล"
+            >
+              <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+
+            <button
+              onClick={() => setActiveTab('notifications')}
+              className="relative p-2 bg-white/20 text-white hover:bg-white/30 rounded-full transition border border-white/30 shadow-2xs cursor-pointer"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-white text-[#D87085] text-[10px] font-bold rounded-full flex items-center justify-center animate-bounce shadow-xs">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Member Profile Quick Status Bar */}
