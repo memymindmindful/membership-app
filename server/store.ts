@@ -19,7 +19,9 @@ import {
   ItemStatus,
   FollowUpStatus,
   ExpiringItemTask,
-  FinancialEntry
+  FinancialEntry,
+  BAHT_PER_POINT,
+  PointsSourceType
 } from '../src/types';
 import { getTierFromPoints } from '../src/lib/translations';
 
@@ -506,6 +508,8 @@ function getInitialData(): DatabaseSchema {
       amount: 1100,
       type: 'points_earned',
       note: 'ได้รับคะแนนสะสมจากการซื้อแพ็กเกจ 12,000 บาท',
+      sourceType: 'package_sale',
+      relatedPackageId: 'PKG-001',
       resultingBalance: 1100,
       createdByStaffId: 'EMP-02',
       createdByStaffName: 'Khun May (Manager)',
@@ -517,6 +521,7 @@ function getInitialData(): DatabaseSchema {
       amount: -250,
       type: 'points_redeemed',
       note: 'ใช้คะแนนแลกรับของขวัญ Lip Balm หน้าร้าน',
+      sourceType: 'manual_award',
       resultingBalance: 850,
       createdByStaffId: 'EMP-02',
       createdByStaffName: 'Khun May (Manager)',
@@ -528,6 +533,7 @@ function getInitialData(): DatabaseSchema {
       amount: 2400,
       type: 'points_earned',
       note: 'ได้รับคะแนนสะสมจากการลงทะเบียนคอร์สเรียน',
+      sourceType: 'package_sale',
       resultingBalance: 2400,
       createdByStaffId: 'EMP-01',
       createdByStaffName: 'Khun Nat (Admin)',
@@ -539,6 +545,7 @@ function getInitialData(): DatabaseSchema {
       amount: 200,
       type: 'points_earned',
       note: 'คะแนนโบนัสต้อนรับสมาชิกใหม่',
+      sourceType: 'other',
       resultingBalance: 200,
       createdByStaffId: 'EMP-02',
       createdByStaffName: 'Khun May (Manager)',
@@ -798,6 +805,15 @@ class Store {
   // Employees
   public getEmployees(): Employee[] {
     return this.db.employees;
+  }
+
+  public verifyStaffPinAndGetStaff(pin: string): Employee | null {
+    if (!pin || typeof pin !== 'string') return null;
+    const trimmed = pin.trim();
+    const emp = this.db.employees.find(
+      (e) => e.password === trimmed || e.id === trimmed
+    );
+    return emp || null;
   }
 
   public createEmployee(
@@ -1280,9 +1296,17 @@ class Store {
       );
     } else {
       // Normal Coin Purchase (Revenue & Points)
-      const ptsEarned = Math.floor(amount / 10);
+      const ptsEarned = Math.floor(amount / BAHT_PER_POINT);
       if (ptsEarned > 0) {
-        this.addPoints(clientId, ptsEarned, `สะสมคะแนนจากการเติมเงิน ${amount} บาท`, staffId, staffName);
+        this.addPoints(
+          clientId,
+          ptsEarned,
+          `สะสมคะแนนจากการเติมเงิน ${amount} บาท`,
+          staffId,
+          staffName,
+          'coin_topup',
+          { relatedCoinTxId: tx.id }
+        );
       }
 
       this.notifyClient(
@@ -1422,7 +1446,9 @@ class Store {
     amount: number,
     note: string,
     staffId: string,
-    staffName: string
+    staffName: string,
+    sourceType: PointsSourceType = 'direct_service',
+    relatedIds?: { relatedCoinTxId?: string; relatedPackageId?: string; relatedCouponId?: string }
   ): PointsTransaction {
     if (amount <= 0) {
       throw new Error('Points amount must be greater than 0');
@@ -1439,6 +1465,10 @@ class Store {
       amount,
       type: 'points_earned',
       note: note || 'Points awarded by staff',
+      sourceType,
+      relatedCoinTxId: relatedIds?.relatedCoinTxId,
+      relatedPackageId: relatedIds?.relatedPackageId,
+      relatedCouponId: relatedIds?.relatedCouponId,
       resultingBalance: wallet.balance,
       createdByStaffId: staffId,
       createdByStaffName: staffName,
@@ -2013,9 +2043,9 @@ class Store {
     const manual = [...this.db.financialEntries];
     const autoEntries: FinancialEntry[] = [];
 
-    // 1. Auto-synthesize from Coin topups
+    // 1. Auto-synthesize from Coin topups (ONLY non-bonus cash coin purchases)
     for (const tx of this.db.coinTransactions) {
-      if (tx.type === 'credit_added' && !tx.reversed && tx.amount > 0) {
+      if (tx.type === 'credit_added' && !tx.reversed && tx.amount > 0 && !tx.isBonus) {
         const client = this.db.clients.find((c) => c.id === tx.clientId);
         const clientName = client ? `${client.displayName} (${client.nickname})` : 'ลูกค้าทั่วไป';
         autoEntries.push({
@@ -2038,18 +2068,35 @@ class Store {
       }
     }
 
-    // 2. Auto-synthesize from Points transactions (Direct cash/promptpay payments)
+    // 2. Auto-synthesize from Points transactions (Direct cash/promptpay payments ONLY - exclude points awarded for Coin topups, Bonus Coins, Package or Coupon sales)
     for (const tx of this.db.pointsTransactions) {
       if (tx.type === 'points_earned' && !tx.reversed) {
+        const sourceType = tx.sourceType;
+        const note = tx.note || '';
+
+        // Structured filtering: Exclude points linked to Coin topups, Package sales, Coupon sales, or other non-direct sources
+        const isExcludedSource = sourceType && ['coin_topup', 'package_sale', 'coupon_sale'].includes(sourceType);
+        const hasRelatedRef = Boolean(tx.relatedCoinTxId || tx.relatedPackageId || tx.relatedCouponId);
+
+        // Fallback string matching for legacy/untyped records
+        const isFromCoin = note.includes('เติมเงิน') || note.includes('Coin') || note.includes('โบนัส') || note.includes('Bonus');
+        const isFromPackage = note.includes('คอร์ส') || note.includes('แพ็กเกจ') || note.includes('Package');
+        const isFromCoupon = note.includes('คูปอง') || note.includes('Coupon');
+
+        if (isExcludedSource || hasRelatedRef || isFromCoin || isFromPackage || isFromCoupon) {
+          continue;
+        }
+
         const client = this.db.clients.find((c) => c.id === tx.clientId);
         const clientName = client ? `${client.displayName} (${client.nickname})` : 'ลูกค้าทั่วไป';
 
         let spendAmt = 0;
-        const match = tx.note.match(/ยอดชำระ:\s*฿?\s*([0-9,]+)/i) || tx.note.match(/฿\s*([0-9,]+)/);
+        const match = note.match(/ยอดชำระ:\s*฿?\s*([0-9,]+)/i) || note.match(/฿\s*([0-9,]+)/);
         if (match) {
           spendAmt = Number(match[1].replace(/,/g, ''));
         } else if (tx.amount > 0) {
-          spendAmt = tx.amount * 10;
+          // Use system constant: BAHT_PER_POINT (100 บาท = 1 แต้ม)
+          spendAmt = tx.amount * BAHT_PER_POINT;
         }
 
         if (spendAmt > 0) {

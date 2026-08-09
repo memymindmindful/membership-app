@@ -152,7 +152,7 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({
             <input
               type="tel"
               required
-              placeholder="08x-xxx-xxxx"
+              placeholder=""
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="w-full px-3.5 py-2.5 bg-[#FAF6F2] border border-[#F2E3E1] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E88D9F] font-mono"
@@ -188,7 +188,7 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({
             </label>
             <input
               type="text"
-              placeholder="เช่น คุณแอน, คุณมายด์"
+              placeholder=""
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               className="w-full px-3.5 py-2.5 bg-[#FAF6F2] border border-[#F2E3E1] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#E88D9F]"

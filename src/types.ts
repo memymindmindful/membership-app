@@ -60,6 +60,12 @@ export interface CoinTransaction {
   reversedByStaffName?: string;
 }
 
+/**
+ * System Loyalty Points Configuration
+ * 100 THB spent = 1 Point earned (1 Point = 100 THB value)
+ */
+export const BAHT_PER_POINT = 100;
+
 export type PointsTier = 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
 
 export interface PointsWallet {
@@ -71,6 +77,7 @@ export interface PointsWallet {
 }
 
 export type PointsTransactionType = 'points_earned' | 'points_redeemed' | 'points_adjusted';
+export type PointsSourceType = 'coin_topup' | 'package_sale' | 'coupon_sale' | 'direct_service' | 'manual_award' | 'other';
 
 export interface PointsTransaction {
   id: string;
@@ -78,6 +85,10 @@ export interface PointsTransaction {
   amount: number;
   type: PointsTransactionType;
   note: string;
+  sourceType?: PointsSourceType;
+  relatedCoinTxId?: string;
+  relatedPackageId?: string;
+  relatedCouponId?: string;
   resultingBalance: number;
   createdByStaffId: string;
   createdByStaffName: string;

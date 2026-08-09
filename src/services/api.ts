@@ -15,6 +15,7 @@ import {
   InAppNotification,
   PointsTransaction,
   PointsWallet,
+  PointsSourceType,
   RewardCatalogItem,
   FollowUpStatus,
   ExpiringItemTask,
@@ -34,7 +35,8 @@ export interface FullClientData {
 }
 
 function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
-  const token = sessionStorage.getItem('mmm_session_token');
+  const staffToken = sessionStorage.getItem('mmm_staff_token');
+  const token = staffToken || sessionStorage.getItem('mmm_session_token');
   const headers: Record<string, string> = { ...extraHeaders };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -43,8 +45,29 @@ function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<strin
 }
 
 export const api = {
+  async verifyStaffPin(
+    pin: string,
+    username?: string
+  ): Promise<{ success: boolean; staffToken: string; staff: Employee }> {
+    const res = await fetch('/api/staff/verify-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin, username }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'PIN หรือรหัสผ่านไม่ถูกต้อง');
+    }
+    const data = await res.json();
+    if (data.staffToken) {
+      sessionStorage.setItem('mmm_staff_token', data.staffToken);
+    }
+    return data;
+  },
   async getEmployees(): Promise<Employee[]> {
-    const res = await fetch('/api/employees');
+    const res = await fetch('/api/employees', {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch employees');
     return res.json();
   },
@@ -56,7 +79,7 @@ export const api = {
   ): Promise<Employee> {
     const res = await fetch('/api/employees', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ employeeData, staffId, staffName }),
     });
     if (!res.ok) {
@@ -74,7 +97,7 @@ export const api = {
   ): Promise<Employee> {
     const res = await fetch(`/api/employees/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ employeeData, staffId, staffName }),
     });
     if (!res.ok) {
@@ -89,7 +112,7 @@ export const api = {
       `/api/employees/${id}?staffId=${encodeURIComponent(staffId)}&staffName=${encodeURIComponent(staffName)}`,
       {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ staffId, staffName }),
       }
     );
@@ -109,7 +132,7 @@ export const api = {
   ): Promise<boolean> {
     const res = await fetch(`/api/employees/${id}/change-password`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ oldPassword, newPassword, staffId, staffName }),
     });
     if (!res.ok) {
@@ -121,13 +144,17 @@ export const api = {
 
   async getClients(search?: string): Promise<Client[]> {
     const url = search ? `/api/clients?search=${encodeURIComponent(search)}` : '/api/clients';
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch clients');
     return res.json();
   },
 
   async getExportClientsData(): Promise<any[]> {
-    const res = await fetch('/api/admin/export-clients');
+    const res = await fetch('/api/admin/export-clients', {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Failed to fetch export data');
@@ -184,7 +211,7 @@ export const api = {
   ): Promise<Client> {
     const res = await fetch(`/api/clients/${clientId}/notes`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ notes, staffId, staffName }),
     });
     if (!res.ok) {
@@ -204,7 +231,7 @@ export const api = {
   ): Promise<CoinTransaction> {
     const res = await fetch(`/api/clients/${clientId}/coin/add`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ amount, note, staffId, staffName, isBonus }),
     });
     if (!res.ok) {
@@ -223,7 +250,7 @@ export const api = {
   ): Promise<CoinTransaction> {
     const res = await fetch(`/api/clients/${clientId}/coin/deduct`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ amount, note, staffId, staffName }),
     });
     if (!res.ok) {
@@ -241,7 +268,7 @@ export const api = {
   ): Promise<CoinTransaction> {
     const res = await fetch('/api/coin/reverse', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ txId, reason, staffId, staffName }),
     });
     if (!res.ok) {
@@ -256,12 +283,21 @@ export const api = {
     amount: number,
     note: string,
     staffId: string,
-    staffName: string
+    staffName: string,
+    sourceType?: PointsSourceType,
+    relatedIds?: { relatedCoinTxId?: string; relatedPackageId?: string; relatedCouponId?: string }
   ): Promise<PointsTransaction> {
     const res = await fetch(`/api/clients/${clientId}/points/add`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, note, staffId, staffName }),
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        amount,
+        note,
+        staffId,
+        staffName,
+        sourceType: sourceType || 'direct_service',
+        ...relatedIds,
+      }),
     });
     if (!res.ok) {
       const err = await res.json();
@@ -279,7 +315,7 @@ export const api = {
   ): Promise<PointsTransaction> {
     const res = await fetch(`/api/clients/${clientId}/points/deduct`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ amount, note, staffId, staffName }),
     });
     if (!res.ok) {
@@ -297,7 +333,7 @@ export const api = {
   ): Promise<PointsTransaction> {
     const res = await fetch('/api/points/reverse', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ txId, reason, staffId, staffName }),
     });
     if (!res.ok) {
@@ -320,7 +356,7 @@ export const api = {
   ): Promise<CatalogItem> {
     const res = await fetch('/api/catalog', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ itemData, staffId, staffName }),
     });
     if (!res.ok) {
@@ -338,7 +374,7 @@ export const api = {
   ): Promise<CatalogItem> {
     const res = await fetch(`/api/catalog/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ updates, staffId, staffName }),
     });
     if (!res.ok) {
@@ -357,7 +393,7 @@ export const api = {
   ): Promise<CatalogItem[]> {
     const res = await fetch('/api/catalog/bulk-price', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ itemIds, adjustmentType, value, staffId, staffName }),
     });
     if (!res.ok) {
@@ -378,7 +414,7 @@ export const api = {
   ): Promise<ClientPackage> {
     const res = await fetch(`/api/clients/${clientId}/packages/sell`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ catalogId, totalSessions, pricePaid, validityDays, staffId, staffName }),
     });
     if (!res.ok) {
@@ -396,7 +432,7 @@ export const api = {
   ): Promise<ClientPackage> {
     const res = await fetch(`/api/packages/${packageId}/use`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ note, staffId, staffName }),
     });
     if (!res.ok) {
@@ -417,7 +453,7 @@ export const api = {
   ): Promise<ClientCoupon> {
     const res = await fetch(`/api/clients/${clientId}/coupons/issue`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ catalogId, totalQuantity, pricePaid, validityDays, staffId, staffName }),
     });
     if (!res.ok) {
@@ -435,7 +471,7 @@ export const api = {
   ): Promise<ClientCoupon> {
     const res = await fetch(`/api/coupons/${couponId}/redeem`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ note, staffId, staffName }),
     });
     if (!res.ok) {
@@ -458,7 +494,7 @@ export const api = {
   ): Promise<RewardCatalogItem> {
     const res = await fetch('/api/rewards', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ rewardData, staffId, staffName }),
     });
     if (!res.ok) {
@@ -476,7 +512,7 @@ export const api = {
   ): Promise<RewardCatalogItem> {
     const res = await fetch(`/api/rewards/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ updates, staffId, staffName }),
     });
     if (!res.ok) {
@@ -487,13 +523,17 @@ export const api = {
   },
 
   async getAuditLogs(): Promise<AuditLog[]> {
-    const res = await fetch('/api/audit-logs');
+    const res = await fetch('/api/audit-logs', {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch audit logs');
     return res.json();
   },
 
   async getFinancialEntries(): Promise<FinancialEntry[]> {
-    const res = await fetch('/api/financial');
+    const res = await fetch('/api/financial', {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch financial entries');
     return res.json();
   },
@@ -505,7 +545,7 @@ export const api = {
   ): Promise<FinancialEntry> {
     const res = await fetch('/api/financial', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ entryData, staffId, staffName }),
     });
     if (!res.ok) {
@@ -518,7 +558,7 @@ export const api = {
   async deleteFinancialEntry(id: string, staffId: string, staffName: string): Promise<boolean> {
     const res = await fetch(`/api/financial/${id}`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ staffId, staffName }),
     });
     if (!res.ok) {
@@ -532,7 +572,7 @@ export const api = {
   async uploadImage(base64Data: string, fileName?: string): Promise<string> {
     const res = await fetch('/api/upload-image', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ base64Data, fileName }),
     });
     if (!res.ok) throw new Error('Failed to upload image');
@@ -565,7 +605,7 @@ export const api = {
   ): Promise<{ success: boolean; message: string; deletedCounts: Record<string, number> }> {
     const res = await fetch('/api/admin/purge-data', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ staffId, password, targets }),
     });
     if (!res.ok) {
@@ -576,7 +616,9 @@ export const api = {
   },
 
   async getBackupSettings(): Promise<any> {
-    const res = await fetch('/api/admin/backup-settings');
+    const res = await fetch('/api/admin/backup-settings', {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to load backup settings');
     return res.json();
   },
@@ -584,7 +626,7 @@ export const api = {
   async saveBackupSettings(settings: any): Promise<any> {
     const res = await fetch('/api/admin/backup-settings', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(settings),
     });
     if (!res.ok) throw new Error('Failed to save backup settings');
@@ -592,7 +634,9 @@ export const api = {
   },
 
   async getBackupExportData(): Promise<any> {
-    const res = await fetch('/api/admin/backup-export');
+    const res = await fetch('/api/admin/backup-export', {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to export backup data');
     return res.json();
   },
@@ -600,7 +644,7 @@ export const api = {
   async sendBackupEmail(email?: string): Promise<any> {
     const res = await fetch('/api/admin/send-backup-email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ email }),
     });
     if (!res.ok) {
@@ -611,7 +655,9 @@ export const api = {
   },
 
   async getExpiringTasks(): Promise<ExpiringItemTask[]> {
-    const res = await fetch('/api/expiring-tasks');
+    const res = await fetch('/api/expiring-tasks', {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error('Failed to fetch expiring tasks');
     return res.json();
   },
@@ -625,7 +671,7 @@ export const api = {
   ): Promise<ClientPackage> {
     const res = await fetch(`/api/packages/${id}/follow-up`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ status, note, staffId, staffName }),
     });
     if (!res.ok) {
@@ -644,7 +690,7 @@ export const api = {
   ): Promise<ClientCoupon> {
     const res = await fetch(`/api/coupons/${id}/follow-up`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ status, note, staffId, staffName }),
     });
     if (!res.ok) {
@@ -660,11 +706,23 @@ export const api = {
     return res.json();
   },
 
-  async updateBrandSettings(settings: Partial<BrandSettings>): Promise<BrandSettings> {
+  async updateBrandSettings(
+    settings: Partial<BrandSettings>,
+    staffId?: string,
+    staffName?: string
+  ): Promise<BrandSettings> {
+    const headers = getAuthHeaders({ 'Content-Type': 'application/json' });
+    if (staffId) {
+      headers['X-Staff-Id'] = staffId;
+    }
+
     const res = await fetch('/api/brand-settings', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings),
+      headers,
+      body: JSON.stringify({
+        ...settings,
+        ...(staffId ? { staffId, staffName } : {}),
+      }),
     });
     if (!res.ok) {
       const err = await res.json();

@@ -66,7 +66,11 @@ export default function App() {
 
   const handleUpdateBrandSettings = async (newSettings: BrandSettings) => {
     try {
-      const updated = await api.updateBrandSettings(newSettings);
+      const updated = await api.updateBrandSettings(
+        newSettings,
+        currentStaff?.id || 'EMP-01',
+        currentStaff?.displayName || 'Admin'
+      );
       const merged: BrandSettings = {
         brandName: updated.brandName || DEFAULT_BRAND_SETTINGS.brandName,
         brandTagline: updated.brandTagline || DEFAULT_BRAND_SETTINGS.brandTagline,
@@ -94,6 +98,10 @@ export default function App() {
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
   const [clientData, setClientData] = useState<FullClientData | null>(null);
+
+  // Dedicated separate state for staff viewing client in Staff Dashboard
+  const [selectedStaffClient, setSelectedStaffClient] = useState<Client | null>(null);
+  const [staffClientData, setStaffClientData] = useState<FullClientData | null>(null);
 
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [rewardCatalog, setRewardCatalog] = useState<RewardCatalogItem[]>([]);
@@ -129,54 +137,45 @@ export default function App() {
         console.warn('Could not load brand settings from backend:', e);
       }
 
-      if (isStaffMode) {
-        const [empList, clientList, catList, rewardList] = await Promise.all([
-          api.getEmployees(),
-          api.getClients(),
-          api.getCatalog(),
-          api.getRewards(),
-        ]);
+      const [catList, rewardList] = await Promise.all([
+        api.getCatalog().catch(() => []),
+        api.getRewards().catch(() => []),
+      ]);
+      setCatalogItems(catList);
+      setRewardCatalog(rewardList);
 
-        setEmployees(empList);
+      const [empList, clientList] = await Promise.all([
+        api.getEmployees().catch(() => []),
+        api.getClients().catch(() => []),
+      ]);
+      if (empList.length > 0) setEmployees(empList);
+      if (clientList.length > 0) {
         setAllClients(clientList);
-        if (clientList.length > 0) {
-          setCurrentClient(clientList[0]);
+        if (!selectedStaffClient) {
+          setSelectedStaffClient(clientList[0]);
         }
+      }
 
-        setCatalogItems(catList);
-        setRewardCatalog(rewardList);
-      } else {
-        // Customer mode startup: fetch catalog, rewards & clients list for staff lookup
-        const [catList, rewardList, clientList] = await Promise.all([
-          api.getCatalog(),
-          api.getRewards(),
-          api.getClients(),
-        ]);
-        setCatalogItems(catList);
-        setRewardCatalog(rewardList);
-        setAllClients(clientList);
-
-        // Check if there is a previously verified session in sessionStorage
-        const isDemoMode = window.location.search.includes('demo=true') || window.location.search.includes('dev=true');
-        const storedClientId = sessionStorage.getItem('mmm_logged_in_client_id');
-        if (storedClientId) {
-          try {
-            const restoredData = await api.getClientById(storedClientId);
-            if (restoredData && restoredData.client) {
-              setCurrentClient(restoredData.client);
-              setClientData(restoredData);
-            }
-          } catch (e) {
-            console.warn('Could not restore client session from sessionStorage:', e);
-            sessionStorage.removeItem('mmm_logged_in_client_id');
-            sessionStorage.removeItem('mmm_logged_in_line_user_id');
+      // Check if there is a previously verified session in sessionStorage
+      const isDemoMode = window.location.search.includes('demo=true') || window.location.search.includes('dev=true');
+      const storedClientId = sessionStorage.getItem('mmm_logged_in_client_id');
+      if (storedClientId) {
+        try {
+          const restoredData = await api.getClientById(storedClientId);
+          if (restoredData && restoredData.client) {
+            setCurrentClient(restoredData.client);
+            setClientData(restoredData);
           }
-        } else if (isDemoMode && clientList.length > 0) {
-          // Default to first client ONLY for explicit web demo mode (?demo=true)
-          const defaultClient = clientList[0];
-          setCurrentClient(defaultClient);
-          api.getClientById(defaultClient.id).then(setClientData).catch(console.error);
+        } catch (e) {
+          console.warn('Could not restore client session from sessionStorage:', e);
+          sessionStorage.removeItem('mmm_logged_in_client_id');
+          sessionStorage.removeItem('mmm_logged_in_line_user_id');
         }
+      } else if (isDemoMode && clientList.length > 0) {
+        // Default to first client ONLY for explicit web demo mode (?demo=true)
+        const defaultClient = clientList[0];
+        setCurrentClient(defaultClient);
+        api.getClientById(defaultClient.id).then(setClientData).catch(console.error);
       }
     } catch (err) {
       console.error('Failed to load initial app data:', err);
@@ -185,41 +184,64 @@ export default function App() {
     }
   }, []);
 
-  // Ensure staff directory is loaded when switching to staff dashboard
+  // Ensure staff directory is loaded when switching to staff dashboard or staff logs in
   const ensureStaffData = useCallback(async () => {
-    if (employees.length === 0 || allClients.length === 0) {
-      try {
-        const [empList, clientList] = await Promise.all([
-          api.getEmployees(),
-          api.getClients(),
-        ]);
-        setEmployees(empList);
+    try {
+      const [empList, clientList] = await Promise.all([
+        api.getEmployees().catch(() => []),
+        api.getClients().catch(() => []),
+      ]);
+      if (empList.length > 0) setEmployees(empList);
+      if (clientList.length > 0) {
         setAllClients(clientList);
-        if (viewMode === 'staff' && !currentClient && clientList.length > 0) {
-          setCurrentClient(clientList[0]);
+        if (!selectedStaffClient) {
+          setSelectedStaffClient(clientList[0]);
         }
-      } catch (err) {
-        console.error('Error loading staff background data:', err);
       }
+    } catch (err) {
+      console.error('Error loading staff background data:', err);
     }
-  }, [employees.length, allClients.length, currentClient, viewMode]);
+  }, [selectedStaffClient]);
 
   useEffect(() => {
-    if (viewMode === 'staff') {
+    if (viewMode === 'staff' || currentStaff) {
       ensureStaffData();
     }
-  }, [viewMode, ensureStaffData]);
+  }, [viewMode, currentStaff, ensureStaffData]);
 
-  // Fetch Full Client Data whenever currentClient changes
+  // Fetch Full Client Data whenever currentClient changes (for Customer view)
   const refreshCurrentClientData = useCallback(async () => {
     if (!currentClient) return;
     try {
       const fullData = await api.getClientById(currentClient.id);
       setClientData(fullData);
     } catch (err) {
-      console.error('Error fetching client data:', err);
+      console.error('Error fetching customer client data:', err);
     }
   }, [currentClient]);
+
+  // Fetch Full Client Data whenever selectedStaffClient changes (for Staff Dashboard)
+  const refreshStaffClientData = useCallback(async (clientToFetch?: Client) => {
+    const target = clientToFetch || selectedStaffClient;
+    if (!target) {
+      setStaffClientData(null);
+      return;
+    }
+    try {
+      const fullData = await api.getClientById(target.id);
+      setStaffClientData(fullData);
+    } catch (err) {
+      console.error('Error fetching staff selected client data:', err);
+    }
+  }, [selectedStaffClient]);
+
+  useEffect(() => {
+    if (selectedStaffClient) {
+      refreshStaffClientData();
+    } else {
+      setStaffClientData(null);
+    }
+  }, [selectedStaffClient, refreshStaffClientData]);
 
   // Load audit logs when opening audit log view
   const loadAuditLogs = useCallback(async () => {
@@ -470,10 +492,13 @@ export default function App() {
             setCurrentStaff={setCurrentStaff}
             employees={employees}
             allClients={allClients}
-            selectedClientData={clientData}
+            selectedClientData={staffClientData}
             onSelectClient={(clientId) => {
               const found = allClients.find((c) => c.id === clientId);
-              if (found) setCurrentClient(found);
+              if (found) {
+                setSelectedStaffClient(found);
+                refreshStaffClientData(found);
+              }
             }}
             catalogItems={catalogItems}
             lang={lang}
@@ -482,7 +507,7 @@ export default function App() {
             onRefreshClient={async () => {
               const freshClients = await api.getClients();
               setAllClients(freshClients);
-              await refreshCurrentClientData();
+              await refreshStaffClientData();
             }}
             onRefreshEmployees={async () => {
               const emps = await api.getEmployees();

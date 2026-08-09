@@ -594,6 +594,11 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
                   {pointsWallet.balance} <span className="text-sm font-normal text-rose-100">{t.pointsUnit}</span>
                 </div>
 
+                <div className="text-xs bg-white/15 px-3 py-1.5 rounded-xl border border-white/20 backdrop-blur-xs text-white relative z-10 flex items-center gap-1.5 font-medium">
+                  <Sparkles className="w-3.5 h-3.5 text-rose-200 shrink-0" />
+                  <span>{lang === 'th' ? 'ทุกยอดใช้จ่าย 100 บาท รับ 1 แต้มสะสม' : 'Earn 1 point for every 100 THB spent'}</span>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2 text-[11px] pt-3 border-t border-white/20 text-rose-100 relative z-10">
                   <div>
                     <span className="text-white/80 block">{t.lifetimePointsEarned}</span>

@@ -49,6 +49,45 @@ export function authenticateClientToken(
   }
 }
 
+export function createStaffToken(staffId: string, staffName: string, role?: string): string {
+  return jwt.sign(
+    { staffId, staffName, role: role || 'staff' },
+    JWT_SECRET,
+    { expiresIn: '12h' }
+  );
+}
+
+export function verifyStaffToken(token: string): { staffId: string; staffName: string; role: string } | null {
+  try {
+    if (!token || typeof token !== 'string') return null;
+    const decoded = jwt.verify(token, JWT_SECRET) as { staffId: string; staffName: string; role: string };
+    if (!decoded || !decoded.staffId) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+export function authenticateStaff(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: Staff authentication required' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  const decoded = verifyStaffToken(token);
+  if (!decoded || !decoded.staffId) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid or expired staff token' });
+  }
+
+  (req as any).authenticatedStaff = decoded;
+  next();
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -72,12 +111,45 @@ async function startServer() {
     }
   });
 
-  app.post('/api/brand-settings', (req, res) => {
+  app.post('/api/brand-settings', authenticateStaff, (req, res) => {
     try {
       const updated = store.updateBrandSettings(req.body);
       res.json(updated);
     } catch (err: any) {
       res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Staff Authentication & PIN verification
+  app.post('/api/staff/verify-pin', (req, res) => {
+    try {
+      const { pin, password, username } = req.body;
+      const inputPin = (pin || password || '').toString().trim();
+      if (!inputPin) {
+        return res.status(400).json({ error: 'PIN หรือรหัสผ่านจำเป็นต้องระบุ' });
+      }
+
+      let staff: any = null;
+      if (username) {
+        const emp = store.getEmployees().find(
+          (e) => e.username.toLowerCase() === username.toString().trim().toLowerCase()
+        );
+        if (emp && emp.password === inputPin) {
+          staff = emp;
+        }
+      }
+      if (!staff) {
+        staff = store.verifyStaffPinAndGetStaff(inputPin);
+      }
+
+      if (staff) {
+        const staffToken = createStaffToken(staff.id, staff.displayName, staff.role);
+        res.json({ success: true, staffToken, staff });
+      } else {
+        res.status(401).json({ error: 'PIN หรือรหัสผ่านไม่ถูกต้อง' });
+      }
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
   });
 
@@ -91,7 +163,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/employees', (req, res) => {
+  app.post('/api/employees', authenticateStaff, (req, res) => {
     try {
       const { employeeData, staffId, staffName } = req.body;
       const newEmp = store.createEmployee(employeeData, staffId || 'EMP-01', staffName || 'Admin');
@@ -101,7 +173,7 @@ async function startServer() {
     }
   });
 
-  app.put('/api/employees/:id', (req, res) => {
+  app.put('/api/employees/:id', authenticateStaff, (req, res) => {
     try {
       const { employeeData, staffId, staffName } = req.body;
       const updated = store.updateEmployee(req.params.id, employeeData, staffId || 'EMP-01', staffName || 'Admin');
@@ -111,7 +183,7 @@ async function startServer() {
     }
   });
 
-  app.delete('/api/employees/:id', (req, res) => {
+  app.delete('/api/employees/:id', authenticateStaff, (req, res) => {
     try {
       const staffId = req.body?.staffId || (req.query.staffId as string) || 'EMP-01';
       const staffName = req.body?.staffName || (req.query.staffName as string) || 'Admin';
@@ -122,7 +194,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/employees/:id/change-password', (req, res) => {
+  app.post('/api/employees/:id/change-password', authenticateStaff, (req, res) => {
     try {
       const { oldPassword, newPassword, staffId, staffName } = req.body;
       store.changePassword(req.params.id, oldPassword, newPassword, staffId, staffName);
@@ -133,7 +205,7 @@ async function startServer() {
   });
 
   // Clients
-  app.get('/api/clients', (req, res) => {
+  app.get('/api/clients', authenticateStaff, (req, res) => {
     try {
       const { search } = req.query;
       let clients = store.getClients();
@@ -184,7 +256,7 @@ async function startServer() {
     }
   });
 
-  app.get('/api/admin/export-clients', (req, res) => {
+  app.get('/api/admin/export-clients', authenticateStaff, (req, res) => {
     try {
       const data = store.getAllClientsExportData();
       res.json(data);
@@ -265,7 +337,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/clients', (req, res) => {
+  app.post('/api/clients', authenticateStaff, (req, res) => {
     try {
       const { clientData, staffId, staffName } = req.body;
       if (!staffId || !staffName) {
@@ -294,7 +366,7 @@ async function startServer() {
     }
   });
 
-  app.put('/api/clients/:id/notes', (req, res) => {
+  app.put('/api/clients/:id/notes', authenticateStaff, (req, res) => {
     try {
       const { notes, staffId, staffName } = req.body;
       if (!staffId || !staffName) {
@@ -308,7 +380,7 @@ async function startServer() {
   });
 
   // Coin Operations
-  app.post('/api/clients/:id/coin/add', (req, res) => {
+  app.post('/api/clients/:id/coin/add', authenticateStaff, (req, res) => {
     try {
       const { amount, note, staffId, staffName, isBonus } = req.body;
       const numAmount = Number(amount);
@@ -326,7 +398,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/clients/:id/coin/deduct', (req, res) => {
+  app.post('/api/clients/:id/coin/deduct', authenticateStaff, (req, res) => {
     try {
       const { amount, note, staffId, staffName } = req.body;
       const numAmount = Number(amount);
@@ -344,7 +416,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/coin/reverse', (req, res) => {
+  app.post('/api/coin/reverse', authenticateStaff, (req, res) => {
     try {
       const { txId, reason, staffId, staffName } = req.body;
       if (!txId || !reason || !staffId || !staffName) {
@@ -359,21 +431,29 @@ async function startServer() {
   });
 
   // Points Operations
-  app.post('/api/clients/:id/points/add', (req, res) => {
+  app.post('/api/clients/:id/points/add', authenticateStaff, (req, res) => {
     try {
-      const { amount, note, staffId, staffName } = req.body;
+      const { amount, note, staffId, staffName, sourceType, relatedCoinTxId, relatedPackageId, relatedCouponId } = req.body;
       const numAmount = Number(amount);
       if (isNaN(numAmount) || numAmount <= 0) {
         return res.status(400).json({ error: 'Valid positive points amount required' });
       }
-      const tx = store.addPoints(req.params.id, numAmount, note, staffId, staffName);
+      const tx = store.addPoints(
+        req.params.id,
+        numAmount,
+        note,
+        staffId,
+        staffName,
+        sourceType || 'direct_service',
+        { relatedCoinTxId, relatedPackageId, relatedCouponId }
+      );
       res.json(tx);
     } catch (err: any) {
       res.status(400).json({ error: err.message });
     }
   });
 
-  app.post('/api/clients/:id/points/deduct', (req, res) => {
+  app.post('/api/clients/:id/points/deduct', authenticateStaff, (req, res) => {
     try {
       const { amount, note, staffId, staffName } = req.body;
       const numAmount = Number(amount);
@@ -387,7 +467,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/points/reverse', (req, res) => {
+  app.post('/api/points/reverse', authenticateStaff, (req, res) => {
     try {
       const { txId, reason, staffId, staffName } = req.body;
       if (!txId || !reason || !staffId || !staffName) {
@@ -410,7 +490,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/catalog', (req, res) => {
+  app.post('/api/catalog', authenticateStaff, (req, res) => {
     try {
       const { itemData, staffId, staffName } = req.body;
       if (!itemData || !itemData.name || !itemData.type) {
@@ -423,7 +503,7 @@ async function startServer() {
     }
   });
 
-  app.put('/api/catalog/:id', (req, res) => {
+  app.put('/api/catalog/:id', authenticateStaff, (req, res) => {
     try {
       const { updates, staffId, staffName } = req.body;
       const item = store.updateCatalogItem(req.params.id, updates, staffId, staffName);
@@ -433,7 +513,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/catalog/bulk-price', (req, res) => {
+  app.post('/api/catalog/bulk-price', authenticateStaff, (req, res) => {
     try {
       const { itemIds, adjustmentType, value, staffId, staffName } = req.body;
       if (!Array.isArray(itemIds) || !itemIds.length || !adjustmentType || value === undefined) {
@@ -453,7 +533,7 @@ async function startServer() {
   });
 
   // Packages & Coupons
-  app.post('/api/clients/:id/packages/sell', (req, res) => {
+  app.post('/api/clients/:id/packages/sell', authenticateStaff, (req, res) => {
     try {
       const { catalogId, totalSessions, pricePaid, validityDays, staffId, staffName } = req.body;
       const numSessions = Number(totalSessions);
@@ -479,7 +559,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/packages/:id/use', (req, res) => {
+  app.post('/api/packages/:id/use', authenticateStaff, (req, res) => {
     try {
       const { note, staffId, staffName } = req.body;
       const pkg = store.usePackageSession(req.params.id, note, staffId, staffName);
@@ -489,7 +569,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/clients/:id/coupons/issue', (req, res) => {
+  app.post('/api/clients/:id/coupons/issue', authenticateStaff, (req, res) => {
     try {
       const { catalogId, totalQuantity, pricePaid, validityDays, staffId, staffName } = req.body;
       const numQty = Number(totalQuantity);
@@ -515,7 +595,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/coupons/:id/redeem', (req, res) => {
+  app.post('/api/coupons/:id/redeem', authenticateStaff, (req, res) => {
     try {
       const { note, staffId, staffName } = req.body;
       const cpn = store.redeemCouponUnit(req.params.id, note, staffId, staffName);
@@ -526,7 +606,7 @@ async function startServer() {
   });
 
   // Expiring Items & Follow-Up Tasks
-  app.get('/api/expiring-tasks', (req, res) => {
+  app.get('/api/expiring-tasks', authenticateStaff, (req, res) => {
     try {
       const tasks = store.getExpiringTasks();
       res.json(tasks);
@@ -535,7 +615,7 @@ async function startServer() {
     }
   });
 
-  app.put('/api/packages/:id/follow-up', (req, res) => {
+  app.put('/api/packages/:id/follow-up', authenticateStaff, (req, res) => {
     try {
       const { status, note, staffId, staffName } = req.body;
       if (!status || !staffId || !staffName) {
@@ -548,7 +628,7 @@ async function startServer() {
     }
   });
 
-  app.put('/api/coupons/:id/follow-up', (req, res) => {
+  app.put('/api/coupons/:id/follow-up', authenticateStaff, (req, res) => {
     try {
       const { status, note, staffId, staffName } = req.body;
       if (!status || !staffId || !staffName) {
@@ -571,7 +651,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/rewards', (req, res) => {
+  app.post('/api/rewards', authenticateStaff, (req, res) => {
     try {
       const { rewardData, staffId, staffName } = req.body;
       const item = store.createRewardItem(rewardData, staffId, staffName);
@@ -581,7 +661,7 @@ async function startServer() {
     }
   });
 
-  app.put('/api/rewards/:id', (req, res) => {
+  app.put('/api/rewards/:id', authenticateStaff, (req, res) => {
     try {
       const { updates, staffId, staffName } = req.body;
       const item = store.updateRewardItem(req.params.id, updates, staffId, staffName);
@@ -592,7 +672,7 @@ async function startServer() {
   });
 
   // Audit Logs
-  app.get('/api/audit-logs', (req, res) => {
+  app.get('/api/audit-logs', authenticateStaff, (req, res) => {
     try {
       const logs = store.getAuditLogs();
       res.json(logs);
@@ -602,7 +682,7 @@ async function startServer() {
   });
 
   // Financial Accounting
-  app.get('/api/financial', (req, res) => {
+  app.get('/api/financial', authenticateStaff, (req, res) => {
     try {
       const entries = store.getFinancialEntries();
       res.json(entries);
@@ -611,7 +691,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/financial', (req, res) => {
+  app.post('/api/financial', authenticateStaff, (req, res) => {
     try {
       const { entryData, staffId, staffName } = req.body;
       const entry = store.createFinancialEntry(entryData, staffId || 'EMP-01', staffName || 'Staff');
@@ -621,7 +701,7 @@ async function startServer() {
     }
   });
 
-  app.delete('/api/financial/:id', (req, res) => {
+  app.delete('/api/financial/:id', authenticateStaff, (req, res) => {
     try {
       const { staffId, staffName } = req.body;
       store.deleteFinancialEntry(req.params.id, staffId || 'EMP-01', staffName || 'Staff');
@@ -632,7 +712,7 @@ async function startServer() {
   });
 
   // System Factory Reset / Data Purge (Admin Only)
-  app.post('/api/admin/purge-data', (req, res) => {
+  app.post('/api/admin/purge-data', authenticateStaff, (req, res) => {
     try {
       const { staffId, password, targets } = req.body;
       if (!staffId || !password) {
@@ -650,7 +730,7 @@ async function startServer() {
   });
 
   // Get Backup & Auto-Report Settings
-  app.get('/api/admin/backup-settings', (req, res) => {
+  app.get('/api/admin/backup-settings', authenticateStaff, (req, res) => {
     try {
       const settings = store.getBackupSettings();
       res.json(settings);
@@ -660,7 +740,7 @@ async function startServer() {
   });
 
   // Save Backup & Auto-Report Settings
-  app.post('/api/admin/backup-settings', (req, res) => {
+  app.post('/api/admin/backup-settings', authenticateStaff, (req, res) => {
     try {
       const saved = store.saveBackupSettings(req.body);
       res.json({ success: true, settings: saved, message: 'บันทึกการตั้งค่าสำรองข้อมูลเรียบร้อยแล้ว' });
@@ -670,7 +750,7 @@ async function startServer() {
   });
 
   // Export Full Backup JSON Payload
-  app.get('/api/admin/backup-export', (req, res) => {
+  app.get('/api/admin/backup-export', authenticateStaff, (req, res) => {
     try {
       const data = store.getFullBackupData();
       res.json(data);
@@ -680,7 +760,7 @@ async function startServer() {
   });
 
   // Trigger Send Backup Report Email
-  app.post('/api/admin/send-backup-email', (req, res) => {
+  app.post('/api/admin/send-backup-email', authenticateStaff, (req, res) => {
     try {
       const { email } = req.body;
       const targetEmail = email || store.getBackupSettings().email;

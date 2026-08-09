@@ -14,8 +14,21 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
 }) => {
   const [lang, setLang] = useState<'th' | 'en'>(initialLang);
   const [activeTab, setActiveTab] = useState<'privacy' | 'terms'>('privacy');
-  const [acceptedPdpa, setAcceptedPdpa] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+
+  // Read saved acceptance from localStorage so checkbox stays checked if previously accepted
+  const isPreviouslyAccepted = typeof window !== 'undefined' && localStorage.getItem('mmm_pdpa_consent_accepted') === 'true';
+  const [acceptedPdpa, setAcceptedPdpa] = useState<boolean>(isPreviouslyAccepted);
+  const [acceptedTerms, setAcceptedTerms] = useState<boolean>(isPreviouslyAccepted);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      const accepted = localStorage.getItem('mmm_pdpa_consent_accepted') === 'true';
+      if (accepted) {
+        setAcceptedPdpa(true);
+        setAcceptedTerms(true);
+      }
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

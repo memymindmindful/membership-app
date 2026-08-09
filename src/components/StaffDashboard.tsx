@@ -37,6 +37,7 @@ import {
   FileSpreadsheet,
   Database,
   Lock,
+  Trash2,
 } from 'lucide-react';
 import appLogo from '../assets/images/me_my_mind_logo_1785924412256.jpg';
 import { FinancialDashboard } from './FinancialDashboard';
@@ -58,6 +59,7 @@ import {
   PointsTransaction,
   PointsWallet,
   BrandSettings,
+  BAHT_PER_POINT,
 } from '../types';
 import { translations, formatDate, formatShortDate, formatCurrency, translateTxNote } from '../lib/translations';
 import { api, FullClientData } from '../services/api';
@@ -287,19 +289,20 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   }, [currentStaff?.id, currentStaff?.role, canAccessClientOps, canAccessFinancial]);
 
   // Handle Staff Login
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
-    const found = employees.find((emp) => emp.username.toLowerCase() === loginUsername.trim().toLowerCase());
-    if (!found) {
-      setLoginError('ไม่พบชื่อผู้ใช้งานนี้ในระบบ');
-      return;
+    try {
+      const res = await api.verifyStaffPin(loginPassword, loginUsername);
+      if (res.staff) {
+        setCurrentStaff(res.staff);
+      } else {
+        const found = employees.find((emp) => emp.username.toLowerCase() === loginUsername.trim().toLowerCase());
+        if (found) setCurrentStaff(found);
+      }
+    } catch (err: any) {
+      setLoginError(err.message || 'รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบรหัสผ่านของคุณอีกครั้ง');
     }
-    if (found.password && found.password !== loginPassword) {
-      setLoginError('รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบรหัสผ่านของคุณอีกครั้ง');
-      return;
-    }
-    setCurrentStaff(found);
   };
 
   // STAFF LOGIN SCREEN (IF NOT LOGGED IN)
@@ -1643,8 +1646,8 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                       const match = catalogItems.find((c) => c.name === selectedName);
                       if (match && match.price > 0) {
                         setPtsSpendAmount(match.price);
-                        // Auto-calculate points (1 pt per 10 THB)
-                        setPointsAmount(Math.floor(match.price / 10));
+                        // Auto-calculate points (1 pt per BAHT_PER_POINT THB)
+                        setPointsAmount(Math.floor(match.price / BAHT_PER_POINT));
                       }
                     }}
                     className="w-full px-3 py-2 border border-[#F2E3E1] rounded-xl text-xs font-semibold text-[#3D3835] bg-white focus:outline-none focus:ring-2 focus:ring-[#E88D9F] shadow-2xs"
@@ -1677,7 +1680,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                     const val = e.target.value === '' ? '' : Number(e.target.value);
                     setPtsSpendAmount(val);
                     if (typeof val === 'number' && val > 0) {
-                      setPointsAmount(Math.floor(val / 10));
+                      setPointsAmount(Math.floor(val / BAHT_PER_POINT));
                     }
                   }}
                   className="w-full px-3 py-2 border border-stone-300 rounded-xl text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#E88D9F]"
