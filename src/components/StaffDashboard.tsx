@@ -1562,7 +1562,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
       {selectedClientData && (
         <ConfirmationModal
           isOpen={activeModal === 'add_pts'}
-          title="ให้คะแนนสะสมลูกค้า (ชำระเงินสด / โอนตรงหน้างาน)"
+          title="ให้คะแนนสะสมจากการซื้อสินค้า (Product Purchase)"
           lang={lang}
           onClose={() => {
             setActiveModal(null);
@@ -1580,7 +1580,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
 
             const parts: string[] = [];
             if (ptsServiceName.trim()) {
-              parts.push(`บริการ: ${ptsServiceName.trim()}`);
+              parts.push(`สินค้า: ${ptsServiceName.trim()}`);
             }
             if (ptsSpendAmount && Number(ptsSpendAmount) > 0) {
               parts.push(`ยอดชำระ: ฿${formatCurrency(Number(ptsSpendAmount))}`);
@@ -1610,51 +1610,23 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
           }}
         >
           <div className="space-y-3.5">
-            {/* Service Name Input & Quick Select from Catalog */}
+            {/* Notice Banner */}
+            <div className="p-3 bg-[#FFF8E7] border border-[#F5E6B8] rounded-xl text-[11px] text-[#8A6D1E] leading-relaxed">
+              การเพิ่มคะแนนสะสมแบบ Manual สามารถทำได้เฉพาะการซื้อสินค้าจากหน้าร้านเท่านั้น ในส่วนของการซื้อ Coin, Package, Voucher ระบบจะดึงคะแนนขึ้นให้อัตโนมัติ
+            </div>
+
+            {/* Product Item Name Input */}
             <div>
               <label className="block text-xs font-bold text-stone-700 mb-1">
-                ระบุบริการ / รายการที่ลูกค้าชำระเงิน (Service Item)
+                ระบุสินค้าที่ลูกค้าซื้อ (Product Item)
               </label>
               <input
                 type="text"
-                placeholder="เช่น นวดหน้า ออร์แกนิค กัวซา (หรือเลือกจากด้านล่าง)"
+                placeholder="เช่น กวาซาโรลเลอร์เซ็ท Amethyst, เซรั่มบำรุงผิว"
                 value={ptsServiceName}
                 onChange={(e) => setPtsServiceName(e.target.value)}
                 className="w-full px-3 py-2 border border-[#F2E3E1] rounded-xl text-xs font-medium text-[#3D3835] bg-[#FAF0ED]/50 focus:outline-none focus:ring-2 focus:ring-[#E88D9F]"
               />
-
-              {/* Catalog Quick Select */}
-              {catalogItems.length > 0 && (
-                <div className="mt-2 space-y-1.5">
-                  <label className="text-[11px] text-[#D87085] font-bold flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5 text-[#E88D9F]" />
-                    <span>เลือกด่วนจากรายการบริการในสตูดิโอ (Catalog):</span>
-                  </label>
-                  <select
-                    value={ptsServiceName}
-                    onChange={(e) => {
-                      const selectedName = e.target.value;
-                      setPtsServiceName(selectedName);
-                      const match = catalogItems.find((c) => c.name === selectedName);
-                      if (match && match.price > 0) {
-                        setPtsSpendAmount(match.price);
-                        // Auto-calculate points (1 pt per BAHT_PER_POINT THB)
-                        setPointsAmount(Math.floor(match.price / BAHT_PER_POINT));
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-[#F2E3E1] rounded-xl text-xs font-semibold text-[#3D3835] bg-white focus:outline-none focus:ring-2 focus:ring-[#E88D9F] shadow-2xs"
-                  >
-                    <option value="">-- พิมพ์ชื่อเอง หรือเลือกบริการจากรายการ --</option>
-                    {catalogItems
-                      .filter((c) => c.active)
-                      .map((cat) => (
-                        <option key={cat.id} value={cat.name}>
-                          {cat.name} — ฿{formatCurrency(cat.price)}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              )}
             </div>
 
             {/* Spending Amount & Points Calculation */}
