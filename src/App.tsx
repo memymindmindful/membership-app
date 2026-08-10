@@ -114,6 +114,7 @@ export default function App() {
     try {
       setIsLoading(true);
       const isStaffMode = window.location.search.includes('mode=staff') || window.location.search.includes('staff=true');
+      const isDemoMode = window.location.search.includes('demo=true') || window.location.search.includes('dev=true');
 
       // Sync Brand Settings from Backend Server
       try {
@@ -144,20 +145,23 @@ export default function App() {
       setCatalogItems(catList);
       setRewardCatalog(rewardList);
 
-      const [empList, clientList] = await Promise.all([
-        api.getEmployees().catch(() => []),
-        api.getClients().catch(() => []),
-      ]);
-      if (empList.length > 0) setEmployees(empList);
-      if (clientList.length > 0) {
-        setAllClients(clientList);
-        if (!selectedStaffClient) {
-          setSelectedStaffClient(clientList[0]);
+      let clientList: Client[] = [];
+      if (isStaffMode || isDemoMode) {
+        const [empList, fetchedClients] = await Promise.all([
+          api.getEmployees().catch(() => []),
+          api.getClients().catch(() => []),
+        ]);
+        clientList = fetchedClients;
+        if (empList.length > 0) setEmployees(empList);
+        if (clientList.length > 0) {
+          setAllClients(clientList);
+          if (!selectedStaffClient) {
+            setSelectedStaffClient(clientList[0]);
+          }
         }
       }
 
       // Check if there is a previously verified session in sessionStorage
-      const isDemoMode = window.location.search.includes('demo=true') || window.location.search.includes('dev=true');
       const storedClientId = sessionStorage.getItem('mmm_logged_in_client_id');
       if (storedClientId) {
         try {
@@ -182,7 +186,7 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [selectedStaffClient]);
 
   // Ensure staff directory is loaded when switching to staff dashboard or staff logs in
   const ensureStaffData = useCallback(async () => {
