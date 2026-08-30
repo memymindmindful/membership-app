@@ -8,6 +8,7 @@ import {
   Check,
   X,
   Edit2,
+  Copy,
   Power,
   Eye,
   AlertCircle,
@@ -173,6 +174,21 @@ export const CatalogManagement: React.FC<CatalogManagementProps> = ({
     setEditingItemId(item.id);
     setServiceType(item.type);
     setName(item.name);
+    setCategory(item.category || '');
+    setDescription(item.description);
+    setPrice(item.price);
+    setDefaultSessions(item.defaultSessions || 10);
+    setValidityDays(item.validityDays);
+    setImageUrl(item.imageUrl);
+    setImagePreview(item.imageUrl);
+    setIsCrmMarketingVoucher(item.isCrmMarketingVoucher || false);
+    setShowAddForm(true);
+  };
+
+  const handleDuplicateServiceItem = (item: CatalogItem) => {
+    setEditingItemId(null);
+    setServiceType(item.type);
+    setName(`${item.name} (Copy)`);
     setCategory(item.category || '');
     setDescription(item.description);
     setPrice(item.price);
@@ -1096,6 +1112,14 @@ export const CatalogManagement: React.FC<CatalogManagementProps> = ({
                       title="Edit Template"
                     >
                       <Edit2 className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={() => handleDuplicateServiceItem(item)}
+                      className="p-1.5 text-[#2D2926]/60 hover:text-[#8C6D5E] bg-[#F9F8F6] hover:bg-[#F2EDE4] rounded-full border border-[#D1CEC7] transition"
+                      title="Duplicate Template"
+                    >
+                      <Copy className="w-4 h-4" />
                     </button>
 
                     <button
