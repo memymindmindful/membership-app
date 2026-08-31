@@ -31,6 +31,7 @@ import {
   PointsTransaction,
   PointsWallet,
   RewardCatalogItem,
+  ClientOneTimeBooking,
 } from '../types';
 import {
   translations,
@@ -50,6 +51,7 @@ interface CustomerAppProps {
   pointsTransactions: PointsTransaction[];
   packages: ClientPackage[];
   coupons: ClientCoupon[];
+  oneTimeBookings?: ClientOneTimeBooking[];
   notifications: InAppNotification[];
   rewardCatalog: RewardCatalogItem[];
   lang: AppLanguage;
@@ -69,6 +71,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
   pointsTransactions,
   packages,
   coupons,
+  oneTimeBookings = [],
   notifications,
   rewardCatalog,
   lang,
@@ -337,15 +340,68 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
             </div>
           )}
 
-          {/* TAB 2: MY PACKAGES */}
+          {/* TAB 2: MY PACKAGES & BOOKINGS */}
           {activeTab === 'packages' && (
             <div className="space-y-4 animate-in fade-in">
               <div>
-                <h2 className="text-base font-bold text-stone-800">{t.myPackagesTitle}</h2>
+                <h2 className="text-base font-bold text-stone-800">{lang === 'th' ? 'แพ็กเกจ & การจองบริการ' : 'My Packages & Bookings'}</h2>
                 <p className="text-xs text-stone-500">{t.myPackagesSubtitle}</p>
               </div>
 
-              {activePackages.length === 0 ? (
+              {/* Active One-Time Bookings */}
+              {oneTimeBookings.filter((b) => b.status === 'booked').length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-[#3D3835] flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#E88D9F]" />
+                    <span>{lang === 'th' ? 'การจองบริการรายครั้ง (One-Time Service)' : 'One-Time Bookings'}</span>
+                  </h3>
+
+                  {oneTimeBookings
+                    .filter((b) => b.status === 'booked')
+                    .map((booking) => {
+                      const remaining = Math.max(0, booking.fullPrice - booking.depositAmount);
+                      return (
+                        <div
+                          key={booking.id}
+                          className="bg-white rounded-2xl border border-[#F2E3E1] shadow-2xs p-4 space-y-3 relative overflow-hidden"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={booking.imageUrl || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=200&q=80'}
+                                alt={booking.catalogName}
+                                className="w-14 h-14 rounded-xl object-cover border border-[#F2E3E1]"
+                              />
+                              <div>
+                                <h4 className="text-sm font-bold text-[#3D3835]">{booking.catalogName}</h4>
+                                <p className="text-[11px] text-[#6E6763]">📍 {booking.branch}</p>
+                                <p className="text-[11px] text-[#D87085] font-medium">📅 {formatDate(booking.bookingDateTime, lang)}</p>
+                              </div>
+                            </div>
+                            <span className="shrink-0 text-[10px] bg-[#FAF0ED] text-[#D87085] font-bold px-2 py-0.5 rounded-full border border-[#F2E3E1]">
+                              {lang === 'th' ? 'รอดำเนินการ' : 'Booked'}
+                            </span>
+                          </div>
+
+                          <div className="p-2.5 bg-[#FAF0ED]/50 rounded-xl border border-[#F2E3E1] flex items-center justify-between text-xs">
+                            <span className="text-[#6E6763]">{lang === 'th' ? 'สถานะการชำระ:' : 'Payment:'}</span>
+                            {booking.paymentStatusAtBooking === 'paid_full' ? (
+                              <span className="font-bold text-emerald-700">
+                                {lang === 'th' ? `ชำระเต็มจำนวนแล้ว (฿${formatCurrency(booking.fullPrice)})` : `Paid in Full (฿${formatCurrency(booking.fullPrice)})`}
+                              </span>
+                            ) : (
+                              <span className="font-bold text-amber-900">
+                                {lang === 'th' ? `มัดจำแล้ว ฿${formatCurrency(booking.depositAmount)} (คงเหลือ ฿${formatCurrency(remaining)})` : `Deposit ฿${formatCurrency(booking.depositAmount)} (Bal: ฿${formatCurrency(remaining)})`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+
+              {activePackages.length === 0 && oneTimeBookings.filter((b) => b.status === 'booked').length === 0 ? (
                 <div className="bg-white p-8 rounded-2xl border border-stone-200 text-center space-y-2">
                   <Package className="w-10 h-10 text-stone-300 mx-auto" />
                   <p className="text-xs font-medium text-stone-500">{t.noActivePackages}</p>

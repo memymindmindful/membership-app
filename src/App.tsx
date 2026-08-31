@@ -478,6 +478,7 @@ export default function App() {
               pointsTransactions={clientData.pointsTransactions}
               packages={clientData.packages}
               coupons={clientData.coupons}
+              oneTimeBookings={clientData.oneTimeBookings}
               notifications={clientData.notifications}
               rewardCatalog={rewardCatalog}
               lang={lang}

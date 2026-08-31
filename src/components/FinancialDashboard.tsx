@@ -46,6 +46,7 @@ interface FinancialDashboardProps {
 const CATEGORY_LABEL_MAP: Record<FinancialEntryCategory, { label: string; isIncome: boolean }> = {
   coin_purchase: { label: 'เติม Cash Coin', isIncome: true },
   direct_service: { label: 'ชำระเงินสด/โอนตรงหน้างาน', isIncome: true },
+  onetime_service: { label: 'บริการรายครั้ง / มัดจำ (One-Time / Deposit)', isIncome: true },
   package_sale: { label: 'ขายคอร์ส/แพ็กเกจ', isIncome: true },
   coupon_sale: { label: 'ขายคูปองส่วนลด', isIncome: true },
   online_course: { label: 'ขายคอร์สเรียนออนไลน์', isIncome: true },

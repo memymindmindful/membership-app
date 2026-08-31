@@ -9,6 +9,7 @@ import {
   Client,
   ClientCoupon,
   ClientPackage,
+  ClientOneTimeBooking,
   CoinTransaction,
   Employee,
   FinancialEntry,
@@ -21,6 +22,8 @@ import {
   ExpiringItemTask,
 } from '../types';
 
+export type { ClientOneTimeBooking } from '../types';
+
 export interface FullClientData {
   token?: string;
   sessionToken?: string;
@@ -31,6 +34,7 @@ export interface FullClientData {
   pointsTransactions: PointsTransaction[];
   packages: ClientPackage[];
   coupons: ClientCoupon[];
+  oneTimeBookings?: ClientOneTimeBooking[];
   notifications: InAppNotification[];
 }
 
@@ -515,6 +519,61 @@ export const api = {
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Failed to void coupon');
+    }
+    return res.json();
+  },
+
+  async bookOneTimeService(
+    clientId: string,
+    bookingData: {
+      catalogId: string;
+      fullPrice: number;
+      depositAmount: number;
+      paymentStatusAtBooking: 'deposit' | 'paid_full';
+      bookingDateTime: string;
+      branch: string;
+      staffId: string;
+      staffName: string;
+    }
+  ): Promise<ClientOneTimeBooking> {
+    const res = await fetch(`/api/clients/${clientId}/onetime-bookings`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(bookingData),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to book one-time service');
+    }
+    return res.json();
+  },
+
+  async markOneTimeBookingUsed(
+    bookingId: string,
+    staffId: string,
+    staffName: string
+  ): Promise<ClientOneTimeBooking> {
+    const res = await fetch(`/api/onetime-bookings/${bookingId}/mark-used`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ staffId, staffName }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to mark service as used');
+    }
+    return res.json();
+  },
+
+  async voidOneTimeBooking(bookingId: string, reason: string): Promise<ClientOneTimeBooking> {
+    const res = await fetch(`/api/onetime-bookings/${bookingId}/void`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to void one-time booking');
     }
     return res.json();
   },

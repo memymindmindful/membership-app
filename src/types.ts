@@ -79,7 +79,7 @@ export interface PointsWallet {
 }
 
 export type PointsTransactionType = 'points_earned' | 'points_redeemed' | 'points_adjusted';
-export type PointsSourceType = 'coin_topup' | 'package_sale' | 'coupon_sale' | 'direct_service' | 'manual_award' | 'other';
+export type PointsSourceType = 'coin_topup' | 'package_sale' | 'coupon_sale' | 'onetime_booking' | 'direct_service' | 'manual_award' | 'other';
 
 export interface PointsTransaction {
   id: string;
@@ -91,6 +91,7 @@ export interface PointsTransaction {
   relatedCoinTxId?: string;
   relatedPackageId?: string;
   relatedCouponId?: string;
+  relatedOneTimeBookingId?: string;
   resultingBalance: number;
   createdByStaffId: string;
   createdByStaffName: string;
@@ -186,6 +187,28 @@ export interface ClientCoupon {
   voidReason?: string;
 }
 
+export interface ClientOneTimeBooking {
+  id: string;
+  clientId: string;
+  catalogId: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+  fullPrice: number;
+  depositAmount: number;
+  paymentStatusAtBooking: 'deposit' | 'paid_full';
+  bookingDateTime: string;
+  branch: string;
+  status: 'booked' | 'used' | 'voided';
+  usedAt?: string;
+  voidedAt?: string;
+  voidedBy?: string;
+  voidReason?: string;
+  createdAt: string;
+  createdByStaffId: string;
+  createdByStaffName: string;
+}
+
 export interface ExpiringItemTask {
   id: string;
   itemType: 'package' | 'coupon';
@@ -245,7 +268,7 @@ export interface AuditLog {
   staffId: string;
   staffName: string;
   action: string;
-  entityType: 'client' | 'coin' | 'points' | 'package' | 'coupon' | 'catalog' | 'reward' | 'financial' | 'staff';
+  entityType: 'client' | 'coin' | 'points' | 'package' | 'coupon' | 'onetime_booking' | 'catalog' | 'reward' | 'financial' | 'staff';
   entityId: string;
   previousData?: any;
   newData?: any;
@@ -258,6 +281,7 @@ export type FinancialEntryCategory =
   | 'direct_service'     // ชำระเงินสด/โอนตรงหน้างาน (ได้สะสมคะแนน)
   | 'package_sale'       // ขายคอร์ส/แพ็กเกจ
   | 'coupon_sale'        // ขายคูปอง
+  | 'onetime_service'    // บริการ One-Time (มัดจำ หรือ ชำระเต็ม หรือ ยอดคงเหลือ)
   | 'online_course'      // ขายคอร์สออนไลน์
   | 'product_sale'       // ขายผลิตภัณฑ์หน้าสปา
   | 'other_income'       // รายรับอื่น ๆ

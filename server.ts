@@ -271,6 +271,7 @@ async function startServer() {
       const pointsTxs = store.getPointsTransactions(client.id);
       const packages = store.getClientPackages(client.id);
       const coupons = store.getClientCoupons(client.id);
+      const oneTimeBookings = store.getClientOneTimeBookings(client.id);
       const notifications = store.getNotifications(client.id);
 
       res.json({
@@ -281,6 +282,7 @@ async function startServer() {
         pointsTransactions: pointsTxs,
         packages,
         coupons,
+        oneTimeBookings,
         notifications,
       });
     } catch (err: any) {
@@ -348,6 +350,7 @@ async function startServer() {
       const pointsTxs = store.getPointsTransactions(client.id);
       const packages = store.getClientPackages(client.id);
       const coupons = store.getClientCoupons(client.id);
+      const oneTimeBookings = store.getClientOneTimeBookings(client.id);
       const notifications = store.getNotifications(client.id);
 
       const sessionToken = createSessionToken(client.id, verifiedUserId);
@@ -362,6 +365,7 @@ async function startServer() {
         pointsTransactions: pointsTxs,
         packages,
         coupons,
+        oneTimeBookings,
         notifications,
       });
     } catch (err: any) {
@@ -684,6 +688,84 @@ async function startServer() {
         reason || 'ยกเลิกรายการโดยผู้ดูแลระบบ'
       );
       res.json(cpn);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // One-Time Service Bookings
+  app.post('/api/clients/:id/onetime-bookings', authenticateStaff, (req, res) => {
+    try {
+      const {
+        catalogId,
+        fullPrice,
+        depositAmount,
+        paymentStatusAtBooking,
+        bookingDateTime,
+        branch,
+        staffId,
+        staffName,
+      } = req.body;
+
+      if (!catalogId) {
+        return res.status(400).json({ error: 'Catalog item is required' });
+      }
+
+      const numFullPrice = Number(fullPrice);
+      const numDeposit = Number(depositAmount);
+
+      if (isNaN(numFullPrice) || numFullPrice <= 0) {
+        return res.status(400).json({ error: 'Valid full price is required' });
+      }
+      if (isNaN(numDeposit) || numDeposit < 0) {
+        return res.status(400).json({ error: 'Valid deposit amount is required' });
+      }
+
+      const booking = store.bookOneTimeService(
+        req.params.id,
+        catalogId,
+        numFullPrice,
+        numDeposit,
+        paymentStatusAtBooking || (numDeposit === numFullPrice ? 'paid_full' : 'deposit'),
+        bookingDateTime || new Date().toISOString(),
+        branch || 'Me.My.Mind Spa & Massage',
+        staffId || 'EMP-01',
+        staffName || 'Staff'
+      );
+      res.status(201).json(booking);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/onetime-bookings/:id/mark-used', authenticateStaff, (req, res) => {
+    try {
+      const { staffId, staffName } = req.body;
+      const booking = store.markOneTimeBookingUsed(
+        req.params.id,
+        staffId || 'EMP-01',
+        staffName || 'Staff'
+      );
+      res.json(booking);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/onetime-bookings/:id/void', authenticateStaff, (req, res) => {
+    try {
+      const staff = (req as any).authenticatedStaff;
+      if (staff.role !== 'admin') {
+        return res.status(403).json({ error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถยกเลิกรายการได้' });
+      }
+      const { reason } = req.body;
+      const booking = store.voidOneTimeBooking(
+        req.params.id,
+        staff.staffId,
+        staff.staffName,
+        reason || 'ยกเลิกรายการโดยผู้ดูแลระบบ'
+      );
+      res.json(booking);
     } catch (err: any) {
       res.status(400).json({ error: err.message });
     }

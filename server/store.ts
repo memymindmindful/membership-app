@@ -10,6 +10,7 @@ import {
   Client,
   ClientCoupon,
   ClientPackage,
+  ClientOneTimeBooking,
   CoinTransaction,
   Employee,
   InAppNotification,
@@ -38,6 +39,7 @@ interface DatabaseSchema {
   catalogItems: CatalogItem[];
   clientPackages: ClientPackage[];
   clientCoupons: ClientCoupon[];
+  clientOneTimeBookings?: ClientOneTimeBooking[];
   rewardCatalogItems: RewardCatalogItem[];
   notifications: InAppNotification[];
   backupSettings?: {
@@ -667,6 +669,7 @@ function getInitialData(): DatabaseSchema {
     notifications,
     auditLogs,
     financialEntries,
+    clientOneTimeBookings: [],
   };
 }
 
@@ -686,6 +689,9 @@ class Store {
       if (fs.existsSync(DATA_FILE)) {
         const fileData = fs.readFileSync(DATA_FILE, 'utf-8');
         const parsed: DatabaseSchema = JSON.parse(fileData);
+        if (!parsed.clientOneTimeBookings) {
+          parsed.clientOneTimeBookings = [];
+        }
         // Ensure employees list exists and includes initial roles if empty
         if (!parsed.employees || parsed.employees.length === 0) {
           parsed.employees = getInitialData().employees;
@@ -1461,7 +1467,7 @@ class Store {
     staffId: string,
     staffName: string,
     sourceType: PointsSourceType = 'direct_service',
-    relatedIds?: { relatedCoinTxId?: string; relatedPackageId?: string; relatedCouponId?: string }
+    relatedIds?: { relatedCoinTxId?: string; relatedPackageId?: string; relatedCouponId?: string; relatedOneTimeBookingId?: string }
   ): PointsTransaction {
     if (amount <= 0) {
       throw new Error('Points amount must be greater than 0');
@@ -1482,6 +1488,7 @@ class Store {
       relatedCoinTxId: relatedIds?.relatedCoinTxId,
       relatedPackageId: relatedIds?.relatedPackageId,
       relatedCouponId: relatedIds?.relatedCouponId,
+      relatedOneTimeBookingId: relatedIds?.relatedOneTimeBookingId,
       resultingBalance: wallet.balance,
       createdByStaffId: staffId,
       createdByStaffName: staffName,
@@ -1997,6 +2004,162 @@ class Store {
     return cpn;
   }
 
+  // One-Time Service Bookings Operations
+  public getClientOneTimeBookings(clientId: string): ClientOneTimeBooking[] {
+    if (!this.db.clientOneTimeBookings) {
+      this.db.clientOneTimeBookings = [];
+    }
+    return this.db.clientOneTimeBookings.filter((b) => b.clientId === clientId);
+  }
+
+  public bookOneTimeService(
+    clientId: string,
+    catalogId: string,
+    fullPrice: number,
+    depositAmount: number,
+    paymentStatusAtBooking: 'deposit' | 'paid_full',
+    bookingDateTime: string,
+    branch: string,
+    staffId: string,
+    staffName: string
+  ): ClientOneTimeBooking {
+    const catalog = this.db.catalogItems.find((c) => c.id === catalogId);
+    const booking: ClientOneTimeBooking = {
+      id: `OTB-${Date.now()}`,
+      clientId,
+      catalogId,
+      name: catalog?.name || 'One-Time Service',
+      description: catalog?.description || '',
+      imageUrl: catalog?.imageUrl || '',
+      fullPrice,
+      depositAmount,
+      paymentStatusAtBooking,
+      bookingDateTime,
+      branch: branch || 'Me.My.Mind Spa & Massage',
+      status: 'booked',
+      createdAt: new Date().toISOString(),
+      createdByStaffId: staffId,
+      createdByStaffName: staffName,
+    };
+
+    if (!this.db.clientOneTimeBookings) {
+      this.db.clientOneTimeBookings = [];
+    }
+    this.db.clientOneTimeBookings.unshift(booking);
+
+    if (depositAmount > 0) {
+      const ptsEarned = Math.floor(depositAmount / BAHT_PER_POINT);
+      if (ptsEarned > 0) {
+        this.addPoints(
+          clientId,
+          ptsEarned,
+          `สะสมคะแนนจากการจองบริการ: ${booking.name} (฿${depositAmount.toLocaleString()})`,
+          staffId,
+          staffName,
+          'onetime_booking',
+          { relatedOneTimeBookingId: booking.id }
+        );
+      }
+    }
+
+    this.notifyClient(
+      clientId,
+      'บันทึกการจองบริการเรียบร้อย',
+      `พนักงานได้บันทึกการจองบริการ "${booking.name}" (${booking.branch}) สำหรับวันที่ ${bookingDateTime.replace('T', ' ')} ${
+        paymentStatusAtBooking === 'deposit' ? `(มัดจำ ฿${depositAmount.toLocaleString()})` : `(ชำระเต็มจำนวน ฿${fullPrice.toLocaleString()})`
+      }`
+    );
+
+    this.logAudit(staffId, staffName, 'BOOK_ONETIME_SERVICE', 'onetime_booking', booking.id, 'จองบริการ One-Time', null, booking);
+    this.saveToDisk();
+    return booking;
+  }
+
+  public markOneTimeBookingUsed(bookingId: string, staffId: string, staffName: string): ClientOneTimeBooking {
+    if (!this.db.clientOneTimeBookings) {
+      this.db.clientOneTimeBookings = [];
+    }
+    const booking = this.db.clientOneTimeBookings.find((b) => b.id === bookingId);
+    if (!booking) throw new Error('Booking not found');
+    if (booking.status !== 'booked') throw new Error('Booking is not in a usable state');
+
+    const previousData = { ...booking };
+    booking.status = 'used';
+    booking.usedAt = new Date().toISOString();
+
+    const remaining = booking.fullPrice - booking.depositAmount;
+    if (booking.paymentStatusAtBooking === 'deposit' && remaining > 0) {
+      const ptsEarned = Math.floor(remaining / BAHT_PER_POINT);
+      if (ptsEarned > 0) {
+        this.addPoints(
+          booking.clientId,
+          ptsEarned,
+          `สะสมคะแนนจากยอดคงเหลือของบริการ: ${booking.name} (฿${remaining.toLocaleString()})`,
+          staffId,
+          staffName,
+          'onetime_booking',
+          { relatedOneTimeBookingId: booking.id }
+        );
+      }
+    }
+
+    this.notifyClient(
+      booking.clientId,
+      'ใช้บริการเรียบร้อย',
+      `พนักงานได้บันทึกการเข้ารับบริการ "${booking.name}" เรียบร้อยแล้ว${
+        booking.paymentStatusAtBooking === 'deposit' && remaining > 0
+          ? ` (ชำระส่วนที่เหลือ ฿${remaining.toLocaleString()})`
+          : ''
+      }`
+    );
+
+    this.logAudit(staffId, staffName, 'MARK_ONETIME_USED', 'onetime_booking', booking.id, 'ใช้บริการ One-Time แล้ว', previousData, booking);
+    this.saveToDisk();
+    return booking;
+  }
+
+  public voidOneTimeBooking(
+    bookingId: string,
+    staffId: string,
+    staffName: string,
+    reason: string
+  ): ClientOneTimeBooking {
+    if (!this.db.clientOneTimeBookings) {
+      this.db.clientOneTimeBookings = [];
+    }
+    const booking = this.db.clientOneTimeBookings.find((b) => b.id === bookingId);
+    if (!booking) throw new Error('One-time booking not found');
+    if (booking.status === 'voided') throw new Error('This booking has already been voided');
+
+    const previousData = { ...booking };
+    booking.status = 'voided';
+    booking.voidedAt = new Date().toISOString();
+    booking.voidedBy = staffName;
+    booking.voidReason = reason || 'ยกเลิกรายการโดยผู้ดูแลระบบ';
+
+    // Reverse any points awarded for this booking
+    const relatedPtsTxs = this.db.pointsTransactions.filter(
+      (tx) => tx.relatedOneTimeBookingId === bookingId && tx.type === 'points_earned' && !tx.reversed
+    );
+    for (const ptsTx of relatedPtsTxs) {
+      try {
+        this.reversePointsTransaction(ptsTx.id, `ยกเลิกการจองบริการ One-Time: ${reason || 'คีย์ผิด/ยกเลิก'}`, staffId, staffName);
+      } catch (err) {
+        console.warn('Could not reverse points for voided booking:', err);
+      }
+    }
+
+    this.notifyClient(
+      booking.clientId,
+      'ยกเลิกรายการจองบริการ',
+      `รายการจองบริการ "${booking.name}" ถูกยกเลิกโดยผู้ดูแลระบบ (${reason || 'คีย์ข้อมูลผิด'}) รายได้และคะแนนสะสมที่เกี่ยวข้องถูกปรับปรุงแล้ว`
+    );
+
+    this.logAudit(staffId, staffName, 'VOID_ONETIME_BOOKING', 'onetime_booking', booking.id, reason || 'ยกเลิกการจอง', previousData, booking);
+    this.saveToDisk();
+    return booking;
+  }
+
   // Expiring Items & Follow-Up Tasks
   public getExpiringTasks(): ExpiringItemTask[] {
     this.refreshItemStatuses();
@@ -2222,22 +2385,23 @@ class Store {
       }
     }
 
-    // 2. Auto-synthesize from Points transactions (Direct cash/promptpay payments ONLY - exclude points awarded for Coin topups, Bonus Coins, Package or Coupon sales)
+    // 2. Auto-synthesize from Points transactions (Direct cash/promptpay payments ONLY - exclude points awarded for Coin topups, Bonus Coins, Package or Coupon sales, or One-Time bookings)
     for (const tx of this.db.pointsTransactions) {
       if (tx.type === 'points_earned' && !tx.reversed) {
         const sourceType = tx.sourceType;
         const note = tx.note || '';
 
-        // Structured filtering: Exclude points linked to Coin topups, Package sales, Coupon sales, or other non-direct sources
-        const isExcludedSource = sourceType && ['coin_topup', 'package_sale', 'coupon_sale'].includes(sourceType);
-        const hasRelatedRef = Boolean(tx.relatedCoinTxId || tx.relatedPackageId || tx.relatedCouponId);
+        // Structured filtering: Exclude points linked to Coin topups, Package sales, Coupon sales, One-Time bookings, or other non-direct sources
+        const isExcludedSource = sourceType && ['coin_topup', 'package_sale', 'coupon_sale', 'onetime_booking'].includes(sourceType);
+        const hasRelatedRef = Boolean(tx.relatedCoinTxId || tx.relatedPackageId || tx.relatedCouponId || tx.relatedOneTimeBookingId);
 
         // Fallback string matching for legacy/untyped records
         const isFromCoin = note.includes('เติมเงิน') || note.includes('Coin') || note.includes('โบนัส') || note.includes('Bonus');
         const isFromPackage = note.includes('คอร์ส') || note.includes('แพ็กเกจ') || note.includes('Package');
         const isFromCoupon = note.includes('คูปอง') || note.includes('Coupon');
+        const isFromOneTime = note.includes('จองบริการ') || note.includes('One-Time') || note.includes('ยอดคงเหลือของบริการ');
 
-        if (isExcludedSource || hasRelatedRef || isFromCoin || isFromPackage || isFromCoupon) {
+        if (isExcludedSource || hasRelatedRef || isFromCoin || isFromPackage || isFromCoupon || isFromOneTime) {
           continue;
         }
 
@@ -2325,6 +2489,58 @@ class Store {
       }
     }
 
+    // 5. Auto-synthesize from One-Time Service Bookings (deposits and remaining balance upon usage)
+    if (this.db.clientOneTimeBookings) {
+      for (const booking of this.db.clientOneTimeBookings) {
+        if (booking.status === 'voided') continue;
+        const client = this.db.clients.find((c) => c.id === booking.clientId);
+        const clientName = client ? `${client.displayName} (${client.nickname})` : 'ลูกค้าทั่วไป';
+
+        if (booking.depositAmount > 0) {
+          autoEntries.push({
+            id: `AUTO-OTB-${booking.id}-deposit`,
+            type: 'income',
+            category: 'onetime_service',
+            categoryNameTh: booking.paymentStatusAtBooking === 'paid_full' ? 'บริการ One-Time (ชำระเต็มจำนวน)' : 'บริการ One-Time (เงินมัดจำ)',
+            title: `${booking.name} — ${booking.branch} (${clientName})`,
+            amount: booking.depositAmount,
+            date: booking.bookingDateTime ? booking.bookingDateTime.split('T')[0] : booking.createdAt.split('T')[0],
+            note: booking.description || `One-time booking deposit`,
+            clientId: booking.clientId,
+            clientName,
+            sourceTxId: booking.id,
+            createdByStaffId: booking.createdByStaffId,
+            createdByStaffName: booking.createdByStaffName,
+            createdAt: booking.createdAt,
+            isAutoGenerated: true,
+          });
+        }
+
+        if (booking.status === 'used' && booking.paymentStatusAtBooking === 'deposit') {
+          const remaining = booking.fullPrice - booking.depositAmount;
+          if (remaining > 0) {
+            autoEntries.push({
+              id: `AUTO-OTB-${booking.id}-remaining`,
+              type: 'income',
+              category: 'onetime_service',
+              categoryNameTh: 'บริการ One-Time (ยอดคงเหลือหลังใช้บริการ)',
+              title: `${booking.name} — ${booking.branch} (${clientName}) — ยอดคงเหลือ`,
+              amount: remaining,
+              date: booking.usedAt ? booking.usedAt.split('T')[0] : booking.bookingDateTime.split('T')[0],
+              note: `ชำระส่วนที่เหลือหลังใช้บริการจริง`,
+              clientId: booking.clientId,
+              clientName,
+              sourceTxId: `${booking.id}-remaining`,
+              createdByStaffId: booking.createdByStaffId,
+              createdByStaffName: booking.createdByStaffName,
+              createdAt: booking.usedAt || booking.createdAt,
+              isAutoGenerated: true,
+            });
+          }
+        }
+      }
+    }
+
     // Combine & Sort descending by createdAt
     const all = [...manual, ...autoEntries];
     return all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -2345,6 +2561,7 @@ class Store {
       direct_service: 'ชำระเงินสด/โอนตรงหน้างาน',
       package_sale: 'ขายคอร์ส/แพ็กเกจ',
       coupon_sale: 'ขายคูปอง',
+      onetime_service: 'บริการ One-Time',
       online_course: 'ขายคอร์สเรียนออนไลน์',
       product_sale: 'ขายผลิตภัณฑ์หน้าสปา',
       other_income: 'รายรับอื่น ๆ',
@@ -2426,6 +2643,7 @@ class Store {
       this.db.pointsWallets = {};
       this.db.clientPackages = [];
       this.db.clientCoupons = [];
+      this.db.clientOneTimeBookings = [];
       this.db.notifications = [];
     }
 
@@ -2548,6 +2766,7 @@ class Store {
       pointsWallets: this.db.pointsWallets,
       clientPackages: this.db.clientPackages,
       clientCoupons: this.db.clientCoupons,
+      clientOneTimeBookings: this.db.clientOneTimeBookings || [],
       coinTransactions: this.db.coinTransactions,
       pointsTransactions: this.db.pointsTransactions,
       financialEntries: this.db.financialEntries,
