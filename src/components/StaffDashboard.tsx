@@ -263,6 +263,17 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
     code?: string;
   } | null>(null);
 
+  // Void Package / Coupon State (Admin only)
+  const [voidTargetItem, setVoidTargetItem] = useState<{
+    type: 'package' | 'coupon';
+    id: string;
+    name: string;
+    code?: string;
+    pricePaid?: number;
+  } | null>(null);
+  const [voidReason, setVoidReason] = useState('');
+  const [, setIsVoiding] = useState(false);
+
   // Filter clients by search query
   const filteredClients = allClients.filter(
     (c) =>
@@ -959,7 +970,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                 <div className="flex items-center justify-between pb-3 border-b border-[#FAF0ED]">
                   <h3 className="text-sm font-bold text-[#3D3835] flex items-center gap-2">
                     <Package className="w-4 h-4 text-[#E88D9F]" />
-                    Active Packages ({selectedClientData.packages.filter((p) => p.status !== 'used_up').length})
+                    Active Packages ({selectedClientData.packages.filter((p) => p.status !== 'used_up' && p.status !== 'voided').length})
                   </h3>
 
                   <button
@@ -976,11 +987,11 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                 </div>
 
                 <div className="space-y-3">
-                  {selectedClientData.packages.filter((p) => p.status !== 'used_up').length === 0 ? (
+                  {selectedClientData.packages.filter((p) => p.status !== 'used_up' && p.status !== 'voided').length === 0 ? (
                     <p className="text-xs text-[#9C948E] py-3 text-center">{t.noActivePackages}</p>
                   ) : (
                     selectedClientData.packages
-                      .filter((p) => p.status !== 'used_up')
+                      .filter((p) => p.status !== 'used_up' && p.status !== 'voided')
                       .map((pkg) => (
                         <div
                           key={pkg.id}
@@ -1003,18 +1014,39 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                             </div>
                           </div>
 
-                          <button
-                            onClick={() =>
-                              setUseTargetItem({
-                                type: 'package',
-                                id: pkg.id,
-                                name: pkg.name,
-                              })
-                            }
-                            className="px-3.5 py-2 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-xl shadow-2xs transition"
-                          >
-                            {t.useOneSessionBtn}
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {role === 'admin' && (
+                              <button
+                                onClick={() => {
+                                  setVoidTargetItem({
+                                    type: 'package',
+                                    id: pkg.id,
+                                    name: pkg.name,
+                                    pricePaid: pkg.pricePaid,
+                                  });
+                                  setVoidReason('คีย์ข้อมูลผิดพลาด / ยกเลิกรายการ');
+                                }}
+                                title={lang === 'th' ? 'ยกเลิก/ลบแพ็กเกจ (Admin)' : 'Void Package (Admin)'}
+                                className="px-2.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition flex items-center gap-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                                <span>{lang === 'th' ? 'ยกเลิก (Admin)' : 'Void'}</span>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() =>
+                                setUseTargetItem({
+                                  type: 'package',
+                                  id: pkg.id,
+                                  name: pkg.name,
+                                })
+                              }
+                              className="px-3.5 py-2 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-xl shadow-2xs transition"
+                            >
+                              {t.useOneSessionBtn}
+                            </button>
+                          </div>
                         </div>
                       ))
                   )}
@@ -1026,7 +1058,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                 <div className="flex items-center justify-between pb-3 border-b border-[#FAF0ED]">
                   <h3 className="text-sm font-bold text-[#3D3835] flex items-center gap-2">
                     <Ticket className="w-4 h-4 text-[#E88D9F]" />
-                    {lang === 'th' ? 'คูปองที่ใช้งานได้อยู่' : 'Active Coupons'} ({selectedClientData.coupons.filter((c) => c.status !== 'used_up').length})
+                    {lang === 'th' ? 'คูปองที่ใช้งานได้อยู่' : 'Active Coupons'} ({selectedClientData.coupons.filter((c) => c.status !== 'used_up' && c.status !== 'voided').length})
                   </h3>
 
                   <button
@@ -1043,11 +1075,11 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                 </div>
 
                 <div className="space-y-3">
-                  {selectedClientData.coupons.filter((c) => c.status !== 'used_up').length === 0 ? (
+                  {selectedClientData.coupons.filter((c) => c.status !== 'used_up' && c.status !== 'voided').length === 0 ? (
                     <p className="text-xs text-[#9C948E] py-3 text-center">{t.noActiveCoupons}</p>
                   ) : (
                     selectedClientData.coupons
-                      .filter((c) => c.status !== 'used_up')
+                      .filter((c) => c.status !== 'used_up' && c.status !== 'voided')
                       .map((cpn) => (
                         <div
                           key={cpn.id}
@@ -1070,26 +1102,48 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                             </div>
                           </div>
 
-                          <button
-                            onClick={() =>
-                              setUseTargetItem({
-                                type: 'coupon',
-                                id: cpn.id,
-                                name: cpn.name,
-                                code: cpn.couponCode,
-                              })
-                            }
-                            className="px-3.5 py-2 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-xl shadow-2xs transition"
-                          >
-                            {t.useOneCouponBtn}
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {role === 'admin' && (
+                              <button
+                                onClick={() => {
+                                  setVoidTargetItem({
+                                    type: 'coupon',
+                                    id: cpn.id,
+                                    name: cpn.name,
+                                    code: cpn.couponCode,
+                                    pricePaid: cpn.pricePaid,
+                                  });
+                                  setVoidReason('คีย์ข้อมูลผิดพลาด / ยกเลิกรายการ');
+                                }}
+                                title={lang === 'th' ? 'ยกเลิก/ลบคูปอง (Admin)' : 'Void Coupon (Admin)'}
+                                className="px-2.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition flex items-center gap-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                                <span>{lang === 'th' ? 'ยกเลิก (Admin)' : 'Void'}</span>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() =>
+                                setUseTargetItem({
+                                  type: 'coupon',
+                                  id: cpn.id,
+                                  name: cpn.name,
+                                  code: cpn.couponCode,
+                                })
+                              }
+                              className="px-3.5 py-2 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-xl shadow-2xs transition"
+                            >
+                              {t.useOneCouponBtn}
+                            </button>
+                          </div>
                         </div>
                       ))
                   )}
                 </div>
               </div>
 
-              {/* ALWAYS-VISIBLE & EXPANDED: COMPLETED (USED-UP) ITEMS HISTORY SECTION */}
+              {/* ALWAYS-VISIBLE & EXPANDED: COMPLETED & VOIDED ITEMS HISTORY SECTION */}
               <div className="bg-white text-[#3D3835] rounded-2xl p-5 shadow-2xs border border-[#F2E3E1] space-y-4">
                 <div className="flex items-center justify-between border-b border-[#FAF0ED] pb-3">
                   <h3 className="text-sm font-bold text-[#3D3835] flex items-center gap-2">
@@ -1101,51 +1155,83 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                   </span>
                 </div>
 
-                {selectedClientData.packages.filter((p) => p.status === 'used_up').length === 0 &&
-                selectedClientData.coupons.filter((c) => c.status === 'used_up').length === 0 ? (
+                {selectedClientData.packages.filter((p) => p.status === 'used_up' || p.status === 'voided').length === 0 &&
+                selectedClientData.coupons.filter((c) => c.status === 'used_up' || c.status === 'voided').length === 0 ? (
                   <p className="text-xs text-[#9C948E] py-4 text-center">{t.noCompletedItems}</p>
                 ) : (
                   <div className="space-y-3">
-                    {/* Completed Packages */}
+                    {/* Packages (Completed or Voided) */}
                     {selectedClientData.packages
-                      .filter((p) => p.status === 'used_up')
+                      .filter((p) => p.status === 'used_up' || p.status === 'voided')
                       .map((pkg) => (
                         <div
                           key={pkg.id}
-                          className="p-3.5 bg-[#FAF0ED]/50 rounded-xl border border-[#F2E3E1] text-xs space-y-2"
+                          className={`p-3.5 rounded-xl border text-xs space-y-2 ${
+                            pkg.status === 'voided'
+                              ? 'bg-rose-50/40 border-rose-200 text-[#3D3835]'
+                              : 'bg-[#FAF0ED]/50 border-[#F2E3E1]'
+                          }`}
                         >
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-[#3D3835]">{pkg.name} ({lang === 'th' ? 'แพ็กเกจ' : 'Package'})</span>
-                            <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                              {lang === 'th' ? 'ใช้ครบแล้วเมื่อ' : 'Completed'} {formatShortDate(pkg.usedUpAt || pkg.expiryDate, lang)}
-                            </span>
+                            {pkg.status === 'voided' ? (
+                              <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded-full border border-rose-300">
+                                {lang === 'th' ? 'ยกเลิกแล้ว (Voided)' : 'Voided'} {formatShortDate(pkg.voidedAt || pkg.createdAt, lang)}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                {lang === 'th' ? 'ใช้ครบแล้วเมื่อ' : 'Completed'} {formatShortDate(pkg.usedUpAt || pkg.expiryDate, lang)}
+                              </span>
+                            )}
                           </div>
                           <div className="flex justify-between text-[11px] text-[#6E6763] font-mono">
                             <span>{lang === 'th' ? 'จำนวนทั้งหมด:' : 'Total Sessions:'} {pkg.totalSessions} {lang === 'th' ? 'ครั้ง' : ''}</span>
                             <span>{t.pricePaidLabel}: ฿{formatCurrency(pkg.pricePaid)}</span>
                             <span>{lang === 'th' ? 'ซื้อเมื่อ:' : 'Purchased:'} {formatShortDate(pkg.purchaseDate, lang)}</span>
                           </div>
+                          {pkg.status === 'voided' && (
+                            <div className="text-[11px] text-rose-700 bg-rose-100/60 p-2 rounded-lg border border-rose-200">
+                              <span className="font-bold">{lang === 'th' ? 'เหตุผลที่ยกเลิก:' : 'Void Reason:'}</span> {pkg.voidReason || '-'}
+                              {pkg.voidedBy && <span className="ml-2 text-rose-600">({lang === 'th' ? 'โดย' : 'by'} {pkg.voidedBy})</span>}
+                            </div>
+                          )}
                         </div>
                       ))}
 
-                    {/* Completed Coupons */}
+                    {/* Coupons (Completed or Voided) */}
                     {selectedClientData.coupons
-                      .filter((c) => c.status === 'used_up')
+                      .filter((c) => c.status === 'used_up' || c.status === 'voided')
                       .map((cpn) => (
                         <div
                           key={cpn.id}
-                          className="p-3.5 bg-[#FAF0ED]/50 rounded-xl border border-[#F2E3E1] text-xs space-y-2"
+                          className={`p-3.5 rounded-xl border text-xs space-y-2 ${
+                            cpn.status === 'voided'
+                              ? 'bg-rose-50/40 border-rose-200 text-[#3D3835]'
+                              : 'bg-[#FAF0ED]/50 border-[#F2E3E1]'
+                          }`}
                         >
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-[#3D3835]">{cpn.name} ({lang === 'th' ? 'รหัสคูปอง' : 'Coupon Code'}: {cpn.couponCode})</span>
-                            <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                              {lang === 'th' ? 'ใช้ครบแล้วเมื่อ' : 'Completed'} {formatShortDate(cpn.usedUpAt || cpn.expiryDate, lang)}
-                            </span>
+                            {cpn.status === 'voided' ? (
+                              <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded-full border border-rose-300">
+                                {lang === 'th' ? 'ยกเลิกแล้ว (Voided)' : 'Voided'} {formatShortDate(cpn.voidedAt || cpn.createdAt, lang)}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                {lang === 'th' ? 'ใช้ครบแล้วเมื่อ' : 'Completed'} {formatShortDate(cpn.usedUpAt || cpn.expiryDate, lang)}
+                              </span>
+                            )}
                           </div>
                           <div className="flex justify-between text-[11px] text-[#6E6763] font-mono">
                             <span>{lang === 'th' ? 'จำนวนทั้งหมด:' : 'Quantity:'} {cpn.totalQuantity} {lang === 'th' ? 'สิทธิ์' : ''}</span>
                             <span>{lang === 'th' ? 'ได้รับ/ซื้อเมื่อ:' : 'Purchased:'} {formatShortDate(cpn.purchaseDate, lang)}</span>
                           </div>
+                          {cpn.status === 'voided' && (
+                            <div className="text-[11px] text-rose-700 bg-rose-100/60 p-2 rounded-lg border border-rose-200">
+                              <span className="font-bold">{lang === 'th' ? 'เหตุผลที่ยกเลิก:' : 'Void Reason:'}</span> {cpn.voidReason || '-'}
+                              {cpn.voidedBy && <span className="ml-2 text-rose-600">({lang === 'th' ? 'โดย' : 'by'} {cpn.voidedBy})</span>}
+                            </div>
+                          )}
                         </div>
                       ))}
                   </div>
@@ -2117,6 +2203,64 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
               value={reversalReason}
               onChange={(e) => setReversalReason(e.target.value)}
               className="w-full px-3 py-2 border border-stone-300 rounded-xl text-xs"
+            />
+          </div>
+        </ConfirmationModal>
+      )}
+
+      {/* VOID ITEM MODAL (ADMIN ONLY) */}
+      {voidTargetItem && (
+        <ConfirmationModal
+          isOpen={true}
+          isDanger={true}
+          title={
+            voidTargetItem.type === 'package'
+              ? (lang === 'th' ? 'ยืนยันยกเลิก/ลบแพ็กเกจ (Admin)' : 'Confirm Void Package')
+              : (lang === 'th' ? 'ยืนยันยกเลิก/ลบคูปอง (Admin)' : 'Confirm Void Coupon')
+          }
+          message={
+            lang === 'th'
+              ? `คุณกำลังจะยกเลิกรายการ "${voidTargetItem.name}" ของลูกค้า ${selectedClientData.client.displayName} รายการนี้จะถูกตัดออกจากสถานะใช้งานจริง และระบบจะปรับลดยอดรายได้สะสมอัตโนมัติ รวมถึงยกเลิกคะแนนสะสมที่ได้รับจากการซื้อรายการนี้เพื่อแก้ไขปัญหารายได้ค้างจากการคีย์ผิด`
+              : `You are voiding "${voidTargetItem.name}" for ${selectedClientData.client.displayName}. This item will be removed from active status, its revenue will be removed from financial records, and any points awarded from this sale will be reversed.`
+          }
+          lang={lang}
+          onClose={() => {
+            setVoidTargetItem(null);
+            setVoidReason('');
+          }}
+          onConfirm={async () => {
+            if (!voidReason.trim()) {
+              alert(lang === 'th' ? 'กรุณาระบุเหตุผลในการยกเลิก' : 'Please provide a void reason');
+              return;
+            }
+            setIsVoiding(true);
+            try {
+              if (voidTargetItem.type === 'package') {
+                await api.voidPackage(voidTargetItem.id, voidReason.trim());
+              } else {
+                await api.voidCoupon(voidTargetItem.id, voidReason.trim());
+              }
+              onRefreshClient();
+              setVoidTargetItem(null);
+              setVoidReason('');
+            } catch (err: any) {
+              alert(err.message || 'Failed to void item');
+            } finally {
+              setIsVoiding(false);
+            }
+          }}
+        >
+          <div className="space-y-2 mt-2">
+            <label className="block text-xs font-bold text-[#3D3835]">
+              {lang === 'th' ? 'เหตุผลในการยกเลิก (ระบุเพื่อบันทึกใน Audit Log) *' : 'Reason for Voiding (Audit Log) *'}
+            </label>
+            <input
+              type="text"
+              required
+              placeholder={lang === 'th' ? 'เช่น คีย์ข้อมูลผิดพลาด, ลูกค้าขอยกเลิกรายการ' : 'e.g. Data entry error, client cancelled'}
+              value={voidReason}
+              onChange={(e) => setVoidReason(e.target.value)}
+              className="w-full px-3.5 py-2.5 border border-stone-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-400"
             />
           </div>
         </ConfirmationModal>

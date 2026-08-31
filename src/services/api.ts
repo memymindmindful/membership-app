@@ -454,6 +454,19 @@ export const api = {
     return res.json();
   },
 
+  async voidPackage(packageId: string, reason: string): Promise<ClientPackage> {
+    const res = await fetch(`/api/packages/${packageId}/void`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to void package');
+    }
+    return res.json();
+  },
+
   async issueCoupon(
     clientId: string,
     catalogId: string,
@@ -489,6 +502,19 @@ export const api = {
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Failed to redeem coupon');
+    }
+    return res.json();
+  },
+
+  async voidCoupon(couponId: string, reason: string): Promise<ClientCoupon> {
+    const res = await fetch(`/api/coupons/${couponId}/void`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to void coupon');
     }
     return res.json();
   },

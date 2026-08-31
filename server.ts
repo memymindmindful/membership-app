@@ -615,6 +615,25 @@ async function startServer() {
     }
   });
 
+  app.post('/api/packages/:id/void', authenticateStaff, (req, res) => {
+    try {
+      const staff = (req as any).authenticatedStaff;
+      if (staff.role !== 'admin') {
+        return res.status(403).json({ error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถยกเลิกรายการได้' });
+      }
+      const { reason } = req.body;
+      const pkg = store.voidClientPackage(
+        req.params.id,
+        staff.staffId,
+        staff.staffName,
+        reason || 'ยกเลิกรายการโดยผู้ดูแลระบบ'
+      );
+      res.json(pkg);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   app.post('/api/clients/:id/coupons/issue', authenticateStaff, (req, res) => {
     try {
       const { catalogId, totalQuantity, pricePaid, validityDays, staffId, staffName } = req.body;
@@ -645,6 +664,25 @@ async function startServer() {
     try {
       const { note, staffId, staffName } = req.body;
       const cpn = store.redeemCouponUnit(req.params.id, note, staffId, staffName);
+      res.json(cpn);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/coupons/:id/void', authenticateStaff, (req, res) => {
+    try {
+      const staff = (req as any).authenticatedStaff;
+      if (staff.role !== 'admin') {
+        return res.status(403).json({ error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถยกเลิกรายการได้' });
+      }
+      const { reason } = req.body;
+      const cpn = store.voidClientCoupon(
+        req.params.id,
+        staff.staffId,
+        staff.staffName,
+        reason || 'ยกเลิกรายการโดยผู้ดูแลระบบ'
+      );
       res.json(cpn);
     } catch (err: any) {
       res.status(400).json({ error: err.message });

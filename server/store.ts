@@ -727,6 +727,7 @@ class Store {
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 
     this.db.clientPackages.forEach((pkg) => {
+      if (pkg.status === 'voided') return;
       if (pkg.remainingSessions <= 0) {
         pkg.status = 'used_up';
         if (!pkg.usedUpAt) pkg.usedUpAt = new Date().toISOString();
@@ -741,6 +742,7 @@ class Store {
     });
 
     this.db.clientCoupons.forEach((cpn) => {
+      if (cpn.status === 'voided') return;
       if (cpn.usedQuantity >= cpn.totalQuantity) {
         cpn.status = 'used_up';
         if (!cpn.usedUpAt) cpn.usedUpAt = new Date().toISOString();
@@ -1778,6 +1780,45 @@ class Store {
     return pkg;
   }
 
+  public voidClientPackage(
+    clientPackageId: string,
+    staffId: string,
+    staffName: string,
+    reason: string
+  ): ClientPackage {
+    const pkg = this.db.clientPackages.find((p) => p.id === clientPackageId);
+    if (!pkg) throw new Error('Client package not found');
+    if (pkg.status === 'voided') throw new Error('This package has already been voided');
+
+    const previousData = { ...pkg };
+    pkg.status = 'voided';
+    pkg.voidedAt = new Date().toISOString();
+    pkg.voidedBy = staffName;
+    pkg.voidReason = reason || 'ยกเลิกรายการโดยผู้ดูแลระบบ';
+
+    // Reverse any points awarded for this package
+    const relatedPtsTx = this.db.pointsTransactions.find(
+      (tx) => tx.relatedPackageId === clientPackageId && tx.type === 'points_earned' && !tx.reversed
+    );
+    if (relatedPtsTx) {
+      try {
+        this.reversePointsTransaction(relatedPtsTx.id, `ยกเลิกแพ็กเกจ: ${reason || 'คีย์ผิด/ยกเลิก'}`, staffId, staffName);
+      } catch (err) {
+        console.warn('Could not reverse points for voided package:', err);
+      }
+    }
+
+    this.notifyClient(
+      pkg.clientId,
+      'ยกเลิกรายการแพ็กเกจ',
+      `แพ็กเกจ "${pkg.name}" ถูกยกเลิกโดยผู้ดูแลระบบ (${reason || 'คีย์ข้อมูลผิด'}) รายได้และคะแนนสะสมที่เกี่ยวข้องถูกปรับปรุงแล้ว`
+    );
+
+    this.logAudit(staffId, staffName, 'VOID_PACKAGE', 'package', pkg.id, reason || 'ยกเลิกแพ็กเกจ', previousData, pkg);
+    this.saveToDisk();
+    return pkg;
+  }
+
   // Issue Coupons to Clients
   public getClientCoupons(clientId: string): ClientCoupon[] {
     this.refreshItemStatuses();
@@ -1917,6 +1958,45 @@ class Store {
     return cpn;
   }
 
+  public voidClientCoupon(
+    clientCouponId: string,
+    staffId: string,
+    staffName: string,
+    reason: string
+  ): ClientCoupon {
+    const cpn = this.db.clientCoupons.find((c) => c.id === clientCouponId);
+    if (!cpn) throw new Error('Client coupon not found');
+    if (cpn.status === 'voided') throw new Error('This coupon has already been voided');
+
+    const previousData = { ...cpn };
+    cpn.status = 'voided';
+    cpn.voidedAt = new Date().toISOString();
+    cpn.voidedBy = staffName;
+    cpn.voidReason = reason || 'ยกเลิกรายการโดยผู้ดูแลระบบ';
+
+    // Reverse any points awarded for this coupon
+    const relatedPtsTx = this.db.pointsTransactions.find(
+      (tx) => tx.relatedCouponId === clientCouponId && tx.type === 'points_earned' && !tx.reversed
+    );
+    if (relatedPtsTx) {
+      try {
+        this.reversePointsTransaction(relatedPtsTx.id, `ยกเลิกคูปอง: ${reason || 'คีย์ผิด/ยกเลิก'}`, staffId, staffName);
+      } catch (err) {
+        console.warn('Could not reverse points for voided coupon:', err);
+      }
+    }
+
+    this.notifyClient(
+      cpn.clientId,
+      'ยกเลิกรายการคูปอง',
+      `คูปอง "${cpn.name}" (รหัส: ${cpn.couponCode}) ถูกยกเลิกโดยผู้ดูแลระบบ (${reason || 'คีย์ข้อมูลผิด'}) รายได้และคะแนนสะสมที่เกี่ยวข้องถูกปรับปรุงแล้ว`
+    );
+
+    this.logAudit(staffId, staffName, 'VOID_COUPON', 'coupon', cpn.id, reason || 'ยกเลิกคูปอง', previousData, cpn);
+    this.saveToDisk();
+    return cpn;
+  }
+
   // Expiring Items & Follow-Up Tasks
   public getExpiringTasks(): ExpiringItemTask[] {
     this.refreshItemStatuses();
@@ -1928,7 +2008,7 @@ class Store {
 
     // Process Packages
     this.db.clientPackages.forEach((pkg) => {
-      if (pkg.remainingSessions <= 0) return;
+      if (pkg.status === 'voided' || pkg.remainingSessions <= 0) return;
       const client = clientMap.get(pkg.clientId);
       if (!client) return;
 
@@ -1961,7 +2041,7 @@ class Store {
 
     // Process Coupons
     this.db.clientCoupons.forEach((cpn) => {
-      if (cpn.remainingQuantity <= 0) return;
+      if (cpn.status === 'voided' || cpn.remainingQuantity <= 0) return;
       const client = clientMap.get(cpn.clientId);
       if (!client) return;
 
@@ -2197,7 +2277,7 @@ class Store {
 
     // 3. Auto-synthesize from Client Packages sold
     for (const pkg of this.db.clientPackages) {
-      if (pkg.pricePaid && pkg.pricePaid > 0) {
+      if (pkg.pricePaid && pkg.pricePaid > 0 && pkg.status !== 'voided') {
         const client = this.db.clients.find((c) => c.id === pkg.clientId);
         const clientName = client ? `${client.displayName} (${client.nickname})` : 'ลูกค้าทั่วไป';
         autoEntries.push({
@@ -2222,7 +2302,7 @@ class Store {
 
     // 4. Auto-synthesize from Coupons sold (paid coupons only — exclude CRM Marketing Vouchers)
     for (const cpn of this.db.clientCoupons) {
-      if (cpn.pricePaid && cpn.pricePaid > 0 && !cpn.isCrmMarketingVoucher) {
+      if (cpn.pricePaid && cpn.pricePaid > 0 && !cpn.isCrmMarketingVoucher && cpn.status !== 'voided') {
         const client = this.db.clients.find((c) => c.id === cpn.clientId);
         const clientName = client ? `${client.displayName} (${client.nickname})` : 'ลูกค้าทั่วไป';
         autoEntries.push({

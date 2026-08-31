@@ -119,7 +119,7 @@ export interface CatalogItem {
   isCrmMarketingVoucher?: boolean;
 }
 
-export type ItemStatus = 'active' | 'expiring_soon' | 'used_up';
+export type ItemStatus = 'active' | 'expiring_soon' | 'used_up' | 'voided';
 export type FollowUpStatus = 'not_contacted' | 'contacted' | 'resolved';
 
 export interface ClientPackage {
@@ -142,6 +142,9 @@ export interface ClientPackage {
   followUpNote?: string;
   followUpUpdatedAt?: string;
   followUpUpdatedByStaffName?: string;
+  voidedAt?: string;
+  voidedBy?: string;
+  voidReason?: string;
 }
 
 export interface PackageUsageLog {
@@ -178,6 +181,9 @@ export interface ClientCoupon {
   followUpUpdatedAt?: string;
   followUpUpdatedByStaffName?: string;
   isCrmMarketingVoucher?: boolean;
+  voidedAt?: string;
+  voidedBy?: string;
+  voidReason?: string;
 }
 
 export interface ExpiringItemTask {

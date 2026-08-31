@@ -95,9 +95,9 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
     }
   };
 
-  // Filter active/expiring_soon packages & coupons (used_up items are hidden from customer active view)
-  const activePackages = packages.filter((p) => p.status !== 'used_up');
-  const activeCoupons = coupons.filter((c) => c.status !== 'used_up');
+  // Filter active/expiring_soon packages & coupons (used_up and voided items are hidden from customer active view)
+  const activePackages = packages.filter((p) => p.status !== 'used_up' && p.status !== 'voided');
+  const activeCoupons = coupons.filter((c) => c.status !== 'used_up' && c.status !== 'voided');
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   useEffect(() => {
