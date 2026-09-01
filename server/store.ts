@@ -2177,7 +2177,7 @@ class Store {
         }
       }
     } else if (booking.paymentStatusAtBooking === 'deposit') {
-      let remaining = booking.fullPrice - booking.depositAmount;
+      let remaining = booking.fullPrice - booking.depositAmount - (booking.coinAmountUsed || 0);
 
       if (coinDiscountAmount && coinDiscountAmount > 0) {
         if (coinDiscountAmount > remaining) {
@@ -2190,7 +2190,7 @@ class Store {
           staffId,
           staffName
         );
-        booking.coinAmountUsed = coinDiscountAmount;
+        booking.coinAmountUsed = (booking.coinAmountUsed || 0) + coinDiscountAmount;
         remaining -= coinDiscountAmount;
       }
 
