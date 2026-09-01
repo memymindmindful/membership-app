@@ -15,6 +15,7 @@ import { CustomerApp } from './components/CustomerApp';
 import { StaffDashboard } from './components/StaffDashboard';
 import { CatalogManagement } from './components/CatalogManagement';
 import { AuditLogView } from './components/AuditLogView';
+import { BookingsOverview } from './components/BookingsOverview';
 import { ConsentModal } from './components/ConsentModal';
 import { ProfileSetupModal } from './components/ProfileSetupModal';
 import { ConnectingScreen } from './components/ConnectingScreen';
@@ -34,7 +35,7 @@ export default function App() {
     }
     return 'customer';
   });
-  const [activeSubView, setActiveSubView] = useState<'main' | 'catalog' | 'audit'>('main');
+  const [activeSubView, setActiveSubView] = useState<'main' | 'catalog' | 'audit' | 'bookings'>('main');
   const [lang, setLang] = useState<AppLanguage>('th');
   const [isLiffLoggedIn, setIsLiffLoggedIn] = useState(false);
   const [isLiffApp, setIsLiffApp] = useState(false);
@@ -431,6 +432,7 @@ export default function App() {
         }}
         allClients={allClients}
         brandSettings={brandSettings}
+        onOpenBookings={() => setActiveSubView('bookings')}
         onOpenCatalog={() => setActiveSubView('catalog')}
         onOpenAuditLogs={() => {
           loadAuditLogs();
@@ -451,7 +453,9 @@ export default function App() {
 
       {/* Main Body View Switching */}
       <main className="py-4">
-        {activeSubView === 'catalog' && currentStaff && currentStaff.role === 'admin' ? (
+        {activeSubView === 'bookings' && currentStaff && currentStaff.role !== 'accountant' ? (
+          <BookingsOverview lang={lang} onBack={() => setActiveSubView('main')} />
+        ) : activeSubView === 'catalog' && currentStaff && currentStaff.role === 'admin' ? (
           <CatalogManagement
             catalogItems={catalogItems}
             currentStaff={currentStaff}
@@ -527,6 +531,7 @@ export default function App() {
               const emps = await api.getEmployees();
               setEmployees(emps);
             }}
+            onOpenBookings={() => setActiveSubView('bookings')}
             onOpenCatalog={() => setActiveSubView('catalog')}
             onOpenAuditLogs={() => {
               loadAuditLogs();

@@ -523,6 +523,17 @@ export const api = {
     return res.json();
   },
 
+  async getAllOneTimeBookings(range?: 'today' | 'week' | 'month'): Promise<(ClientOneTimeBooking & { clientName: string; clientPhone: string })[]> {
+    const headers = getAuthHeaders();
+    const url = range ? `/api/onetime-bookings?range=${range}` : '/api/onetime-bookings';
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to load bookings');
+    }
+    return res.json();
+  },
+
   async bookOneTimeService(
     clientId: string,
     bookingData: {

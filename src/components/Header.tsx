@@ -16,6 +16,7 @@ interface HeaderProps {
   setCurrentClient: (client: Client | null) => void;
   allClients: Client[];
   brandSettings?: BrandSettings;
+  onOpenBookings?: () => void;
   onOpenAuditLogs?: () => void;
   onOpenCatalog?: () => void;
   isLiffLoggedIn?: boolean;
@@ -35,6 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
   setCurrentClient,
   allClients,
   brandSettings,
+  onOpenBookings,
   onOpenAuditLogs,
   onOpenCatalog,
   isLiffLoggedIn = false,

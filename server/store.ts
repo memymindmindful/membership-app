@@ -2005,6 +2005,45 @@ class Store {
   }
 
   // One-Time Service Bookings Operations
+  public getAllOneTimeBookings(
+    range?: 'today' | 'week' | 'month'
+  ): (ClientOneTimeBooking & { clientName: string; clientPhone: string })[] {
+    if (!this.db.clientOneTimeBookings) return [];
+    let bookings = this.db.clientOneTimeBookings.filter((b) => b.status !== 'voided');
+
+    if (range) {
+      const now = new Date();
+      let startDate: Date;
+      let endDate: Date;
+      if (range === 'today') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      } else if (range === 'week') {
+        const dayOfWeek = now.getDay();
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek);
+        endDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 7);
+      } else {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      }
+      bookings = bookings.filter((b) => {
+        const d = new Date(b.bookingDateTime);
+        return d >= startDate && d < endDate;
+      });
+    }
+
+    return bookings
+      .map((b) => {
+        const client = this.db.clients.find((c) => c.id === b.clientId);
+        return {
+          ...b,
+          clientName: client ? `${client.displayName}${client.nickname ? ` (${client.nickname})` : ''}` : 'ไม่พบข้อมูลลูกค้า',
+          clientPhone: client?.phone || '-',
+        };
+      })
+      .sort((a, b) => new Date(a.bookingDateTime).getTime() - new Date(b.bookingDateTime).getTime());
+  }
+
   public getClientOneTimeBookings(clientId: string): ClientOneTimeBooking[] {
     if (!this.db.clientOneTimeBookings) {
       this.db.clientOneTimeBookings = [];

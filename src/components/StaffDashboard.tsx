@@ -83,6 +83,7 @@ interface StaffDashboardProps {
   onUpdateBrandSettings?: (newSettings: BrandSettings) => void;
   onRefreshClient: () => void;
   onRefreshEmployees?: () => void;
+  onOpenBookings: () => void;
   onOpenCatalog: () => void;
   onOpenAuditLogs: () => void;
 }
@@ -101,6 +102,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   onUpdateBrandSettings,
   onRefreshClient,
   onRefreshEmployees,
+  onOpenBookings,
   onOpenCatalog,
   onOpenAuditLogs,
 }) => {
@@ -715,6 +717,19 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                   <div className="px-2.5 py-1 text-[10px] font-bold text-[#A89F91] uppercase tracking-wider">
                     {lang === 'th' ? 'ข้อมูล & งานบริการ' : 'Services & Reports'}
                   </div>
+
+                  {role !== 'accountant' && (
+                    <button
+                      onClick={() => {
+                        onOpenBookings();
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left"
+                    >
+                      <Calendar className="w-4 h-4 text-[#D87085] shrink-0" />
+                      <span>{lang === 'th' ? 'ภาพรวมการจอง (Bookings)' : 'Bookings Overview'}</span>
+                    </button>
+                  )}
 
                   {canEditCatalog && (
                     <button
@@ -3645,10 +3660,20 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
 
       {/* Mobile Bottom Navigation (Staff) — hidden on desktop */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#F2E3E1] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-40 px-2 py-1.5 flex items-center justify-around">
+        {role !== 'accountant' && (
+          <button
+            onClick={onOpenBookings}
+            className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-[10px] font-bold text-[#9C948E] cursor-pointer"
+          >
+            <Calendar className="w-5 h-5 text-[#9C948E]" />
+            <span>{lang === 'th' ? 'การจอง' : 'Bookings'}</span>
+          </button>
+        )}
+
         {canAccessClientOps && (
           <button
             onClick={() => setActiveTab('client_ops')}
-            className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-[10px] font-bold transition ${
+            className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-[10px] font-bold transition cursor-pointer ${
               activeTab === 'client_ops' ? 'text-[#D87085]' : 'text-[#9C948E]'
             }`}
           >
@@ -3660,7 +3685,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
         {canAccessFinancial && (
           <button
             onClick={() => setActiveTab('financial')}
-            className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-[10px] font-bold transition ${
+            className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-[10px] font-bold transition cursor-pointer ${
               activeTab === 'financial' ? 'text-[#D87085]' : 'text-[#9C948E]'
             }`}
           >
@@ -3672,20 +3697,10 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
         {role === 'admin' && (
           <button
             onClick={onOpenCatalog}
-            className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-[10px] font-bold text-[#9C948E]"
+            className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-[10px] font-bold text-[#9C948E] cursor-pointer"
           >
             <Package className="w-5 h-5 text-[#9C948E]" />
             <span>{lang === 'th' ? 'แคตตาล็อก' : 'Catalog'}</span>
-          </button>
-        )}
-
-        {(role === 'admin' || role === 'manager') && (
-          <button
-            onClick={onOpenAuditLogs}
-            className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-[10px] font-bold text-[#9C948E]"
-          >
-            <History className="w-5 h-5 text-[#9C948E]" />
-            <span>{lang === 'th' ? 'Audit Log' : 'Audit Log'}</span>
           </button>
         )}
       </div>

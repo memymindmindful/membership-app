@@ -703,6 +703,20 @@ async function startServer() {
   });
 
   // One-Time Service Bookings
+  app.get('/api/onetime-bookings', authenticateStaff, (req, res) => {
+    try {
+      const staff = (req as any).authenticatedStaff;
+      if (staff.role === 'accountant') {
+        return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึงหน้านี้ (Accountant role ไม่สามารถดูหน้าการจองได้)' });
+      }
+      const range = req.query.range as 'today' | 'week' | 'month' | undefined;
+      const bookings = store.getAllOneTimeBookings(range);
+      res.json(bookings);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   app.post('/api/clients/:id/onetime-bookings', authenticateStaff, (req, res) => {
     try {
       const {
