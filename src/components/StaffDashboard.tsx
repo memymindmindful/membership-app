@@ -2931,7 +2931,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                     <option value="free">{lang === 'th' ? 'กิจกรรมฟรี (Free)' : 'Free Activity'}</option>
                     <option value="deduct_package">{lang === 'th' ? 'ตัดจาก Package ที่ซื้อไว้' : 'Deduct from Package'}</option>
                     <option value="deduct_coupon">{lang === 'th' ? 'ใช้ Coupon ที่ซื้อไว้' : 'Use Coupon'}</option>
-                    <option value="coin">{lang === 'th' ? 'ใช้ Coin ชำระ/เป็นส่วนลด' : 'Pay with Coin'}</option>
+                    <option value="coin">{lang === 'th' ? 'ใช้ Coin ชำระทั้งหมด' : 'Pay with Coin'}</option>
                   </select>
                 </div>
 
