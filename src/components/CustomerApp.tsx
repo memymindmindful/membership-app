@@ -42,6 +42,7 @@ import {
   translateNotificationTitle,
   translateNotificationMessage,
 } from '../lib/translations';
+import { api } from '../services/api';
 
 interface CustomerAppProps {
   client: Client;
@@ -102,6 +103,16 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
   const activePackages = packages.filter((p) => p.status !== 'used_up' && p.status !== 'voided');
   const activeCoupons = coupons.filter((c) => c.status !== 'used_up' && c.status !== 'voided');
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  useEffect(() => {
+    if (activeTab === 'notifications' && unreadCount > 0 && client?.id) {
+      api.markAllNotificationsRead(client.id)
+        .then(() => {
+          onRefresh?.();
+        })
+        .catch((err) => console.warn('Failed to mark notifications as read:', err));
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     // Generate QR Code for Member Code

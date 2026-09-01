@@ -287,6 +287,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   const [onetimeLinkedPackageId, setOnetimeLinkedPackageId] = useState('');
   const [onetimeLinkedCouponId, setOnetimeLinkedCouponId] = useState('');
   const [onetimeCoinAmountUsed, setOnetimeCoinAmountUsed] = useState<number | ''>('');
+  const [onetimeCoinDiscountAtBooking, setOnetimeCoinDiscountAtBooking] = useState<number | ''>('');
   const [onetimeBookingDateTime, setOnetimeBookingDateTime] = useState('');
   const [onetimeEndDateTime, setOnetimeEndDateTime] = useState('');
   const [onetimeBranch, setOnetimeBranch] = useState('Me.My.Mind Spa & Massage');
@@ -304,6 +305,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
 
   // Use & Void One-Time Booking State
   const [useTargetOneTimeBooking, setUseTargetOneTimeBooking] = useState<ClientOneTimeBooking | null>(null);
+  const [useCoinDiscountAmount, setUseCoinDiscountAmount] = useState<number | ''>('');
   const [isSubmittingUseOneTime, setIsSubmittingUseOneTime] = useState(false);
   const [voidTargetOneTimeBooking, setVoidTargetOneTimeBooking] = useState<ClientOneTimeBooking | null>(null);
   const [voidOneTimeReason, setVoidOneTimeReason] = useState('');
@@ -474,6 +476,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
     setOnetimeLinkedPackageId('');
     setOnetimeLinkedCouponId('');
     setOnetimeCoinAmountUsed('');
+    setOnetimeCoinDiscountAtBooking('');
     const onetimeItems = catalogItems.filter((c) => c.active && (c.type === 'onetime' || !c.type));
     const first = onetimeItems[0] || catalogItems.find((c) => c.active);
     if (first) {
@@ -573,6 +576,21 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
         alert(lang === 'th' ? 'จำนวน Coin ที่ใช้ ต้องไม่เกินราคาเต็มบริการ' : 'Coin amount exceeds full service price');
         return;
       }
+    } else if (onetimePaymentStatus === 'deposit' || onetimePaymentStatus === 'paid_full') {
+      const coinDisc = Number(onetimeCoinDiscountAtBooking) || 0;
+      if (coinDisc < 0) {
+        alert(lang === 'th' ? 'ส่วนลด Coin ต้องไม่ติดลบ' : 'Coin discount cannot be negative');
+        return;
+      }
+      if (coinDisc > (selectedClientData.coinBalance || 0)) {
+        alert(lang === 'th' ? 'ส่วนลด Coin มากกว่ายอด Coin คงเหลือของลูกค้า' : 'Coin discount exceeds client coin balance');
+        return;
+      }
+      const targetPaidToday = onetimePaymentStatus === 'paid_full' ? fullP : depA;
+      if (coinDisc > targetPaidToday) {
+        alert(lang === 'th' ? 'ส่วนลด Coin มากกว่ายอดเงินสดที่รับชำระวันนี้' : 'Coin discount exceeds today\'s payment amount');
+        return;
+      }
     }
 
     setIsSubmittingBooking(true);
@@ -586,12 +604,14 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
         linkedPackageId: onetimePaymentStatus === 'deduct_package' ? onetimeLinkedPackageId : undefined,
         linkedCouponId: onetimePaymentStatus === 'deduct_coupon' ? onetimeLinkedCouponId : undefined,
         coinAmountUsed: onetimePaymentStatus === 'coin' ? Number(onetimeCoinAmountUsed) : undefined,
+        coinDiscountAtBooking: (onetimePaymentStatus === 'deposit' || onetimePaymentStatus === 'paid_full') && Number(onetimeCoinDiscountAtBooking) > 0 ? Number(onetimeCoinDiscountAtBooking) : undefined,
         bookingDateTime: onetimeBookingDateTime ? new Date(onetimeBookingDateTime).toISOString() : new Date().toISOString(),
         endDateTime: onetimeEndDateTime ? new Date(onetimeEndDateTime).toISOString() : undefined,
         branch: onetimeBranch.trim() || 'Me.My.Mind Spa & Massage',
         staffId: currentStaff.id,
         staffName: currentStaff.displayName,
       });
+      setOnetimeCoinDiscountAtBooking('');
       setShowBookOneTimeModal(false);
       onRefreshClient();
     } catch (err: any) {
@@ -608,9 +628,11 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
       await api.markOneTimeBookingUsed(
         useTargetOneTimeBooking.id,
         currentStaff.id,
-        currentStaff.displayName
+        currentStaff.displayName,
+        Number(useCoinDiscountAmount) || 0
       );
       setUseTargetOneTimeBooking(null);
+      setUseCoinDiscountAmount('');
       onRefreshClient();
     } catch (err: any) {
       alert(err.message || 'เกิดข้อผิดพลาดในการบันทึกการใช้บริการ');
@@ -642,7 +664,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6 pb-20 lg:pb-0">
       
       {/* Staff Control Action Header Bar */}
       <div className="bg-white rounded-2xl p-4 border border-[#F2E3E1] shadow-2xs flex flex-wrap items-center justify-between gap-3 relative">
@@ -1288,7 +1310,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                     selectedClientData.oneTimeBookings
                       .filter((b) => b.status === 'booked')
                       .map((booking) => {
-                        const remaining = Math.max(0, booking.fullPrice - booking.depositAmount);
+                        const remaining = Math.max(0, booking.fullPrice - (booking.depositAmount + (booking.paymentStatusAtBooking === 'deposit' ? (booking.coinAmountUsed || 0) : 0)));
                         return (
                           <div
                             key={booking.id}
@@ -3054,31 +3076,63 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
               )}
 
               {(onetimePaymentStatus === 'deposit' || onetimePaymentStatus === 'paid_full') && (
-                <div>
-                  <label className="block text-xs font-bold text-[#3D3835] mb-1">
-                    {lang === 'th' ? 'ยอดเงินมัดจำที่รับแล้ววันนี้ (บาท)' : 'Deposit Received Today (฿)'} *
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max={Number(onetimeFullPrice) || 0}
-                    required
-                    disabled={onetimePaymentStatus === 'paid_full'}
-                    value={onetimePaymentStatus === 'paid_full' ? onetimeFullPrice : onetimeDepositAmount}
-                    onChange={(e) => setOnetimeDepositAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs font-bold focus:outline-none focus:border-[#E88D9F] disabled:bg-[#FAF0ED]/50"
-                  />
-                  <p className="text-[11px] text-[#6E6763] mt-1">
-                    {onetimePaymentStatus === 'paid_full' ? (
-                      <span className="text-emerald-700 font-semibold">
-                        ✓ {lang === 'th' ? 'บันทึกเป็นรายได้วันนี้เต็มจำนวน ฿' + formatCurrency(Number(onetimeFullPrice)) : `Full revenue ฿${formatCurrency(Number(onetimeFullPrice))} recognized today`}
-                      </span>
-                    ) : (
-                      <span className="text-amber-800 font-semibold">
-                        ℹ {lang === 'th' ? `ระบบจะบันทึกรายได้วันนี้ ฿${formatCurrency(Number(onetimeDepositAmount))} และบันทึกยอดคงเหลือ ฿${formatCurrency(Math.max(0, Number(onetimeFullPrice) - Number(onetimeDepositAmount)))} ในวันที่ลูกค้ามาใช้บริการ` : `Revenue recognized today: ฿${formatCurrency(Number(onetimeDepositAmount))}. Remaining ฿${formatCurrency(Math.max(0, Number(onetimeFullPrice) - Number(onetimeDepositAmount)))} recognized on service date.`}
-                      </span>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-[#3D3835] mb-1">
+                      {lang === 'th' ? 'ยอดเงินมัดจำที่รับแล้ววันนี้ (บาท)' : 'Deposit Received Today (฿)'} *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max={Number(onetimeFullPrice) || 0}
+                      required
+                      disabled={onetimePaymentStatus === 'paid_full'}
+                      value={onetimePaymentStatus === 'paid_full' ? onetimeFullPrice : onetimeDepositAmount}
+                      onChange={(e) => setOnetimeDepositAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs font-bold focus:outline-none focus:border-[#E88D9F] disabled:bg-[#FAF0ED]/50"
+                    />
+                    <p className="text-[11px] text-[#6E6763] mt-1">
+                      {onetimePaymentStatus === 'paid_full' ? (
+                        <span className="text-emerald-700 font-semibold">
+                          ✓ {lang === 'th' ? 'บันทึกเป็นรายได้วันนี้เต็มจำนวน ฿' + formatCurrency(Number(onetimeFullPrice)) : `Full revenue ฿${formatCurrency(Number(onetimeFullPrice))} recognized today`}
+                        </span>
+                      ) : (
+                        <span className="text-amber-800 font-semibold">
+                          ℹ {lang === 'th' ? `ระบบจะบันทึกรายได้วันนี้ ฿${formatCurrency(Number(onetimeDepositAmount))} และบันทึกยอดคงเหลือ ฿${formatCurrency(Math.max(0, Number(onetimeFullPrice) - Number(onetimeDepositAmount)))} ในวันที่ลูกค้ามาใช้บริการ` : `Revenue recognized today: ฿${formatCurrency(Number(onetimeDepositAmount))}. Remaining ฿${formatCurrency(Math.max(0, Number(onetimeFullPrice) - Number(onetimeDepositAmount)))} recognized on service date.`}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5 pt-2 border-t border-[#FAF0ED]">
+                    <label className="block text-xs font-bold text-[#3D3835]">
+                      {lang === 'th' ? 'ใช้ Coin ช่วยเป็นส่วนลด (ถ้ามี)' : 'Use Coin as discount (optional)'}
+                    </label>
+                    <p className="text-[11px] text-[#6E6763]">
+                      {lang === 'th'
+                        ? `Coin คงเหลือของลูกค้า: ฿${formatCurrency(selectedClientData?.coinBalance || 0)}`
+                        : `Client's Coin balance: ฿${formatCurrency(selectedClientData?.coinBalance || 0)}`}
+                    </p>
+                    <input
+                      type="number"
+                      min="0"
+                      max={Math.min(
+                        Number(onetimePaymentStatus === 'paid_full' ? onetimeFullPrice : onetimeDepositAmount) || 0,
+                        selectedClientData?.coinBalance || 0
+                      )}
+                      value={onetimeCoinDiscountAtBooking}
+                      onChange={(e) => setOnetimeCoinDiscountAtBooking(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder={lang === 'th' ? 'เช่น 100' : 'e.g. 100'}
+                      className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs font-bold focus:outline-none focus:border-[#E88D9F]"
+                    />
+                    {Number(onetimeCoinDiscountAtBooking) > 0 && (
+                      <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-800 font-medium">
+                        {lang === 'th'
+                          ? `ลูกค้าชำระเงินสดจริงวันนี้แค่ ฿${formatCurrency(Math.max(0, Number(onetimePaymentStatus === 'paid_full' ? onetimeFullPrice : onetimeDepositAmount) - Number(onetimeCoinDiscountAtBooking)))} (หลังหักส่วนลด Coin ฿${formatCurrency(Number(onetimeCoinDiscountAtBooking))})`
+                          : `Customer pays only ฿${formatCurrency(Math.max(0, Number(onetimePaymentStatus === 'paid_full' ? onetimeFullPrice : onetimeDepositAmount) - Number(onetimeCoinDiscountAtBooking)))} cash today (after ฿${formatCurrency(Number(onetimeCoinDiscountAtBooking))} Coin discount)`}
+                      </div>
                     )}
-                  </p>
+                  </div>
                 </div>
               )}
 
@@ -3170,7 +3224,10 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
               : `Confirm service delivery for "${useTargetOneTimeBooking.name}" for ${selectedClientData.client.displayName}?`
           }
           lang={lang}
-          onClose={() => setUseTargetOneTimeBooking(null)}
+          onClose={() => {
+            setUseTargetOneTimeBooking(null);
+            setUseCoinDiscountAmount('');
+          }}
           onConfirm={handleConfirmUseOneTime}
         >
           <div className="p-3.5 bg-[#FAF0ED]/60 rounded-xl border border-[#F2E3E1] text-xs space-y-2 mt-2">
@@ -3231,13 +3288,50 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                   <span className="font-bold font-mono">฿{formatCurrency(useTargetOneTimeBooking.fullPrice)}</span>
                 </div>
                 <div className="flex justify-between text-[#3D3835]">
-                  <span className="font-medium">{lang === 'th' ? 'เงินมัดจำที่ชำระแล้ว:' : 'Deposit Paid:'}</span>
+                  <span className="font-medium">{lang === 'th' ? 'เงินมัดจำ (เงินสดที่รับแล้ว):' : 'Cash Deposit Paid:'}</span>
                   <span className="font-bold font-mono text-emerald-700">฿{formatCurrency(useTargetOneTimeBooking.depositAmount)}</span>
                 </div>
-                {useTargetOneTimeBooking.fullPrice > useTargetOneTimeBooking.depositAmount && (
+                {useTargetOneTimeBooking.coinAmountUsed && useTargetOneTimeBooking.coinAmountUsed > 0 ? (
+                  <div className="flex justify-between text-[#3D3835]">
+                    <span className="font-medium">{lang === 'th' ? 'ส่วนลด Coin ตอนจอง:' : 'Coin Discount at Booking:'}</span>
+                    <span className="font-bold font-mono text-amber-800">🪙 ฿{formatCurrency(useTargetOneTimeBooking.coinAmountUsed)}</span>
+                  </div>
+                ) : null}
+                {useTargetOneTimeBooking.fullPrice > (useTargetOneTimeBooking.depositAmount + (useTargetOneTimeBooking.coinAmountUsed || 0)) && (
                   <div className="pt-2 border-t border-[#F2E3E1] flex justify-between text-[#D87085] font-bold">
                     <span>{lang === 'th' ? 'ยอดที่ต้องชำระเพิ่มวันนี้:' : 'Balance to collect today:'}</span>
-                    <span className="font-mono text-sm">฿{formatCurrency(useTargetOneTimeBooking.fullPrice - useTargetOneTimeBooking.depositAmount)}</span>
+                    <span className="font-mono text-sm">฿{formatCurrency(useTargetOneTimeBooking.fullPrice - (useTargetOneTimeBooking.depositAmount + (useTargetOneTimeBooking.coinAmountUsed || 0)))}</span>
+                  </div>
+                )}
+                {useTargetOneTimeBooking.fullPrice > (useTargetOneTimeBooking.depositAmount + (useTargetOneTimeBooking.coinAmountUsed || 0)) && (
+                  <div className="pt-2 space-y-1.5">
+                    <label className="block text-xs font-bold text-[#3D3835]">
+                      {lang === 'th' ? 'ใช้ Coin ช่วยเป็นส่วนลด (ถ้ามี)' : 'Use Coin as discount (optional)'}
+                    </label>
+                    <p className="text-[11px] text-[#6E6763]">
+                      {lang === 'th'
+                        ? `Coin คงเหลือของลูกค้า: ฿${formatCurrency(selectedClientData?.coinBalance || 0)}`
+                        : `Client's Coin balance: ฿${formatCurrency(selectedClientData?.coinBalance || 0)}`}
+                    </p>
+                    <input
+                      type="number"
+                      min="0"
+                      max={Math.min(
+                        useTargetOneTimeBooking.fullPrice - (useTargetOneTimeBooking.depositAmount + (useTargetOneTimeBooking.coinAmountUsed || 0)),
+                        selectedClientData?.coinBalance || 0
+                      )}
+                      value={useCoinDiscountAmount}
+                      onChange={(e) => setUseCoinDiscountAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder={lang === 'th' ? 'เช่น 100' : 'e.g. 100'}
+                      className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs font-bold focus:outline-none focus:border-[#E88D9F]"
+                    />
+                    {Number(useCoinDiscountAmount) > 0 && (
+                      <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-800 font-medium">
+                        {lang === 'th'
+                          ? `ลูกค้าจะชำระเงินสดจริงแค่ ฿${formatCurrency(useTargetOneTimeBooking.fullPrice - (useTargetOneTimeBooking.depositAmount + (useTargetOneTimeBooking.coinAmountUsed || 0)) - Number(useCoinDiscountAmount))} (หลังหักส่วนลด Coin ฿${formatCurrency(Number(useCoinDiscountAmount))})`
+                          : `Customer pays only ฿${formatCurrency(useTargetOneTimeBooking.fullPrice - (useTargetOneTimeBooking.depositAmount + (useTargetOneTimeBooking.coinAmountUsed || 0)) - Number(useCoinDiscountAmount))} in cash (after ฿${formatCurrency(Number(useCoinDiscountAmount))} Coin discount)`}
+                      </div>
+                    )}
                   </div>
                 )}
                 <p className="text-[11px] text-[#6E6763] pt-1">
@@ -3548,6 +3642,53 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
         isOpen={isBackupModalOpen}
         onClose={() => setIsBackupModalOpen(false)}
       />
+
+      {/* Mobile Bottom Navigation (Staff) — hidden on desktop */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#F2E3E1] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-40 px-2 py-1.5 flex items-center justify-around">
+        {canAccessClientOps && (
+          <button
+            onClick={() => setActiveTab('client_ops')}
+            className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-[10px] font-bold transition ${
+              activeTab === 'client_ops' ? 'text-[#D87085]' : 'text-[#9C948E]'
+            }`}
+          >
+            <User className={`w-5 h-5 ${activeTab === 'client_ops' ? 'text-[#D87085]' : 'text-[#9C948E]'}`} />
+            <span>{lang === 'th' ? 'ลูกค้า' : 'Clients'}</span>
+          </button>
+        )}
+
+        {canAccessFinancial && (
+          <button
+            onClick={() => setActiveTab('financial')}
+            className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-[10px] font-bold transition ${
+              activeTab === 'financial' ? 'text-[#D87085]' : 'text-[#9C948E]'
+            }`}
+          >
+            <PieChart className={`w-5 h-5 ${activeTab === 'financial' ? 'text-[#D87085]' : 'text-[#9C948E]'}`} />
+            <span>{lang === 'th' ? 'การเงิน' : 'Financial'}</span>
+          </button>
+        )}
+
+        {role === 'admin' && (
+          <button
+            onClick={onOpenCatalog}
+            className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-[10px] font-bold text-[#9C948E]"
+          >
+            <Package className="w-5 h-5 text-[#9C948E]" />
+            <span>{lang === 'th' ? 'แคตตาล็อก' : 'Catalog'}</span>
+          </button>
+        )}
+
+        {(role === 'admin' || role === 'manager') && (
+          <button
+            onClick={onOpenAuditLogs}
+            className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-[10px] font-bold text-[#9C948E]"
+          >
+            <History className="w-5 h-5 text-[#9C948E]" />
+            <span>{lang === 'th' ? 'Audit Log' : 'Audit Log'}</span>
+          </button>
+        )}
+      </div>
 
     </div>
   );

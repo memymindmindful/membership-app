@@ -290,6 +290,15 @@ async function startServer() {
     }
   });
 
+  app.post('/api/clients/:id/notifications/mark-all-read', authenticateClientOrStaff, (req, res) => {
+    try {
+      store.markAllNotificationsAsRead(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   app.get('/api/admin/export-clients', authenticateStaff, (req, res) => {
     try {
       const data = store.getAllClientsExportData();
@@ -710,6 +719,7 @@ async function startServer() {
         linkedPackageId,
         linkedCouponId,
         coinAmountUsed,
+        coinDiscountAtBooking,
       } = req.body;
 
       if (!catalogId && (!customName || !customName.trim())) {
@@ -752,7 +762,8 @@ async function startServer() {
         customName || undefined,
         linkedPackageId || undefined,
         linkedCouponId || undefined,
-        coinAmountUsed ? Number(coinAmountUsed) : undefined
+        coinAmountUsed ? Number(coinAmountUsed) : undefined,
+        coinDiscountAtBooking ? Number(coinDiscountAtBooking) : undefined
       );
       res.status(201).json(booking);
     } catch (err: any) {
@@ -762,11 +773,12 @@ async function startServer() {
 
   app.post('/api/onetime-bookings/:id/mark-used', authenticateStaff, (req, res) => {
     try {
-      const { staffId, staffName } = req.body;
+      const { staffId, staffName, coinDiscountAmount } = req.body;
       const booking = store.markOneTimeBookingUsed(
         req.params.id,
         staffId || 'EMP-01',
-        staffName || 'Staff'
+        staffName || 'Staff',
+        coinDiscountAmount ? Number(coinDiscountAmount) : undefined
       );
       res.json(booking);
     } catch (err: any) {

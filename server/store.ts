@@ -2026,7 +2026,8 @@ class Store {
     customName?: string,
     linkedPackageId?: string,
     linkedCouponId?: string,
-    coinAmountUsed?: number
+    coinAmountUsed?: number,
+    coinDiscountAtBooking?: number
   ): ClientOneTimeBooking {
     const catalog = catalogId ? this.db.catalogItems.find((c) => c.id === catalogId) : undefined;
     const finalName = customName?.trim() || catalog?.name || 'One-Time Service';
@@ -2034,8 +2035,22 @@ class Store {
     const isPrepaidOrFree = ['free', 'deduct_package', 'deduct_coupon', 'coin'].includes(paymentStatusAtBooking);
     
     // For free, deduct_package, deduct_coupon, coin: depositAmount must be 0
-    const finalDeposit = isPrepaidOrFree ? 0 : depositAmount;
+    let finalDeposit = isPrepaidOrFree ? 0 : depositAmount;
     const finalFullPrice = isFree ? 0 : fullPrice;
+
+    if (!isPrepaidOrFree && coinDiscountAtBooking && coinDiscountAtBooking > 0) {
+      if (coinDiscountAtBooking > finalDeposit) {
+        throw new Error('ส่วนลด Coin มากกว่ายอดเงินสดที่รับชำระวันนี้');
+      }
+      this.deductCoinCredit(
+        clientId,
+        coinDiscountAtBooking,
+        `ใช้ Coin เป็นส่วนลดตอนจองบริการ: ${finalName}`,
+        staffId,
+        staffName
+      );
+      finalDeposit -= coinDiscountAtBooking;
+    }
 
     const booking: ClientOneTimeBooking = {
       id: `OTB-${Date.now()}`,
@@ -2049,7 +2064,7 @@ class Store {
       paymentStatusAtBooking,
       linkedPackageId: paymentStatusAtBooking === 'deduct_package' ? linkedPackageId : undefined,
       linkedCouponId: paymentStatusAtBooking === 'deduct_coupon' ? linkedCouponId : undefined,
-      coinAmountUsed: paymentStatusAtBooking === 'coin' ? coinAmountUsed : undefined,
+      coinAmountUsed: paymentStatusAtBooking === 'coin' ? coinAmountUsed : (coinDiscountAtBooking || undefined),
       bookingDateTime,
       endDateTime: endDateTime || undefined,
       branch: branch || 'Me.My.Mind Spa & Massage',
@@ -2106,7 +2121,12 @@ class Store {
     return booking;
   }
 
-  public markOneTimeBookingUsed(bookingId: string, staffId: string, staffName: string): ClientOneTimeBooking {
+  public markOneTimeBookingUsed(
+    bookingId: string,
+    staffId: string,
+    staffName: string,
+    coinDiscountAmount?: number
+  ): ClientOneTimeBooking {
     if (!this.db.clientOneTimeBookings) {
       this.db.clientOneTimeBookings = [];
     }
@@ -2157,7 +2177,23 @@ class Store {
         }
       }
     } else if (booking.paymentStatusAtBooking === 'deposit') {
-      const remaining = booking.fullPrice - booking.depositAmount;
+      let remaining = booking.fullPrice - booking.depositAmount;
+
+      if (coinDiscountAmount && coinDiscountAmount > 0) {
+        if (coinDiscountAmount > remaining) {
+          throw new Error('ส่วนลด Coin ที่ใช้มากกว่ายอดคงเหลือที่ต้องชำระ');
+        }
+        this.deductCoinCredit(
+          booking.clientId,
+          coinDiscountAmount,
+          `ใช้ Coin เป็นส่วนลดสำหรับบริการ: ${booking.name}`,
+          staffId,
+          staffName
+        );
+        booking.coinAmountUsed = coinDiscountAmount;
+        remaining -= coinDiscountAmount;
+      }
+
       if (remaining > 0) {
         booking.remainingAmountPaid = remaining;
         const ptsEarned = Math.floor(remaining / BAHT_PER_POINT);
@@ -2172,6 +2208,8 @@ class Store {
             { relatedOneTimeBookingId: booking.id }
           );
         }
+      } else {
+        booking.remainingAmountPaid = 0;
       }
     }
 
@@ -2428,6 +2466,20 @@ class Store {
     }
   }
 
+  public markAllNotificationsAsRead(clientId: string): void {
+    if (!this.db.notifications) return;
+    let changed = false;
+    for (const n of this.db.notifications) {
+      if (n.clientId === clientId && !n.read) {
+        n.read = true;
+        changed = true;
+      }
+    }
+    if (changed) {
+      this.saveToDisk();
+    }
+  }
+
   // Audit Logs
   public getAuditLogs(): AuditLog[] {
     return this.db.auditLogs;
@@ -2599,7 +2651,7 @@ class Store {
         }
 
         if (booking.status === 'used' && booking.paymentStatusAtBooking === 'deposit') {
-          const remaining = booking.remainingAmountPaid || (booking.fullPrice - booking.depositAmount);
+          const remaining = booking.remainingAmountPaid || (booking.fullPrice - (booking.depositAmount + (booking.coinAmountUsed || 0)));
           if (remaining > 0) {
             autoEntries.push({
               id: `AUTO-OTB-${booking.id}-remaining`,

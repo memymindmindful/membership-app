@@ -534,6 +534,7 @@ export const api = {
       linkedPackageId?: string;
       linkedCouponId?: string;
       coinAmountUsed?: number;
+      coinDiscountAtBooking?: number;
       bookingDateTime: string;
       endDateTime?: string;
       branch: string;
@@ -556,12 +557,13 @@ export const api = {
   async markOneTimeBookingUsed(
     bookingId: string,
     staffId: string,
-    staffName: string
+    staffName: string,
+    coinDiscountAmount?: number
   ): Promise<ClientOneTimeBooking> {
     const res = await fetch(`/api/onetime-bookings/${bookingId}/mark-used`, {
       method: 'POST',
       headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ staffId, staffName }),
+      body: JSON.stringify({ staffId, staffName, coinDiscountAmount }),
     });
     if (!res.ok) {
       const err = await res.json();
@@ -849,5 +851,17 @@ export const api = {
       throw new Error(err.error || 'Failed to update brand settings');
     }
     return res.json();
+  },
+
+  async markAllNotificationsRead(clientId: string): Promise<void> {
+    const headers = getAuthHeaders({ 'Content-Type': 'application/json' });
+    const res = await fetch(`/api/clients/${clientId}/notifications/mark-all-read`, {
+      method: 'POST',
+      headers,
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to mark notifications as read');
+    }
   },
 };
