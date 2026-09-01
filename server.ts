@@ -702,6 +702,7 @@ async function startServer() {
         depositAmount,
         paymentStatusAtBooking,
         bookingDateTime,
+        endDateTime,
         branch,
         staffId,
         staffName,
@@ -730,7 +731,8 @@ async function startServer() {
         bookingDateTime || new Date().toISOString(),
         branch || 'Me.My.Mind Spa & Massage',
         staffId || 'EMP-01',
-        staffName || 'Staff'
+        staffName || 'Staff',
+        endDateTime || undefined
       );
       res.status(201).json(booking);
     } catch (err: any) {
@@ -871,6 +873,29 @@ async function startServer() {
     try {
       const { staffId, staffName } = req.body;
       store.deleteFinancialEntry(req.params.id, staffId || 'EMP-01', staffName || 'Staff');
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/financial-entries/void-auto', authenticateStaff, (req, res) => {
+    try {
+      const staff = (req as any).authenticatedStaff;
+      if (staff.role !== 'admin') {
+        return res.status(403).json({ error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถยกเลิกรายการได้' });
+      }
+      const { category, sourceTxId, reason } = req.body;
+      if (!category || !sourceTxId) {
+        return res.status(400).json({ error: 'Category and sourceTxId are required' });
+      }
+      store.voidAutoFinancialEntry(
+        category,
+        sourceTxId,
+        staff.staffId,
+        staff.staffName,
+        reason || 'แก้ไขข้อมูลผิดพลาด'
+      );
       res.json({ success: true });
     } catch (err: any) {
       res.status(400).json({ error: err.message });

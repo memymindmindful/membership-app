@@ -2021,7 +2021,8 @@ class Store {
     bookingDateTime: string,
     branch: string,
     staffId: string,
-    staffName: string
+    staffName: string,
+    endDateTime?: string
   ): ClientOneTimeBooking {
     const catalog = this.db.catalogItems.find((c) => c.id === catalogId);
     const booking: ClientOneTimeBooking = {
@@ -2035,6 +2036,7 @@ class Store {
       depositAmount,
       paymentStatusAtBooking,
       bookingDateTime,
+      endDateTime: endDateTime || undefined,
       branch: branch || 'Me.My.Mind Spa & Massage',
       status: 'booked',
       createdAt: new Date().toISOString(),
@@ -2608,6 +2610,36 @@ class Store {
     this.logAudit(staffId, staffName, 'DELETE_FINANCIAL_ENTRY', 'financial', id, `Deleted ${removed.type} entry: ${removed.title}`, removed, null);
     this.saveToDisk();
     return true;
+  }
+
+  public voidAutoFinancialEntry(
+    category: string,
+    sourceTxId: string,
+    staffId: string,
+    staffName: string,
+    reason: string
+  ): void {
+    switch (category) {
+      case 'coin_purchase':
+        this.reverseCoinTransaction(sourceTxId, reason, staffId, staffName);
+        break;
+      case 'direct_service':
+        this.reversePointsTransaction(sourceTxId, reason, staffId, staffName);
+        break;
+      case 'package_sale':
+        this.voidClientPackage(sourceTxId, staffId, staffName, reason);
+        break;
+      case 'coupon_sale':
+        this.voidClientCoupon(sourceTxId, staffId, staffName, reason);
+        break;
+      case 'onetime_service': {
+        const bookingId = sourceTxId.replace('-remaining', '');
+        this.voidOneTimeBooking(bookingId, staffId, staffName, reason);
+        break;
+      }
+      default:
+        throw new Error(`Cannot void entry with category: ${category}`);
+    }
   }
 
   public purgeSystemData(

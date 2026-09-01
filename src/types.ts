@@ -198,6 +198,7 @@ export interface ClientOneTimeBooking {
   depositAmount: number;
   paymentStatusAtBooking: 'deposit' | 'paid_full';
   bookingDateTime: string;
+  endDateTime?: string; // ISO string
   branch: string;
   status: 'booked' | 'used' | 'voided';
   usedAt?: string;

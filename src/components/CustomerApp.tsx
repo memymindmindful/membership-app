@@ -353,7 +353,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
                 <div className="space-y-3">
                   <h3 className="text-xs font-bold text-[#3D3835] flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-[#E88D9F]" />
-                    <span>{lang === 'th' ? 'การจองบริการรายครั้ง (One-Time Service)' : 'One-Time Bookings'}</span>
+                    <span>{lang === 'th' ? 'การจองของคุณ (Booking Confirmation)' : 'Booking Confirmation'}</span>
                   </h3>
 
                   {oneTimeBookings
@@ -376,10 +376,22 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
                                 <h4 className="text-sm font-bold text-[#3D3835]">{booking.catalogName}</h4>
                                 <p className="text-[11px] text-[#6E6763]">📍 {booking.branch}</p>
                                 <p className="text-[11px] text-[#D87085] font-medium">📅 {formatDate(booking.bookingDateTime, lang)}</p>
+                                {booking.endDateTime && (
+                                  <p className="text-[11px] text-[#6E6763]">
+                                    {lang === 'th' ? 'ถึง' : 'to'} {formatDate(booking.endDateTime, lang)}
+                                    {' · '}
+                                    {(() => {
+                                      const diffMs = new Date(booking.endDateTime).getTime() - new Date(booking.bookingDateTime).getTime();
+                                      const hrs = Math.floor(diffMs / 3600000);
+                                      const mins = Math.round((diffMs % 3600000) / 60000);
+                                      return hrs > 0 ? `${hrs} ${lang === 'th' ? 'ชม.' : 'hr'} ${mins} ${lang === 'th' ? 'นาที' : 'min'}` : `${mins} ${lang === 'th' ? 'นาที' : 'min'}`;
+                                    })()}
+                                  </p>
+                                )}
                               </div>
                             </div>
-                            <span className="shrink-0 text-[10px] bg-[#FAF0ED] text-[#D87085] font-bold px-2 py-0.5 rounded-full border border-[#F2E3E1]">
-                              {lang === 'th' ? 'รอดำเนินการ' : 'Booked'}
+                            <span className="shrink-0 text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                              {lang === 'th' ? 'ยืนยันการจอง' : 'Confirmed'}
                             </span>
                           </div>
 
@@ -408,6 +420,12 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {activePackages.length > 0 && (
+                    <h3 className="text-xs font-bold text-[#3D3835] flex items-center gap-1.5 pt-2">
+                      <Package className="w-3.5 h-3.5 text-[#E88D9F]" />
+                      <span>{lang === 'th' ? 'แพ็กเกจของคุณ (Active Packages)' : 'Active Packages'}</span>
+                    </h3>
+                  )}
                   {activePackages.map((pkg) => {
                     const percentUsed = Math.round(
                       ((pkg.totalSessions - pkg.remainingSessions) / pkg.totalSessions) * 100

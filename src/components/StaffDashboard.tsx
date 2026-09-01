@@ -283,6 +283,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   const [onetimeDepositAmount, setOnetimeDepositAmount] = useState<number | ''>(0);
   const [onetimePaymentStatus, setOnetimePaymentStatus] = useState<'deposit' | 'paid_full'>('deposit');
   const [onetimeBookingDateTime, setOnetimeBookingDateTime] = useState('');
+  const [onetimeEndDateTime, setOnetimeEndDateTime] = useState('');
   const [onetimeBranch, setOnetimeBranch] = useState('Me.My.Mind Spa & Massage');
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
 
@@ -470,6 +471,12 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
     nextDate.setHours(14, 0, 0, 0);
     const localIso = new Date(nextDate.getTime() - nextDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     setOnetimeBookingDateTime(localIso);
+    
+    // Default end time to 1 hour after start
+    const nextEndDate = new Date(nextDate.getTime() + 3600000);
+    const localEndIso = new Date(nextEndDate.getTime() - nextEndDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    setOnetimeEndDateTime(localEndIso);
+
     setOnetimeBranch('Me.My.Mind Spa & Massage');
     setShowBookOneTimeModal(true);
   };
@@ -509,6 +516,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
         depositAmount: onetimePaymentStatus === 'paid_full' ? fullP : depA,
         paymentStatusAtBooking: onetimePaymentStatus === 'paid_full' || depA === fullP ? 'paid_full' : 'deposit',
         bookingDateTime: onetimeBookingDateTime ? new Date(onetimeBookingDateTime).toISOString() : new Date().toISOString(),
+        endDateTime: onetimeEndDateTime ? new Date(onetimeEndDateTime).toISOString() : undefined,
         branch: onetimeBranch.trim() || 'Me.My.Mind Spa & Massage',
         staffId: currentStaff.id,
         staffName: currentStaff.displayName,
@@ -1227,11 +1235,26 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                                   <span className="text-[10px] bg-[#E88D9F]/15 text-[#D87085] font-bold px-2 py-0.2 rounded-md">
                                     {lang === 'th' ? 'บริการรายครั้ง' : 'One-Time'}
                                   </span>
+                                  <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.2 rounded-md border border-emerald-200">
+                                    {lang === 'th' ? 'ยืนยันการจอง' : 'Confirmed'}
+                                  </span>
                                 </div>
                                 <p className="text-[11px] text-[#6E6763] flex items-center gap-2 flex-wrap font-medium">
                                   <span>📅 {formatDate(booking.bookingDateTime, lang)}</span>
                                   <span>📍 {booking.branch}</span>
                                 </p>
+                                {booking.endDateTime && (
+                                  <p className="text-[11px] text-[#6E6763]">
+                                    {lang === 'th' ? 'ถึง' : 'to'} {formatDate(booking.endDateTime, lang)}
+                                    {' · '}
+                                    {(() => {
+                                      const diffMs = new Date(booking.endDateTime).getTime() - new Date(booking.bookingDateTime).getTime();
+                                      const hrs = Math.floor(diffMs / 3600000);
+                                      const mins = Math.round((diffMs % 3600000) / 60000);
+                                      return hrs > 0 ? `${hrs} ${lang === 'th' ? 'ชม.' : 'hr'} ${mins} ${lang === 'th' ? 'นาที' : 'min'}` : `${mins} ${lang === 'th' ? 'นาที' : 'min'}`;
+                                    })()}
+                                  </p>
+                                )}
                                 <div className="flex items-center gap-2 flex-wrap pt-0.5">
                                   <span className="text-[11px] font-mono text-[#3D3835] font-bold">
                                     ฿{formatCurrency(booking.fullPrice)}
@@ -1404,15 +1427,33 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                               <span className="font-bold text-[#3D3835]">
                                 {b.catalogName} ({lang === 'th' ? 'บริการรายครั้ง One-Time' : 'One-Time Service'})
                               </span>
-                              {b.status === 'voided' ? (
-                                <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded-full border border-rose-300">
-                                  {lang === 'th' ? 'ยกเลิกแล้ว (Voided)' : 'Voided'} {formatShortDate(b.voidedAt || b.createdAt, lang)}
-                                </span>
-                              ) : (
-                                <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                                  {lang === 'th' ? 'ใช้บริการแล้วเมื่อ' : 'Used'} {formatShortDate(b.usedAt || b.bookingDateTime, lang)}
-                                </span>
-                              )}
+                              <div className="flex items-center gap-2">
+                                {b.status === 'voided' ? (
+                                  <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded-full border border-rose-300">
+                                    {lang === 'th' ? 'ยกเลิกแล้ว (Voided)' : 'Voided'} {formatShortDate(b.voidedAt || b.createdAt, lang)}
+                                  </span>
+                                ) : (
+                                  <>
+                                    <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                      {lang === 'th' ? 'ใช้บริการแล้วเมื่อ' : 'Used'} {formatShortDate(b.usedAt || b.bookingDateTime, lang)}
+                                    </span>
+                                    {role === 'admin' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setVoidTargetOneTimeBooking(b);
+                                          setVoidOneTimeReason('ยกเลิกรายการบริการที่ใช้แล้ว (Admin Void)');
+                                        }}
+                                        title={lang === 'th' ? 'ยกเลิกรายการนี้ (Admin)' : 'Void Booking (Admin)'}
+                                        className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold rounded-lg border border-rose-200 transition flex items-center gap-1"
+                                      >
+                                        <Trash2 className="w-3 h-3 text-rose-600" />
+                                        <span>{lang === 'th' ? 'ยกเลิก (Admin)' : 'Void'}</span>
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+                              </div>
                             </div>
                             <div className="flex justify-between text-[11px] text-[#6E6763] font-mono flex-wrap gap-2">
                               <span>{lang === 'th' ? 'ยอดเต็ม:' : 'Full Price:'} ฿{formatCurrency(b.fullPrice)}</span>
@@ -2545,7 +2586,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
               <div className="flex items-center gap-2 text-[#3D3835]">
                 <Sparkles className="w-5 h-5 text-[#E88D9F]" />
                 <h3 className="text-base font-serif font-bold">
-                  {lang === 'th' ? 'บันทึกการจองบริการรายครั้ง (One-Time Service)' : 'Book One-Time Service'}
+                  {lang === 'th' ? 'บันทึกการจอง (Make a Booking)' : 'Make a Booking'}
                 </h3>
               </div>
               <button
@@ -2660,7 +2701,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-[#3D3835] mb-1">
-                    {lang === 'th' ? 'วัน-เวลานัดหมาย' : 'Appointment Date & Time'} *
+                    {lang === 'th' ? 'วัน-เวลานัดหมาย (เริ่ม)' : 'Start Date & Time'} *
                   </label>
                   <input
                     type="datetime-local"
@@ -2673,15 +2714,43 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-[#3D3835] mb-1">
-                    {lang === 'th' ? 'สาขาที่รับบริการ' : 'Branch'}
+                    {lang === 'th' ? 'วัน-เวลาสิ้นสุดกิจกรรม' : 'End Date & Time'}
                   </label>
                   <input
-                    type="text"
-                    value={onetimeBranch}
-                    onChange={(e) => setOnetimeBranch(e.target.value)}
+                    type="datetime-local"
+                    value={onetimeEndDateTime}
+                    onChange={(e) => setOnetimeEndDateTime(e.target.value)}
                     className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs focus:outline-none focus:border-[#E88D9F]"
                   />
                 </div>
+              </div>
+
+              {onetimeBookingDateTime && onetimeEndDateTime && new Date(onetimeEndDateTime) > new Date(onetimeBookingDateTime) && (
+                <div className="p-2.5 bg-[#FAF0ED]/80 rounded-xl border border-[#F2E3E1] flex items-center justify-between text-xs">
+                  <span className="font-medium text-[#6E6763]">
+                    ⏱️ {lang === 'th' ? 'ระยะเวลาที่คำนวณได้:' : 'Calculated Duration:'}
+                  </span>
+                  <span className="font-bold text-[#D87085]">
+                    {(() => {
+                      const diffMs = new Date(onetimeEndDateTime).getTime() - new Date(onetimeBookingDateTime).getTime();
+                      const hrs = Math.floor(diffMs / 3600000);
+                      const mins = Math.round((diffMs % 3600000) / 60000);
+                      return hrs > 0 ? `${hrs} ${lang === 'th' ? 'ชม.' : 'hr'} ${mins} ${lang === 'th' ? 'นาที' : 'min'}` : `${mins} ${lang === 'th' ? 'นาที' : 'min'}`;
+                    })()}
+                  </span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-[#3D3835] mb-1">
+                  {lang === 'th' ? 'สาขาที่รับบริการ' : 'Branch'}
+                </label>
+                <input
+                  type="text"
+                  value={onetimeBranch}
+                  onChange={(e) => setOnetimeBranch(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs focus:outline-none focus:border-[#E88D9F]"
+                />
               </div>
 
               <div className="pt-3 border-t border-[#FAF0ED] flex items-center justify-end gap-2">

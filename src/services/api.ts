@@ -531,6 +531,7 @@ export const api = {
       depositAmount: number;
       paymentStatusAtBooking: 'deposit' | 'paid_full';
       bookingDateTime: string;
+      endDateTime?: string;
       branch: string;
       staffId: string;
       staffName: string;
@@ -661,6 +662,24 @@ export const api = {
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Failed to delete financial entry');
+    }
+    const data = await res.json();
+    return data.success;
+  },
+
+  async voidAutoFinancialEntry(
+    category: string,
+    sourceTxId: string,
+    reason: string
+  ): Promise<boolean> {
+    const res = await fetch('/api/financial-entries/void-auto', {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ category, sourceTxId, reason }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to void auto financial entry');
     }
     const data = await res.json();
     return data.success;
