@@ -196,7 +196,11 @@ export interface ClientOneTimeBooking {
   imageUrl: string;
   fullPrice: number;
   depositAmount: number;
-  paymentStatusAtBooking: 'deposit' | 'paid_full';
+  paymentStatusAtBooking: 'deposit' | 'paid_full' | 'free' | 'deduct_package' | 'deduct_coupon' | 'coin';
+  linkedPackageId?: string;
+  linkedCouponId?: string;
+  coinAmountUsed?: number;
+  remainingAmountPaid?: number;
   bookingDateTime: string;
   endDateTime?: string; // ISO string
   branch: string;

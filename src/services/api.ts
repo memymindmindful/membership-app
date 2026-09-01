@@ -526,10 +526,14 @@ export const api = {
   async bookOneTimeService(
     clientId: string,
     bookingData: {
-      catalogId: string;
+      catalogId?: string;
+      customName?: string;
       fullPrice: number;
       depositAmount: number;
-      paymentStatusAtBooking: 'deposit' | 'paid_full';
+      paymentStatusAtBooking: 'deposit' | 'paid_full' | 'free' | 'deduct_package' | 'deduct_coupon' | 'coin';
+      linkedPackageId?: string;
+      linkedCouponId?: string;
+      coinAmountUsed?: number;
       bookingDateTime: string;
       endDateTime?: string;
       branch: string;

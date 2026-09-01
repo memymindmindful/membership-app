@@ -698,6 +698,7 @@ async function startServer() {
     try {
       const {
         catalogId,
+        customName,
         fullPrice,
         depositAmount,
         paymentStatusAtBooking,
@@ -706,25 +707,40 @@ async function startServer() {
         branch,
         staffId,
         staffName,
+        linkedPackageId,
+        linkedCouponId,
+        coinAmountUsed,
       } = req.body;
 
-      if (!catalogId) {
-        return res.status(400).json({ error: 'Catalog item is required' });
+      if (!catalogId && (!customName || !customName.trim())) {
+        return res.status(400).json({ error: 'Catalog item or custom service name is required' });
       }
 
-      const numFullPrice = Number(fullPrice);
-      const numDeposit = Number(depositAmount);
+      const isFree = paymentStatusAtBooking === 'free';
+      const isPrepaidOrFree = ['free', 'deduct_package', 'deduct_coupon', 'coin'].includes(paymentStatusAtBooking);
+      const numFullPrice = isFree ? 0 : Number(fullPrice);
+      const numDeposit = isPrepaidOrFree ? 0 : Number(depositAmount);
 
-      if (isNaN(numFullPrice) || numFullPrice <= 0) {
+      if (!isFree && (isNaN(numFullPrice) || numFullPrice <= 0)) {
         return res.status(400).json({ error: 'Valid full price is required' });
       }
-      if (isNaN(numDeposit) || numDeposit < 0) {
+      if (!isPrepaidOrFree && (isNaN(numDeposit) || numDeposit < 0)) {
         return res.status(400).json({ error: 'Valid deposit amount is required' });
+      }
+
+      if (paymentStatusAtBooking === 'deduct_package' && !linkedPackageId) {
+        return res.status(400).json({ error: 'กรุณาเลือกแพ็กเกจที่จะตัด' });
+      }
+      if (paymentStatusAtBooking === 'deduct_coupon' && !linkedCouponId) {
+        return res.status(400).json({ error: 'กรุณาเลือกคูปองที่จะใช้' });
+      }
+      if (paymentStatusAtBooking === 'coin' && (!coinAmountUsed || Number(coinAmountUsed) <= 0)) {
+        return res.status(400).json({ error: 'กรุณาระบุจำนวน Coin ที่ต้องการใช้' });
       }
 
       const booking = store.bookOneTimeService(
         req.params.id,
-        catalogId,
+        catalogId || '',
         numFullPrice,
         numDeposit,
         paymentStatusAtBooking || (numDeposit === numFullPrice ? 'paid_full' : 'deposit'),
@@ -732,7 +748,11 @@ async function startServer() {
         branch || 'Me.My.Mind Spa & Massage',
         staffId || 'EMP-01',
         staffName || 'Staff',
-        endDateTime || undefined
+        endDateTime || undefined,
+        customName || undefined,
+        linkedPackageId || undefined,
+        linkedCouponId || undefined,
+        coinAmountUsed ? Number(coinAmountUsed) : undefined
       );
       res.status(201).json(booking);
     } catch (err: any) {

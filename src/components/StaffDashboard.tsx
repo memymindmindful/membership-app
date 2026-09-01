@@ -278,14 +278,29 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
 
   // One-Time Booking State
   const [showBookOneTimeModal, setShowBookOneTimeModal] = useState(false);
+  const [onetimeUseCustomName, setOnetimeUseCustomName] = useState(false);
+  const [onetimeCustomName, setOnetimeCustomName] = useState('');
   const [selectedOnetimeCatalogId, setSelectedOnetimeCatalogId] = useState('');
   const [onetimeFullPrice, setOnetimeFullPrice] = useState<number | ''>(0);
   const [onetimeDepositAmount, setOnetimeDepositAmount] = useState<number | ''>(0);
-  const [onetimePaymentStatus, setOnetimePaymentStatus] = useState<'deposit' | 'paid_full'>('deposit');
+  const [onetimePaymentStatus, setOnetimePaymentStatus] = useState<'deposit' | 'paid_full' | 'free' | 'deduct_package' | 'deduct_coupon' | 'coin'>('deposit');
+  const [onetimeLinkedPackageId, setOnetimeLinkedPackageId] = useState('');
+  const [onetimeLinkedCouponId, setOnetimeLinkedCouponId] = useState('');
+  const [onetimeCoinAmountUsed, setOnetimeCoinAmountUsed] = useState<number | ''>('');
   const [onetimeBookingDateTime, setOnetimeBookingDateTime] = useState('');
   const [onetimeEndDateTime, setOnetimeEndDateTime] = useState('');
   const [onetimeBranch, setOnetimeBranch] = useState('Me.My.Mind Spa & Massage');
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+
+  // Pagination states for client detail history
+  const [visibleTxCount, setVisibleTxCount] = useState(5);
+  const [visibleCompletedCount, setVisibleCompletedCount] = useState(5);
+
+  // Reset pagination when selected client changes
+  React.useEffect(() => {
+    setVisibleTxCount(5);
+    setVisibleCompletedCount(5);
+  }, [selectedClientData?.client.id]);
 
   // Use & Void One-Time Booking State
   const [useTargetOneTimeBooking, setUseTargetOneTimeBooking] = useState<ClientOneTimeBooking | null>(null);
@@ -454,6 +469,11 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
 
   // One-Time Booking Handlers
   const handleOpenBookOneTime = () => {
+    setOnetimeUseCustomName(false);
+    setOnetimeCustomName('');
+    setOnetimeLinkedPackageId('');
+    setOnetimeLinkedCouponId('');
+    setOnetimeCoinAmountUsed('');
     const onetimeItems = catalogItems.filter((c) => c.active && (c.type === 'onetime' || !c.type));
     const first = onetimeItems[0] || catalogItems.find((c) => c.active);
     if (first) {
@@ -488,6 +508,13 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
       setOnetimeFullPrice(item.price);
       if (onetimePaymentStatus === 'paid_full') {
         setOnetimeDepositAmount(item.price);
+      } else if (onetimePaymentStatus === 'free' || onetimePaymentStatus === 'deduct_package' || onetimePaymentStatus === 'deduct_coupon') {
+        setOnetimeDepositAmount(0);
+      } else if (onetimePaymentStatus === 'coin') {
+        setOnetimeDepositAmount(0);
+        if (selectedClientData) {
+          setOnetimeCoinAmountUsed(Math.min(item.price, selectedClientData.coinBalance));
+        }
       } else {
         setOnetimeDepositAmount(item.price >= 1000 ? Math.round(item.price * 0.5) : item.price);
       }
@@ -496,25 +523,69 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
 
   const handleSubmitBookOneTime = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedClientData || !selectedOnetimeCatalogId) return;
-    const fullP = Number(onetimeFullPrice);
-    const depA = Number(onetimeDepositAmount);
-    if (isNaN(fullP) || fullP <= 0) {
+    if (!selectedClientData) return;
+
+    if (!onetimeUseCustomName && !selectedOnetimeCatalogId) {
+      alert(lang === 'th' ? 'กรุณาเลือกบริการจากแคตตาล็อก' : 'Please select a catalog service');
+      return;
+    }
+
+    if (onetimeUseCustomName && !onetimeCustomName.trim()) {
+      alert(lang === 'th' ? 'กรุณาระบุชื่อกิจกรรม / บริการ' : 'Please enter service name');
+      return;
+    }
+
+    const isFree = onetimePaymentStatus === 'free';
+    const isPrepaidOrFree = ['free', 'deduct_package', 'deduct_coupon', 'coin'].includes(onetimePaymentStatus);
+    const fullP = isFree ? 0 : Number(onetimeFullPrice);
+    const depA = isPrepaidOrFree ? 0 : Number(onetimeDepositAmount);
+
+    if (!isFree && (isNaN(fullP) || fullP <= 0)) {
       alert(lang === 'th' ? 'กรุณาระบุราคาเต็มของบริการ' : 'Please specify valid full price');
       return;
     }
-    if (isNaN(depA) || depA < 0 || depA > fullP) {
+    if (!isPrepaidOrFree && (isNaN(depA) || depA < 0 || depA > fullP)) {
       alert(lang === 'th' ? 'ยอดเงินมัดจำต้องไม่ติดลบและไม่เกินราคาเต็ม' : 'Deposit must be between 0 and full price');
       return;
+    }
+
+    if (onetimePaymentStatus === 'deduct_package') {
+      if (!onetimeLinkedPackageId) {
+        alert(lang === 'th' ? 'กรุณาเลือกแพ็กเกจที่จะตัด' : 'Please select package to deduct');
+        return;
+      }
+    } else if (onetimePaymentStatus === 'deduct_coupon') {
+      if (!onetimeLinkedCouponId) {
+        alert(lang === 'th' ? 'กรุณาเลือกคูปองที่จะใช้' : 'Please select coupon to use');
+        return;
+      }
+    } else if (onetimePaymentStatus === 'coin') {
+      const coinAmt = Number(onetimeCoinAmountUsed);
+      if (isNaN(coinAmt) || coinAmt <= 0) {
+        alert(lang === 'th' ? 'กรุณาระบุจำนวน Coin ที่ต้องการใช้' : 'Please enter valid Coin amount');
+        return;
+      }
+      if (coinAmt > selectedClientData.coinBalance) {
+        alert(lang === 'th' ? 'จำนวน Coin ที่ใช้ เกินยอดคงเหลือของลูกค้า' : 'Coin amount exceeds client balance');
+        return;
+      }
+      if (coinAmt > fullP) {
+        alert(lang === 'th' ? 'จำนวน Coin ที่ใช้ ต้องไม่เกินราคาเต็มบริการ' : 'Coin amount exceeds full service price');
+        return;
+      }
     }
 
     setIsSubmittingBooking(true);
     try {
       await api.bookOneTimeService(selectedClientData.client.id, {
-        catalogId: selectedOnetimeCatalogId,
+        catalogId: onetimeUseCustomName ? undefined : selectedOnetimeCatalogId,
+        customName: onetimeUseCustomName ? onetimeCustomName.trim() : undefined,
         fullPrice: fullP,
-        depositAmount: onetimePaymentStatus === 'paid_full' ? fullP : depA,
-        paymentStatusAtBooking: onetimePaymentStatus === 'paid_full' || depA === fullP ? 'paid_full' : 'deposit',
+        depositAmount: isFree ? 0 : onetimePaymentStatus === 'paid_full' ? fullP : depA,
+        paymentStatusAtBooking: onetimePaymentStatus,
+        linkedPackageId: onetimePaymentStatus === 'deduct_package' ? onetimeLinkedPackageId : undefined,
+        linkedCouponId: onetimePaymentStatus === 'deduct_coupon' ? onetimeLinkedCouponId : undefined,
+        coinAmountUsed: onetimePaymentStatus === 'coin' ? Number(onetimeCoinAmountUsed) : undefined,
         bookingDateTime: onetimeBookingDateTime ? new Date(onetimeBookingDateTime).toISOString() : new Date().toISOString(),
         endDateTime: onetimeEndDateTime ? new Date(onetimeEndDateTime).toISOString() : undefined,
         branch: onetimeBranch.trim() || 'Me.My.Mind Spa & Massage',
@@ -1226,12 +1297,12 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                             <div className="flex items-center gap-3">
                               <img
                                 src={booking.imageUrl || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=200&q=80'}
-                                alt={booking.catalogName}
+                                alt={booking.name}
                                 className="w-12 h-12 rounded-xl object-cover border border-[#F2E3E1]"
                               />
                               <div className="space-y-0.5">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="text-xs font-bold text-[#3D3835]">{booking.catalogName}</h4>
+                                  <h4 className="text-xs font-bold text-[#3D3835]">{booking.name}</h4>
                                   <span className="text-[10px] bg-[#E88D9F]/15 text-[#D87085] font-bold px-2 py-0.2 rounded-md">
                                     {lang === 'th' ? 'บริการรายครั้ง' : 'One-Time'}
                                   </span>
@@ -1256,17 +1327,44 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                                   </p>
                                 )}
                                 <div className="flex items-center gap-2 flex-wrap pt-0.5">
-                                  <span className="text-[11px] font-mono text-[#3D3835] font-bold">
-                                    ฿{formatCurrency(booking.fullPrice)}
-                                  </span>
-                                  {booking.paymentStatusAtBooking === 'paid_full' ? (
-                                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.2 rounded-full border border-emerald-300">
-                                      {lang === 'th' ? 'ชำระเต็มจำนวนแล้ว' : 'Paid in Full'}
+                                  {booking.paymentStatusAtBooking === 'free' ? (
+                                    <span className="text-[10px] bg-sky-100 text-sky-800 font-bold px-2.5 py-0.5 rounded-full border border-sky-300">
+                                      {lang === 'th' ? 'กิจกรรมฟรี (Free)' : 'Free Service'}
                                     </span>
+                                  ) : booking.paymentStatusAtBooking === 'deduct_package' ? (
+                                    <span className="text-[10px] bg-purple-100 text-purple-800 font-bold px-2.5 py-0.5 rounded-full border border-purple-300">
+                                      {lang === 'th' ? 'ตัดสิทธิ์จากแพ็กเกจ' : 'Deduct from Package'}
+                                    </span>
+                                  ) : booking.paymentStatusAtBooking === 'deduct_coupon' ? (
+                                    <span className="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-2.5 py-0.5 rounded-full border border-indigo-300">
+                                      {lang === 'th' ? 'ใช้สิทธิ์คูปอง' : 'Use Coupon'}
+                                    </span>
+                                  ) : booking.paymentStatusAtBooking === 'coin' ? (
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2.5 py-0.5 rounded-full border border-amber-300">
+                                        🪙 {lang === 'th' ? `ใช้ Coin ฿${formatCurrency(booking.coinAmountUsed || 0)}` : `Coin ฿${formatCurrency(booking.coinAmountUsed || 0)}`}
+                                      </span>
+                                      {booking.fullPrice > (booking.coinAmountUsed || 0) && (
+                                        <span className="text-[10px] text-[#6E6763] font-medium">
+                                          ({lang === 'th' ? `ชำระเพิ่มวันบริการ: ฿${formatCurrency(booking.fullPrice - (booking.coinAmountUsed || 0))}` : `Due: ฿${formatCurrency(booking.fullPrice - (booking.coinAmountUsed || 0))}`})
+                                        </span>
+                                      )}
+                                    </div>
                                   ) : (
-                                    <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.2 rounded-full border border-amber-300">
-                                      {lang === 'th' ? `มัดจำแล้ว ฿${formatCurrency(booking.depositAmount)} (ยอดคงเหลือวันบริการ: ฿${formatCurrency(remaining)})` : `Deposit ฿${formatCurrency(booking.depositAmount)} (Balance due: ฿${formatCurrency(remaining)})`}
-                                    </span>
+                                    <>
+                                      <span className="text-[11px] font-mono text-[#3D3835] font-bold">
+                                        ฿{formatCurrency(booking.fullPrice)}
+                                      </span>
+                                      {booking.paymentStatusAtBooking === 'paid_full' ? (
+                                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.2 rounded-full border border-emerald-300">
+                                          {lang === 'th' ? 'ชำระเต็มจำนวนแล้ว' : 'Paid in Full'}
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.2 rounded-full border border-amber-300">
+                                          {lang === 'th' ? `มัดจำแล้ว ฿${formatCurrency(booking.depositAmount)} (ยอดคงเหลือวันบริการ: ฿${formatCurrency(remaining)})` : `Deposit ฿${formatCurrency(booking.depositAmount)} (Balance due: ฿${formatCurrency(remaining)})`}
+                                        </span>
+                                      )}
+                                    </>
                                   )}
                                 </div>
                               </div>
@@ -1404,220 +1502,339 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                   </span>
                 </div>
 
-                {selectedClientData.packages.filter((p) => p.status === 'used_up' || p.status === 'voided').length === 0 &&
-                selectedClientData.coupons.filter((c) => c.status === 'used_up' || c.status === 'voided').length === 0 &&
-                (!selectedClientData.oneTimeBookings || selectedClientData.oneTimeBookings.filter((b) => b.status === 'used' || b.status === 'voided').length === 0) ? (
-                  <p className="text-xs text-[#9C948E] py-4 text-center">{t.noCompletedItems}</p>
-                ) : (
-                  <div className="space-y-3">
-                    {/* One-Time Bookings (Used or Voided) */}
-                    {selectedClientData.oneTimeBookings &&
-                      selectedClientData.oneTimeBookings
-                        .filter((b) => b.status === 'used' || b.status === 'voided')
-                        .map((b) => (
-                          <div
-                            key={b.id}
-                            className={`p-3.5 rounded-xl border text-xs space-y-2 ${
-                              b.status === 'voided'
-                                ? 'bg-rose-50/40 border-rose-200 text-[#3D3835]'
-                                : 'bg-[#FAF0ED]/50 border-[#F2E3E1]'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-[#3D3835]">
-                                {b.catalogName} ({lang === 'th' ? 'บริการรายครั้ง One-Time' : 'One-Time Service'})
-                              </span>
-                              <div className="flex items-center gap-2">
-                                {b.status === 'voided' ? (
-                                  <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded-full border border-rose-300">
-                                    {lang === 'th' ? 'ยกเลิกแล้ว (Voided)' : 'Voided'} {formatShortDate(b.voidedAt || b.createdAt, lang)}
-                                  </span>
+                {(() => {
+                  const completedItemsList = [
+                    ...(selectedClientData.oneTimeBookings || [])
+                      .filter((b) => b.status === 'used' || b.status === 'voided')
+                      .map((b) => ({
+                        itemType: 'onetime' as const,
+                        id: b.id,
+                        date: b.status === 'voided' ? (b.voidedAt || b.createdAt) : (b.usedAt || b.bookingDateTime),
+                        data: b,
+                      })),
+                    ...selectedClientData.packages
+                      .filter((p) => p.status === 'used_up' || p.status === 'voided')
+                      .map((p) => ({
+                        itemType: 'package' as const,
+                        id: p.id,
+                        date: p.status === 'voided' ? (p.voidedAt || p.createdAt) : (p.usedUpAt || p.expiryDate),
+                        data: p,
+                      })),
+                    ...selectedClientData.coupons
+                      .filter((c) => c.status === 'used_up' || c.status === 'voided')
+                      .map((c) => ({
+                        itemType: 'coupon' as const,
+                        id: c.id,
+                        date: c.status === 'voided' ? (c.voidedAt || c.createdAt) : (c.usedUpAt || c.expiryDate),
+                        data: c,
+                      })),
+                  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                  if (completedItemsList.length === 0) {
+                    return <p className="text-xs text-[#9C948E] py-4 text-center">{t.noCompletedItems}</p>;
+                  }
+
+                  const visibleItems = completedItemsList.slice(0, visibleCompletedCount);
+
+                  return (
+                    <div className="space-y-3">
+                      {visibleItems.map((item) => {
+                        if (item.itemType === 'onetime') {
+                          const b = item.data;
+                          return (
+                            <div
+                              key={b.id}
+                              className={`p-3.5 rounded-xl border text-xs space-y-2 ${
+                                b.status === 'voided'
+                                  ? 'bg-rose-50/40 border-rose-200 text-[#3D3835]'
+                                  : 'bg-[#FAF0ED]/50 border-[#F2E3E1]'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-[#3D3835]">
+                                  {b.name} ({lang === 'th' ? 'บริการรายครั้ง One-Time' : 'One-Time Service'})
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  {b.status === 'voided' ? (
+                                    <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded-full border border-rose-300">
+                                      {lang === 'th' ? 'ยกเลิกแล้ว (Voided)' : 'Voided'} {formatShortDate(b.voidedAt || b.createdAt, lang)}
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                        {lang === 'th' ? 'ใช้บริการแล้วเมื่อ' : 'Used'} {formatShortDate(b.usedAt || b.bookingDateTime, lang)}
+                                      </span>
+                                      {role === 'admin' && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setVoidTargetOneTimeBooking(b);
+                                            setVoidOneTimeReason('ยกเลิกรายการบริการที่ใช้แล้ว (Admin Void)');
+                                          }}
+                                          title={lang === 'th' ? 'ยกเลิกรายการนี้ (Admin)' : 'Void Booking (Admin)'}
+                                          className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold rounded-lg border border-rose-200 transition flex items-center gap-1"
+                                        >
+                                          <Trash2 className="w-3 h-3 text-rose-600" />
+                                          <span>{lang === 'th' ? 'ยกเลิก (Admin)' : 'Void'}</span>
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex justify-between text-[11px] text-[#6E6763] font-mono flex-wrap gap-2">
+                                {b.paymentStatusAtBooking === 'free' ? (
+                                  <span className="text-sky-800 font-semibold">{lang === 'th' ? 'กิจกรรมฟรี' : 'Free Service'}</span>
+                                ) : b.paymentStatusAtBooking === 'deduct_package' ? (
+                                  <span className="text-purple-800 font-semibold">{lang === 'th' ? 'ตัดสิทธิ์จากแพ็กเกจ' : 'Deduct from Package'}</span>
+                                ) : b.paymentStatusAtBooking === 'deduct_coupon' ? (
+                                  <span className="text-indigo-800 font-semibold">{lang === 'th' ? 'ใช้สิทธิ์คูปอง' : 'Use Coupon'}</span>
+                                ) : b.paymentStatusAtBooking === 'coin' ? (
+                                  <>
+                                    <span>{lang === 'th' ? 'ยอดเต็ม:' : 'Full Price:'} ฿{formatCurrency(b.fullPrice)}</span>
+                                    <span>{lang === 'th' ? 'ใช้ Coin:' : 'Coin Used:'} ฿{formatCurrency(b.coinAmountUsed || 0)}</span>
+                                    {b.remainingAmountPaid && b.remainingAmountPaid > 0 ? (
+                                      <span>{lang === 'th' ? 'ชำระเพิ่มวันบริการ:' : 'Paid on Service:'} ฿{formatCurrency(b.remainingAmountPaid)}</span>
+                                    ) : null}
+                                  </>
                                 ) : (
                                   <>
-                                    <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                                      {lang === 'th' ? 'ใช้บริการแล้วเมื่อ' : 'Used'} {formatShortDate(b.usedAt || b.bookingDateTime, lang)}
-                                    </span>
-                                    {role === 'admin' && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setVoidTargetOneTimeBooking(b);
-                                          setVoidOneTimeReason('ยกเลิกรายการบริการที่ใช้แล้ว (Admin Void)');
-                                        }}
-                                        title={lang === 'th' ? 'ยกเลิกรายการนี้ (Admin)' : 'Void Booking (Admin)'}
-                                        className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold rounded-lg border border-rose-200 transition flex items-center gap-1"
-                                      >
-                                        <Trash2 className="w-3 h-3 text-rose-600" />
-                                        <span>{lang === 'th' ? 'ยกเลิก (Admin)' : 'Void'}</span>
-                                      </button>
-                                    )}
+                                    <span>{lang === 'th' ? 'ยอดเต็ม:' : 'Full Price:'} ฿{formatCurrency(b.fullPrice)}</span>
+                                    <span>{lang === 'th' ? 'มัดจำ:' : 'Deposit:'} ฿{formatCurrency(b.depositAmount)}</span>
+                                    {b.remainingAmountPaid && b.remainingAmountPaid > 0 ? (
+                                      <span>{lang === 'th' ? 'ชำระวันบริการ:' : 'Paid on Service:'} ฿{formatCurrency(b.remainingAmountPaid)}</span>
+                                    ) : null}
                                   </>
                                 )}
+                                <span>{lang === 'th' ? 'สาขา:' : 'Branch:'} {b.branch}</span>
                               </div>
+                              {b.status === 'voided' && (
+                                <div className="text-[11px] text-rose-700 bg-rose-100/60 p-2 rounded-lg border border-rose-200">
+                                  <span className="font-bold">{lang === 'th' ? 'เหตุผลที่ยกเลิก:' : 'Void Reason:'}</span> {b.voidReason || '-'}
+                                  {b.voidedBy && <span className="ml-2 text-rose-600">({lang === 'th' ? 'โดย' : 'by'} {b.voidedBy})</span>}
+                                </div>
+                              )}
                             </div>
-                            <div className="flex justify-between text-[11px] text-[#6E6763] font-mono flex-wrap gap-2">
-                              <span>{lang === 'th' ? 'ยอดเต็ม:' : 'Full Price:'} ฿{formatCurrency(b.fullPrice)}</span>
-                              <span>{lang === 'th' ? 'มัดจำ:' : 'Deposit:'} ฿{formatCurrency(b.depositAmount)}</span>
-                              {b.remainingAmountPaid && b.remainingAmountPaid > 0 ? (
-                                <span>{lang === 'th' ? 'ชำระวันบริการ:' : 'Paid on Service:'} ฿{formatCurrency(b.remainingAmountPaid)}</span>
-                              ) : null}
-                              <span>{lang === 'th' ? 'สาขา:' : 'Branch:'} {b.branch}</span>
-                            </div>
-                            {b.status === 'voided' && (
-                              <div className="text-[11px] text-rose-700 bg-rose-100/60 p-2 rounded-lg border border-rose-200">
-                                <span className="font-bold">{lang === 'th' ? 'เหตุผลที่ยกเลิก:' : 'Void Reason:'}</span> {b.voidReason || '-'}
-                                {b.voidedBy && <span className="ml-2 text-rose-600">({lang === 'th' ? 'โดย' : 'by'} {b.voidedBy})</span>}
+                          );
+                        }
+
+                        if (item.itemType === 'package') {
+                          const pkg = item.data;
+                          return (
+                            <div
+                              key={pkg.id}
+                              className={`p-3.5 rounded-xl border text-xs space-y-2 ${
+                                pkg.status === 'voided'
+                                  ? 'bg-rose-50/40 border-rose-200 text-[#3D3835]'
+                                  : 'bg-[#FAF0ED]/50 border-[#F2E3E1]'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-[#3D3835]">{pkg.name} ({lang === 'th' ? 'แพ็กเกจ' : 'Package'})</span>
+                                {pkg.status === 'voided' ? (
+                                  <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded-full border border-rose-300">
+                                    {lang === 'th' ? 'ยกเลิกแล้ว (Voided)' : 'Voided'} {formatShortDate(pkg.voidedAt || pkg.createdAt, lang)}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                    {lang === 'th' ? 'ใช้ครบแล้วเมื่อ' : 'Completed'} {formatShortDate(pkg.usedUpAt || pkg.expiryDate, lang)}
+                                  </span>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        ))}
-
-                    {/* Packages (Completed or Voided) */}
-                    {selectedClientData.packages
-                      .filter((p) => p.status === 'used_up' || p.status === 'voided')
-                      .map((pkg) => (
-                        <div
-                          key={pkg.id}
-                          className={`p-3.5 rounded-xl border text-xs space-y-2 ${
-                            pkg.status === 'voided'
-                              ? 'bg-rose-50/40 border-rose-200 text-[#3D3835]'
-                              : 'bg-[#FAF0ED]/50 border-[#F2E3E1]'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-[#3D3835]">{pkg.name} ({lang === 'th' ? 'แพ็กเกจ' : 'Package'})</span>
-                            {pkg.status === 'voided' ? (
-                              <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded-full border border-rose-300">
-                                {lang === 'th' ? 'ยกเลิกแล้ว (Voided)' : 'Voided'} {formatShortDate(pkg.voidedAt || pkg.createdAt, lang)}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                                {lang === 'th' ? 'ใช้ครบแล้วเมื่อ' : 'Completed'} {formatShortDate(pkg.usedUpAt || pkg.expiryDate, lang)}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex justify-between text-[11px] text-[#6E6763] font-mono">
-                            <span>{lang === 'th' ? 'จำนวนทั้งหมด:' : 'Total Sessions:'} {pkg.totalSessions} {lang === 'th' ? 'ครั้ง' : ''}</span>
-                            <span>{t.pricePaidLabel}: ฿{formatCurrency(pkg.pricePaid)}</span>
-                            <span>{lang === 'th' ? 'ซื้อเมื่อ:' : 'Purchased:'} {formatShortDate(pkg.purchaseDate, lang)}</span>
-                          </div>
-                          {pkg.status === 'voided' && (
-                            <div className="text-[11px] text-rose-700 bg-rose-100/60 p-2 rounded-lg border border-rose-200">
-                              <span className="font-bold">{lang === 'th' ? 'เหตุผลที่ยกเลิก:' : 'Void Reason:'}</span> {pkg.voidReason || '-'}
-                              {pkg.voidedBy && <span className="ml-2 text-rose-600">({lang === 'th' ? 'โดย' : 'by'} {pkg.voidedBy})</span>}
+                              <div className="flex justify-between text-[11px] text-[#6E6763] font-mono">
+                                <span>{lang === 'th' ? 'จำนวนทั้งหมด:' : 'Total Sessions:'} {pkg.totalSessions} {lang === 'th' ? 'ครั้ง' : ''}</span>
+                                <span>{t.pricePaidLabel}: ฿{formatCurrency(pkg.pricePaid)}</span>
+                                <span>{lang === 'th' ? 'ซื้อเมื่อ:' : 'Purchased:'} {formatShortDate(pkg.purchaseDate, lang)}</span>
+                              </div>
+                              {pkg.status === 'voided' && (
+                                <div className="text-[11px] text-rose-700 bg-rose-100/60 p-2 rounded-lg border border-rose-200">
+                                  <span className="font-bold">{lang === 'th' ? 'เหตุผลที่ยกเลิก:' : 'Void Reason:'}</span> {pkg.voidReason || '-'}
+                                  {pkg.voidedBy && <span className="ml-2 text-rose-600">({lang === 'th' ? 'โดย' : 'by'} {pkg.voidedBy})</span>}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      ))}
+                          );
+                        }
 
-                    {/* Coupons (Completed or Voided) */}
-                    {selectedClientData.coupons
-                      .filter((c) => c.status === 'used_up' || c.status === 'voided')
-                      .map((cpn) => (
-                        <div
-                          key={cpn.id}
-                          className={`p-3.5 rounded-xl border text-xs space-y-2 ${
-                            cpn.status === 'voided'
-                              ? 'bg-rose-50/40 border-rose-200 text-[#3D3835]'
-                              : 'bg-[#FAF0ED]/50 border-[#F2E3E1]'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-[#3D3835]">{cpn.name} ({lang === 'th' ? 'รหัสคูปอง' : 'Coupon Code'}: {cpn.couponCode})</span>
-                            {cpn.status === 'voided' ? (
-                              <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded-full border border-rose-300">
-                                {lang === 'th' ? 'ยกเลิกแล้ว (Voided)' : 'Voided'} {formatShortDate(cpn.voidedAt || cpn.createdAt, lang)}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
-                                {lang === 'th' ? 'ใช้ครบแล้วเมื่อ' : 'Completed'} {formatShortDate(cpn.usedUpAt || cpn.expiryDate, lang)}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex justify-between text-[11px] text-[#6E6763] font-mono">
-                            <span>{lang === 'th' ? 'จำนวนทั้งหมด:' : 'Quantity:'} {cpn.totalQuantity} {lang === 'th' ? 'สิทธิ์' : ''}</span>
-                            <span>{lang === 'th' ? 'ได้รับ/ซื้อเมื่อ:' : 'Purchased:'} {formatShortDate(cpn.purchaseDate, lang)}</span>
-                          </div>
-                          {cpn.status === 'voided' && (
-                            <div className="text-[11px] text-rose-700 bg-rose-100/60 p-2 rounded-lg border border-rose-200">
-                              <span className="font-bold">{lang === 'th' ? 'เหตุผลที่ยกเลิก:' : 'Void Reason:'}</span> {cpn.voidReason || '-'}
-                              {cpn.voidedBy && <span className="ml-2 text-rose-600">({lang === 'th' ? 'โดย' : 'by'} {cpn.voidedBy})</span>}
+                        if (item.itemType === 'coupon') {
+                          const cpn = item.data;
+                          return (
+                            <div
+                              key={cpn.id}
+                              className={`p-3.5 rounded-xl border text-xs space-y-2 ${
+                                cpn.status === 'voided'
+                                  ? 'bg-rose-50/40 border-rose-200 text-[#3D3835]'
+                                  : 'bg-[#FAF0ED]/50 border-[#F2E3E1]'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-[#3D3835]">{cpn.name} ({lang === 'th' ? 'รหัสคูปอง' : 'Coupon Code'}: {cpn.couponCode})</span>
+                                {cpn.status === 'voided' ? (
+                                  <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded-full border border-rose-300">
+                                    {lang === 'th' ? 'ยกเลิกแล้ว (Voided)' : 'Voided'} {formatShortDate(cpn.voidedAt || cpn.createdAt, lang)}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                    {lang === 'th' ? 'ใช้ครบแล้วเมื่อ' : 'Completed'} {formatShortDate(cpn.usedUpAt || cpn.expiryDate, lang)}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex justify-between text-[11px] text-[#6E6763] font-mono">
+                                <span>{lang === 'th' ? 'จำนวนทั้งหมด:' : 'Quantity:'} {cpn.totalQuantity} {lang === 'th' ? 'สิทธิ์' : ''}</span>
+                                <span>{lang === 'th' ? 'ได้รับ/ซื้อเมื่อ:' : 'Purchased:'} {formatShortDate(cpn.purchaseDate, lang)}</span>
+                              </div>
+                              {cpn.status === 'voided' && (
+                                <div className="text-[11px] text-rose-700 bg-rose-100/60 p-2 rounded-lg border border-rose-200">
+                                  <span className="font-bold">{lang === 'th' ? 'เหตุผลที่ยกเลิก:' : 'Void Reason:'}</span> {cpn.voidReason || '-'}
+                                  {cpn.voidedBy && <span className="ml-2 text-rose-600">({lang === 'th' ? 'โดย' : 'by'} {cpn.voidedBy})</span>}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                )}
+                          );
+                        }
+
+                        return null;
+                      })}
+
+                      {/* Pagination Controls for Completed Items */}
+                      <div className="flex items-center justify-center gap-2 pt-2">
+                        {completedItemsList.length > visibleCompletedCount && (
+                          <button
+                            type="button"
+                            onClick={() => setVisibleCompletedCount((prev) => prev + 5)}
+                            className="px-4 py-1.5 bg-[#FAF0ED] hover:bg-[#F2E3E1] text-[#D87085] text-xs font-bold rounded-xl transition border border-[#F2E3E1]"
+                          >
+                            {lang === 'th'
+                              ? `ดูเพิ่มเติม (${completedItemsList.length - visibleCompletedCount} รายการ)`
+                              : `Show More (${completedItemsList.length - visibleCompletedCount})`}
+                          </button>
+                        )}
+                        {visibleCompletedCount > 5 && (
+                          <button
+                            type="button"
+                            onClick={() => setVisibleCompletedCount(5)}
+                            className="px-3 py-1.5 bg-white hover:bg-stone-50 text-[#6E6763] text-xs font-semibold rounded-xl transition border border-[#F2E3E1]"
+                          >
+                            {lang === 'th' ? 'ย่อรายการ' : 'Show Less'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Transaction History & Reversal ("Undo") Links */}
               <div className="bg-white rounded-2xl p-5 border border-[#F2E3E1] shadow-2xs space-y-4">
-                <h3 className="text-sm font-bold text-[#3D3835] border-b border-[#FAF0ED] pb-2 flex items-center gap-2">
-                  <History className="w-4 h-4 text-[#E88D9F]" />
-                  {lang === 'th' ? 'ประวัติธุรกรรม Coin & คะแนนสะสมของลูกค้า' : 'Client Financial & Points Transactions'}
-                </h3>
+                <div className="flex items-center justify-between border-b border-[#FAF0ED] pb-2">
+                  <h3 className="text-sm font-bold text-[#3D3835] flex items-center gap-2">
+                    <History className="w-4 h-4 text-[#E88D9F]" />
+                    {lang === 'th' ? 'ประวัติธุรกรรม Coin & คะแนนสะสมของลูกค้า' : 'Client Financial & Points Transactions'}
+                  </h3>
+                  <span className="text-[10px] bg-[#FAF0ED] text-[#D87085] font-bold px-2.5 py-0.5 rounded-full border border-[#F2E3E1]">
+                    {selectedClientData.coinTransactions.length + selectedClientData.pointsTransactions.length} {lang === 'th' ? 'รายการ' : 'records'}
+                  </span>
+                </div>
 
-                <div className="space-y-3">
-                  {[
+                {(() => {
+                  const combinedTransactions = [
                     ...selectedClientData.coinTransactions.map((tx) => ({ ...tx, category: 'coin' as const })),
                     ...selectedClientData.pointsTransactions.map((tx) => ({ ...tx, category: 'points' as const })),
-                  ]
-                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                    .map((tx) => (
-                      <div
-                        key={tx.id}
-                        className={`p-3 bg-[#FAF0ED]/40 rounded-xl border border-[#F2E3E1] text-xs flex items-center justify-between gap-3 ${
-                          tx.reversed ? 'opacity-50 line-through' : ''
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                                tx.category === 'coin' ? 'bg-pink-100 text-[#D87085]' : 'bg-emerald-100 text-emerald-800'
-                              }`}
-                            >
-                              {tx.category === 'coin' ? (lang === 'th' ? 'Coin Wallet' : 'COIN') : (lang === 'th' ? 'คะแนนสะสม' : 'POINTS')}
-                            </span>
-                            <span className="font-semibold text-[#3D3835]">
-                              {translateTxNote(tx.note, lang)}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-[#9C948E] mt-0.5">
-                            {formatDate(tx.createdAt, lang)} • {lang === 'th' ? 'โดย:' : 'By:'} {tx.createdByStaffName}
-                          </p>
-                          {tx.reversed && (
-                            <p className="text-[10px] text-red-600 font-bold mt-0.5">
-                              {lang === 'th' ? 'ยกเลิกแล้ว:' : 'Reversed:'} {tx.reversalReason}
-                            </p>
-                          )}
-                        </div>
+                  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-                        <div className="text-right shrink-0">
-                          <span className="font-bold font-mono text-sm text-[#3D3835]">
-                            {tx.amount > 0 ? `+${tx.amount}` : tx.amount} {tx.category === 'coin' ? t.currency : 'pts'}
-                          </span>
+                  if (combinedTransactions.length === 0) {
+                    return (
+                      <p className="text-xs text-[#9C948E] py-3 text-center">
+                        {lang === 'th' ? 'ยังไม่มีประวัติธุรกรรม Coin หรือคะแนนสะสม' : 'No transactions recorded yet'}
+                      </p>
+                    );
+                  }
 
-                          {/* Admin Reversal Trigger Button */}
-                          {currentStaff.role === 'admin' && !tx.reversed && (
-                            <div>
-                              <button
-                                onClick={() => {
-                                  setTargetTxId(tx.id);
-                                  setTargetTxCategory(tx.category);
-                                  setActiveModal('reverse_tx');
-                                }}
-                                className="text-[10px] text-[#D87085] hover:underline flex items-center gap-0.5 ml-auto font-semibold"
+                  const visibleTx = combinedTransactions.slice(0, visibleTxCount);
+
+                  return (
+                    <div className="space-y-3">
+                      {visibleTx.map((tx) => (
+                        <div
+                          key={tx.id}
+                          className={`p-3 bg-[#FAF0ED]/40 rounded-xl border border-[#F2E3E1] text-xs flex items-center justify-between gap-3 ${
+                            tx.reversed ? 'opacity-50 line-through' : ''
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                                  tx.category === 'coin' ? 'bg-pink-100 text-[#D87085]' : 'bg-emerald-100 text-emerald-800'
+                                }`}
                               >
-                                <RotateCcw className="w-3 h-3" />
-                                <span>{t.reversalBtn}</span>
-                              </button>
+                                {tx.category === 'coin' ? (lang === 'th' ? 'Coin Wallet' : 'COIN') : (lang === 'th' ? 'คะแนนสะสม' : 'POINTS')}
+                              </span>
+                              <span className="font-semibold text-[#3D3835]">
+                                {translateTxNote(tx.note, lang)}
+                              </span>
                             </div>
-                          )}
+                            <p className="text-[10px] text-[#9C948E] mt-0.5">
+                              {formatDate(tx.createdAt, lang)} • {lang === 'th' ? 'โดย:' : 'By:'} {tx.createdByStaffName}
+                            </p>
+                            {tx.reversed && (
+                              <p className="text-[10px] text-red-600 font-bold mt-0.5">
+                                {lang === 'th' ? 'ยกเลิกแล้ว:' : 'Reversed:'} {tx.reversalReason}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <span className="font-bold font-mono text-sm text-[#3D3835]">
+                              {tx.amount > 0 ? `+${tx.amount}` : tx.amount} {tx.category === 'coin' ? t.currency : 'pts'}
+                            </span>
+
+                            {/* Admin Reversal Trigger Button */}
+                            {currentStaff.role === 'admin' && !tx.reversed && (
+                              <div>
+                                <button
+                                  onClick={() => {
+                                    setTargetTxId(tx.id);
+                                    setTargetTxCategory(tx.category);
+                                    setActiveModal('reverse_tx');
+                                  }}
+                                  className="text-[10px] text-[#D87085] hover:underline flex items-center gap-0.5 ml-auto font-semibold"
+                                >
+                                  <RotateCcw className="w-3 h-3" />
+                                  <span>{t.reversalBtn}</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
+                      ))}
+
+                      {/* Pagination Controls for Transactions */}
+                      <div className="flex items-center justify-center gap-2 pt-2">
+                        {combinedTransactions.length > visibleTxCount && (
+                          <button
+                            type="button"
+                            onClick={() => setVisibleTxCount((prev) => prev + 5)}
+                            className="px-4 py-1.5 bg-[#FAF0ED] hover:bg-[#F2E3E1] text-[#D87085] text-xs font-bold rounded-xl transition border border-[#F2E3E1]"
+                          >
+                            {lang === 'th'
+                              ? `ดูเพิ่มเติม (${combinedTransactions.length - visibleTxCount} รายการ)`
+                              : `Show More (${combinedTransactions.length - visibleTxCount})`}
+                          </button>
+                        )}
+                        {visibleTxCount > 5 && (
+                          <button
+                            type="button"
+                            onClick={() => setVisibleTxCount(5)}
+                            className="px-3 py-1.5 bg-white hover:bg-stone-50 text-[#6E6763] text-xs font-semibold rounded-xl transition border border-[#F2E3E1]"
+                          >
+                            {lang === 'th' ? 'ย่อรายการ' : 'Show Less'}
+                          </button>
+                        )}
                       </div>
-                    ))}
-                </div>
+                    </div>
+                  );
+                })()}
               </div>
 
             </div>
@@ -2609,45 +2826,59 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#3D3835] mb-1">
-                  {lang === 'th' ? 'เลือกบริการจากแคตตาล็อก' : 'Select Service / Treatment'} *
-                </label>
-                <select
-                  value={selectedOnetimeCatalogId}
-                  onChange={(e) => handleOnetimeCatalogChange(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs bg-white font-medium focus:outline-none focus:border-[#E88D9F]"
-                >
-                  {catalogItems
-                    .filter((c) => c.active)
-                    .map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name} {item.type ? `(${item.type})` : ''} - ฿{formatCurrency(item.price)}
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-[#3D3835] mb-1">
-                    {lang === 'th' ? 'ราคาเต็มบริการ (บาท)' : 'Full Service Price (฿)'} *
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-[#3D3835]">
+                    {lang === 'th' ? 'รายการบริการ / กิจกรรม' : 'Service / Treatment'} *
                   </label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={onetimeFullPrice}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? '' : Number(e.target.value);
-                      setOnetimeFullPrice(val);
-                      if (onetimePaymentStatus === 'paid_full') {
-                        setOnetimeDepositAmount(val);
-                      }
-                    }}
-                    className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs font-bold focus:outline-none focus:border-[#E88D9F]"
-                  />
+                  <div className="flex items-center gap-1 bg-[#FAF0ED] p-0.5 rounded-lg border border-[#F2E3E1]">
+                    <button
+                      type="button"
+                      onClick={() => setOnetimeUseCustomName(false)}
+                      className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition ${
+                        !onetimeUseCustomName ? 'bg-white text-[#D87085] shadow-2xs' : 'text-[#6E6763]'
+                      }`}
+                    >
+                      {lang === 'th' ? 'เลือกจากแคตตาล็อก' : 'From Catalog'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOnetimeUseCustomName(true)}
+                      className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition ${
+                        onetimeUseCustomName ? 'bg-white text-[#D87085] shadow-2xs' : 'text-[#6E6763]'
+                      }`}
+                    >
+                      {lang === 'th' ? 'กรอกชื่อเอง' : 'Custom Name'}
+                    </button>
+                  </div>
                 </div>
 
+                {!onetimeUseCustomName ? (
+                  <select
+                    value={selectedOnetimeCatalogId}
+                    onChange={(e) => handleOnetimeCatalogChange(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs bg-white font-medium focus:outline-none focus:border-[#E88D9F]"
+                  >
+                    {catalogItems
+                      .filter((c) => c.active)
+                      .map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name} {item.type ? `(${item.type === 'onetime' ? 'One-Time' : item.type === 'package' ? 'Package' : 'Coupon'})` : ''} - ฿{formatCurrency(item.price)}
+                        </option>
+                      ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    required
+                    placeholder={lang === 'th' ? 'ระบุชื่อบริการหรือกิจกรรมที่ต้องการจอง...' : 'Enter custom service or activity name...'}
+                    value={onetimeCustomName}
+                    onChange={(e) => setOnetimeCustomName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs bg-white font-medium focus:outline-none focus:border-[#E88D9F]"
+                  />
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-[#3D3835] mb-1">
                     {lang === 'th' ? 'สถานะการรับเงิน' : 'Payment Type'} *
@@ -2655,10 +2886,18 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                   <select
                     value={onetimePaymentStatus}
                     onChange={(e) => {
-                      const st = e.target.value as 'deposit' | 'paid_full';
+                      const st = e.target.value as 'deposit' | 'paid_full' | 'free' | 'deduct_package' | 'deduct_coupon' | 'coin';
                       setOnetimePaymentStatus(st);
                       if (st === 'paid_full') {
                         setOnetimeDepositAmount(onetimeFullPrice);
+                      } else if (st === 'free' || st === 'deduct_package' || st === 'deduct_coupon') {
+                        setOnetimeDepositAmount(0);
+                        if (st === 'free') setOnetimeFullPrice(0);
+                      } else if (st === 'coin') {
+                        setOnetimeDepositAmount(0);
+                        if (selectedClientData) {
+                          setOnetimeCoinAmountUsed(Math.min(Number(onetimeFullPrice) || 0, selectedClientData.coinBalance));
+                        }
                       } else {
                         setOnetimeDepositAmount(Number(onetimeFullPrice) >= 1000 ? Math.round(Number(onetimeFullPrice) * 0.5) : onetimeFullPrice);
                       }
@@ -2667,36 +2906,181 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                   >
                     <option value="deposit">{lang === 'th' ? 'ชำระเงินมัดจำล่วงหน้า' : 'Deposit Payment'}</option>
                     <option value="paid_full">{lang === 'th' ? 'ชำระเต็มจำนวนแล้ว' : 'Paid in Full'}</option>
+                    <option value="free">{lang === 'th' ? 'กิจกรรมฟรี (Free)' : 'Free Activity'}</option>
+                    <option value="deduct_package">{lang === 'th' ? 'ตัดจาก Package ที่ซื้อไว้' : 'Deduct from Package'}</option>
+                    <option value="deduct_coupon">{lang === 'th' ? 'ใช้ Coupon ที่ซื้อไว้' : 'Use Coupon'}</option>
+                    <option value="coin">{lang === 'th' ? 'ใช้ Coin ชำระ/เป็นส่วนลด' : 'Pay with Coin'}</option>
                   </select>
                 </div>
+
+                {onetimePaymentStatus !== 'free' && (
+                  <div>
+                    <label className="block text-xs font-bold text-[#3D3835] mb-1">
+                      {lang === 'th' ? 'ราคาเต็มบริการ (บาท)' : 'Full Service Price (฿)'} *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      required
+                      value={onetimeFullPrice}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? '' : Number(e.target.value);
+                        setOnetimeFullPrice(val);
+                        if (onetimePaymentStatus === 'paid_full') {
+                          setOnetimeDepositAmount(val);
+                        } else if (onetimePaymentStatus === 'coin' && selectedClientData) {
+                          setOnetimeCoinAmountUsed(Math.min(Number(val) || 0, selectedClientData.coinBalance));
+                        }
+                      }}
+                      className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs font-bold focus:outline-none focus:border-[#E88D9F]"
+                    />
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-[#3D3835] mb-1">
-                  {lang === 'th' ? 'ยอดเงินมัดจำที่รับแล้ววันนี้ (บาท)' : 'Deposit Received Today (฿)'} *
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max={Number(onetimeFullPrice) || 0}
-                  required
-                  disabled={onetimePaymentStatus === 'paid_full'}
-                  value={onetimePaymentStatus === 'paid_full' ? onetimeFullPrice : onetimeDepositAmount}
-                  onChange={(e) => setOnetimeDepositAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs font-bold focus:outline-none focus:border-[#E88D9F] disabled:bg-[#FAF0ED]/50"
-                />
-                <p className="text-[11px] text-[#6E6763] mt-1">
-                  {onetimePaymentStatus === 'paid_full' ? (
-                    <span className="text-emerald-700 font-semibold">
-                      ✓ {lang === 'th' ? 'บันทึกเป็นรายได้วันนี้เต็มจำนวน ฿' + formatCurrency(Number(onetimeFullPrice)) : `Full revenue ฿${formatCurrency(Number(onetimeFullPrice))} recognized today`}
-                    </span>
+              {/* Dynamic sub-controls based on payment status */}
+              {onetimePaymentStatus === 'free' && (
+                <div className="p-3 bg-sky-50 border border-sky-200 rounded-xl text-xs text-sky-800 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <span>✨ {lang === 'th' ? 'กิจกรรมฟรี (Free Activity)' : 'Free Activity'}</span>
+                  </p>
+                  <p className="text-[11px] text-sky-700">
+                    {lang === 'th'
+                      ? 'ไม่ต้องระบุราคา และไม่มีการบันทึกรายรับหรือแต้มสะสมใดๆ ทั้งสิ้น'
+                      : 'No pricing required, no revenue or points will be recorded.'}
+                  </p>
+                </div>
+              )}
+
+              {onetimePaymentStatus === 'deduct_package' && (
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-[#3D3835] mb-1">
+                    {lang === 'th' ? 'เลือกแพ็กเกจที่จะตัด' : 'Select Package to Deduct'} *
+                  </label>
+                  <select
+                    value={onetimeLinkedPackageId}
+                    onChange={(e) => setOnetimeLinkedPackageId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs bg-white font-medium focus:outline-none focus:border-[#E88D9F]"
+                    required
+                  >
+                    <option value="">{lang === 'th' ? '-- เลือกแพ็กเกจที่จะตัด --' : '-- Select package to deduct --'}</option>
+                    {selectedClientData.packages
+                      .filter((p) => p.status !== 'used_up' && p.status !== 'voided' && p.remainingSessions > 0)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({lang === 'th' ? 'เหลือ' : 'left'} {p.remainingSessions}/{p.totalSessions})
+                        </option>
+                      ))}
+                  </select>
+                  {selectedClientData.packages.filter((p) => p.status !== 'used_up' && p.status !== 'voided' && p.remainingSessions > 0).length === 0 ? (
+                    <p className="text-[11px] text-rose-600 mt-1">
+                      {lang === 'th' ? '⚠️ ลูกค้าไม่มีแพ็กเกจที่ยังคงเหลือสิทธิ์อยู่' : '⚠️ No active packages with remaining sessions'}
+                    </p>
                   ) : (
-                    <span className="text-amber-800 font-semibold">
-                      ℹ {lang === 'th' ? `ระบบจะบันทึกรายได้วันนี้ ฿${formatCurrency(Number(onetimeDepositAmount))} และบันทึกยอดคงเหลือ ฿${formatCurrency(Math.max(0, Number(onetimeFullPrice) - Number(onetimeDepositAmount)))} ในวันที่ลูกค้ามาใช้บริการ` : `Revenue recognized today: ฿${formatCurrency(Number(onetimeDepositAmount))}. Remaining ฿${formatCurrency(Math.max(0, Number(onetimeFullPrice) - Number(onetimeDepositAmount)))} recognized on service date.`}
-                    </span>
+                    <p className="text-[11px] text-[#6E6763] mt-1">
+                      ℹ {lang === 'th' ? 'ระบบจะตัด 1 ครั้งจากแพ็กเกจนี้ เมื่อกด "บันทึกการใช้บริการ" (ไม่มีรายได้ใหม่เกิดขึ้น)' : '1 session will be deducted from this package upon completing the service.'}
+                    </p>
                   )}
-                </p>
-              </div>
+                </div>
+              )}
+
+              {onetimePaymentStatus === 'deduct_coupon' && (
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-[#3D3835] mb-1">
+                    {lang === 'th' ? 'เลือกคูปองที่จะใช้' : 'Select Coupon to Use'} *
+                  </label>
+                  <select
+                    value={onetimeLinkedCouponId}
+                    onChange={(e) => setOnetimeLinkedCouponId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs bg-white font-medium focus:outline-none focus:border-[#E88D9F]"
+                    required
+                  >
+                    <option value="">{lang === 'th' ? '-- เลือกคูปองที่จะใช้ --' : '-- Select coupon to use --'}</option>
+                    {selectedClientData.coupons
+                      .filter((c) => c.status !== 'used_up' && c.status !== 'voided' && c.remainingQuantity > 0)
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.couponCode}) ({lang === 'th' ? 'เหลือ' : 'left'} {c.remainingQuantity}/{c.totalQuantity})
+                        </option>
+                      ))}
+                  </select>
+                  {selectedClientData.coupons.filter((c) => c.status !== 'used_up' && c.status !== 'voided' && c.remainingQuantity > 0).length === 0 ? (
+                    <p className="text-[11px] text-rose-600 mt-1">
+                      {lang === 'th' ? '⚠️ ลูกค้าไม่มีคูปองที่ยังคงเหลือสิทธิ์อยู่' : '⚠️ No active coupons available'}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-[#6E6763] mt-1">
+                      ℹ {lang === 'th' ? 'ระบบจะตัดสิทธิ์ 1 ครั้งจากคูปองนี้ เมื่อกด "บันทึกการใช้บริการ" (ไม่มีรายได้ใหม่เกิดขึ้น)' : '1 unit will be redeemed from this coupon upon completing the service.'}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {onetimePaymentStatus === 'coin' && (
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-[#3D3835] mb-1">
+                    {lang === 'th' ? 'จำนวน Coin ที่จะใช้ (฿)' : 'Coin Amount to Use (฿)'} *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={Math.min(Number(onetimeFullPrice) || 0, selectedClientData.coinBalance)}
+                    value={onetimeCoinAmountUsed}
+                    onChange={(e) => setOnetimeCoinAmountUsed(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs font-bold focus:outline-none focus:border-[#E88D9F]"
+                    placeholder="0"
+                    required
+                  />
+                  <p className="text-[11px] text-[#6E6763] mt-1">
+                    {lang === 'th'
+                      ? `Coin คงเหลือของลูกค้า: ฿${formatCurrency(selectedClientData.coinBalance)}`
+                      : `Client's Coin balance: ฿${formatCurrency(selectedClientData.coinBalance)}`}
+                  </p>
+                  {Number(onetimeCoinAmountUsed) > 0 && Number(onetimeCoinAmountUsed) < Number(onetimeFullPrice) && (
+                    <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2 mt-1">
+                      {lang === 'th'
+                        ? `ใช้ Coin ช่วยเหลือ ฿${formatCurrency(Number(onetimeCoinAmountUsed))} — ลูกค้าต้องชำระส่วนที่เหลือ ฿${formatCurrency(Number(onetimeFullPrice) - Number(onetimeCoinAmountUsed))} เพิ่มในวันใช้บริการจริง`
+                        : `Coin covers ฿${formatCurrency(Number(onetimeCoinAmountUsed))} — remaining ฿${formatCurrency(Number(onetimeFullPrice) - Number(onetimeCoinAmountUsed))} to be collected on service date`}
+                    </p>
+                  )}
+                  {Number(onetimeCoinAmountUsed) >= Number(onetimeFullPrice) && Number(onetimeFullPrice) > 0 && (
+                    <p className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-2 mt-1">
+                      {lang === 'th'
+                        ? `✓ ใช้ Coin ครอบคลุมราคาเต็ม ฿${formatCurrency(Number(onetimeFullPrice))} ทั้งหมด (ไม่ต้องชำระเพิ่มในวันบริการ)`
+                        : `✓ Coin covers the entire ฿${formatCurrency(Number(onetimeFullPrice))} (No balance due on service date)`}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {(onetimePaymentStatus === 'deposit' || onetimePaymentStatus === 'paid_full') && (
+                <div>
+                  <label className="block text-xs font-bold text-[#3D3835] mb-1">
+                    {lang === 'th' ? 'ยอดเงินมัดจำที่รับแล้ววันนี้ (บาท)' : 'Deposit Received Today (฿)'} *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max={Number(onetimeFullPrice) || 0}
+                    required
+                    disabled={onetimePaymentStatus === 'paid_full'}
+                    value={onetimePaymentStatus === 'paid_full' ? onetimeFullPrice : onetimeDepositAmount}
+                    onChange={(e) => setOnetimeDepositAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs font-bold focus:outline-none focus:border-[#E88D9F] disabled:bg-[#FAF0ED]/50"
+                  />
+                  <p className="text-[11px] text-[#6E6763] mt-1">
+                    {onetimePaymentStatus === 'paid_full' ? (
+                      <span className="text-emerald-700 font-semibold">
+                        ✓ {lang === 'th' ? 'บันทึกเป็นรายได้วันนี้เต็มจำนวน ฿' + formatCurrency(Number(onetimeFullPrice)) : `Full revenue ฿${formatCurrency(Number(onetimeFullPrice))} recognized today`}
+                      </span>
+                    ) : (
+                      <span className="text-amber-800 font-semibold">
+                        ℹ {lang === 'th' ? `ระบบจะบันทึกรายได้วันนี้ ฿${formatCurrency(Number(onetimeDepositAmount))} และบันทึกยอดคงเหลือ ฿${formatCurrency(Math.max(0, Number(onetimeFullPrice) - Number(onetimeDepositAmount)))} ในวันที่ลูกค้ามาใช้บริการ` : `Revenue recognized today: ฿${formatCurrency(Number(onetimeDepositAmount))}. Remaining ฿${formatCurrency(Math.max(0, Number(onetimeFullPrice) - Number(onetimeDepositAmount)))} recognized on service date.`}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -2782,33 +3166,87 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
           title={lang === 'th' ? 'บันทึกการใช้บริการรายครั้ง' : 'Confirm Service Delivery'}
           message={
             lang === 'th'
-              ? `ยืนยันการรับบริการ "${useTargetOneTimeBooking.catalogName}" ของลูกค้า ${selectedClientData.client.displayName}?`
-              : `Confirm service delivery for "${useTargetOneTimeBooking.catalogName}" for ${selectedClientData.client.displayName}?`
+              ? `ยืนยันการรับบริการ "${useTargetOneTimeBooking.name}" ของลูกค้า ${selectedClientData.client.displayName}?`
+              : `Confirm service delivery for "${useTargetOneTimeBooking.name}" for ${selectedClientData.client.displayName}?`
           }
           lang={lang}
           onClose={() => setUseTargetOneTimeBooking(null)}
           onConfirm={handleConfirmUseOneTime}
         >
           <div className="p-3.5 bg-[#FAF0ED]/60 rounded-xl border border-[#F2E3E1] text-xs space-y-2 mt-2">
-            <div className="flex justify-between text-[#3D3835]">
-              <span className="font-medium">{lang === 'th' ? 'ราคาเต็มบริการ:' : 'Full Price:'}</span>
-              <span className="font-bold font-mono">฿{formatCurrency(useTargetOneTimeBooking.fullPrice)}</span>
-            </div>
-            <div className="flex justify-between text-[#3D3835]">
-              <span className="font-medium">{lang === 'th' ? 'เงินมัดจำที่ชำระแล้ว:' : 'Deposit Paid:'}</span>
-              <span className="font-bold font-mono text-emerald-700">฿{formatCurrency(useTargetOneTimeBooking.depositAmount)}</span>
-            </div>
-            {useTargetOneTimeBooking.fullPrice > useTargetOneTimeBooking.depositAmount && (
-              <div className="pt-2 border-t border-[#F2E3E1] flex justify-between text-[#D87085] font-bold">
-                <span>{lang === 'th' ? 'ยอดที่ต้องชำระเพิ่มวันนี้:' : 'Balance to collect today:'}</span>
-                <span className="font-mono text-sm">฿{formatCurrency(useTargetOneTimeBooking.fullPrice - useTargetOneTimeBooking.depositAmount)}</span>
+            {useTargetOneTimeBooking.paymentStatusAtBooking === 'free' ? (
+              <div className="text-center py-1 text-sky-800 font-bold">
+                {lang === 'th' ? '✨ กิจกรรมฟรี (ไม่มีค่าใช้จ่ายเพิ่มเติม)' : '✨ Free Service (No balance due)'}
               </div>
+            ) : useTargetOneTimeBooking.paymentStatusAtBooking === 'deduct_package' ? (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-[#3D3835]">
+                  <span className="font-medium">{lang === 'th' ? 'วิธีชำระ:' : 'Payment Method:'}</span>
+                  <span className="font-bold text-purple-700">{lang === 'th' ? 'ตัดสิทธิ์จากแพ็กเกจ' : 'Deduct from Package'}</span>
+                </div>
+                <p className="text-[11px] text-emerald-800 font-semibold pt-1">
+                  {lang === 'th'
+                    ? '✓ ระบบจะตัด 1 ครั้งออกจากแพ็กเกจของลูกค้า และไม่มีการเรียกเก็บเงินเพิ่ม'
+                    : '✓ 1 session will be deducted from client\'s package. No additional payment required.'}
+                </p>
+              </div>
+            ) : useTargetOneTimeBooking.paymentStatusAtBooking === 'deduct_coupon' ? (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-[#3D3835]">
+                  <span className="font-medium">{lang === 'th' ? 'วิธีชำระ:' : 'Payment Method:'}</span>
+                  <span className="font-bold text-indigo-700">{lang === 'th' ? 'ใช้สิทธิ์คูปอง' : 'Use Coupon'}</span>
+                </div>
+                <p className="text-[11px] text-emerald-800 font-semibold pt-1">
+                  {lang === 'th'
+                    ? '✓ ระบบจะตัดสิทธิ์ 1 ครั้งออกจากคูปองของลูกค้า และไม่มีการเรียกเก็บเงินเพิ่ม'
+                    : '✓ 1 unit will be redeemed from client\'s coupon. No additional payment required.'}
+                </p>
+              </div>
+            ) : useTargetOneTimeBooking.paymentStatusAtBooking === 'coin' ? (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-[#3D3835]">
+                  <span className="font-medium">{lang === 'th' ? 'ราคาเต็มบริการ:' : 'Full Price:'}</span>
+                  <span className="font-bold font-mono">฿{formatCurrency(useTargetOneTimeBooking.fullPrice)}</span>
+                </div>
+                <div className="flex justify-between text-[#3D3835]">
+                  <span className="font-medium">{lang === 'th' ? 'ใช้ Coin ชำระ:' : 'Coin Used:'}</span>
+                  <span className="font-bold font-mono text-emerald-700">฿{formatCurrency(useTargetOneTimeBooking.coinAmountUsed || 0)}</span>
+                </div>
+                {useTargetOneTimeBooking.fullPrice > (useTargetOneTimeBooking.coinAmountUsed || 0) && (
+                  <div className="pt-2 border-t border-[#F2E3E1] flex justify-between text-[#D87085] font-bold">
+                    <span>{lang === 'th' ? 'ยอดที่ต้องชำระเพิ่มวันนี้:' : 'Balance to collect today:'}</span>
+                    <span className="font-mono text-sm">฿{formatCurrency(useTargetOneTimeBooking.fullPrice - (useTargetOneTimeBooking.coinAmountUsed || 0))}</span>
+                  </div>
+                )}
+                <p className="text-[11px] text-[#6E6763] pt-1">
+                  {lang === 'th'
+                    ? `ระบบจะตัด ฿${formatCurrency(useTargetOneTimeBooking.coinAmountUsed || 0)} จากกระเป๋า Coin ของลูกค้า${useTargetOneTimeBooking.fullPrice > (useTargetOneTimeBooking.coinAmountUsed || 0) ? ` และบันทึกยอดชำระเพิ่ม ฿${formatCurrency(useTargetOneTimeBooking.fullPrice - (useTargetOneTimeBooking.coinAmountUsed || 0))} เป็นรายได้วันนี้` : ''}`
+                    : `System will deduct ฿${formatCurrency(useTargetOneTimeBooking.coinAmountUsed || 0)} Coin from client's wallet.`}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between text-[#3D3835]">
+                  <span className="font-medium">{lang === 'th' ? 'ราคาเต็มบริการ:' : 'Full Price:'}</span>
+                  <span className="font-bold font-mono">฿{formatCurrency(useTargetOneTimeBooking.fullPrice)}</span>
+                </div>
+                <div className="flex justify-between text-[#3D3835]">
+                  <span className="font-medium">{lang === 'th' ? 'เงินมัดจำที่ชำระแล้ว:' : 'Deposit Paid:'}</span>
+                  <span className="font-bold font-mono text-emerald-700">฿{formatCurrency(useTargetOneTimeBooking.depositAmount)}</span>
+                </div>
+                {useTargetOneTimeBooking.fullPrice > useTargetOneTimeBooking.depositAmount && (
+                  <div className="pt-2 border-t border-[#F2E3E1] flex justify-between text-[#D87085] font-bold">
+                    <span>{lang === 'th' ? 'ยอดที่ต้องชำระเพิ่มวันนี้:' : 'Balance to collect today:'}</span>
+                    <span className="font-mono text-sm">฿{formatCurrency(useTargetOneTimeBooking.fullPrice - useTargetOneTimeBooking.depositAmount)}</span>
+                  </div>
+                )}
+                <p className="text-[11px] text-[#6E6763] pt-1">
+                  {lang === 'th'
+                    ? 'ระบบจะบันทึกสถานะเป็น "ใช้บริการแล้ว" และรวมยอดชำระคงเหลือเข้าสู่รายได้วันนี้อัตโนมัติ'
+                    : 'System will mark status as "Used" and recognize remaining balance into today\'s revenue.'}
+                </p>
+              </>
             )}
-            <p className="text-[11px] text-[#6E6763] pt-1">
-              {lang === 'th'
-                ? 'ระบบจะบันทึกสถานะเป็น "ใช้บริการแล้ว" และรวมยอดชำระคงเหลือเข้าสู่รายได้วันนี้อัตโนมัติ'
-                : 'System will mark status as "Used" and recognize remaining balance into today\'s revenue.'}
-            </p>
           </div>
         </ConfirmationModal>
       )}
@@ -2821,8 +3259,8 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
           title={lang === 'th' ? 'ยืนยันยกเลิกการจองบริการ (Admin)' : 'Confirm Void Booking (Admin)'}
           message={
             lang === 'th'
-              ? `คุณกำลังจะยกเลิกการจองบริการ "${voidTargetOneTimeBooking.catalogName}" ของลูกค้า ${selectedClientData.client.displayName} รายการนี้จะถูกตัดออกจากสถานะการจอง และปรับลดยอดรายได้สะสมอัตโนมัติ`
-              : `You are voiding the booking for "${voidTargetOneTimeBooking.catalogName}" for ${selectedClientData.client.displayName}. Revenue records will be updated automatically.`
+              ? `คุณกำลังจะยกเลิกการจองบริการ "${voidTargetOneTimeBooking.name}" ของลูกค้า ${selectedClientData.client.displayName} รายการนี้จะถูกตัดออกจากสถานะการจอง และปรับลดยอดรายได้สะสมอัตโนมัติ`
+              : `You are voiding the booking for "${voidTargetOneTimeBooking.name}" for ${selectedClientData.client.displayName}. Revenue records will be updated automatically.`
           }
           lang={lang}
           onClose={() => {

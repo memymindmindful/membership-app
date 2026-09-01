@@ -2017,24 +2017,39 @@ class Store {
     catalogId: string,
     fullPrice: number,
     depositAmount: number,
-    paymentStatusAtBooking: 'deposit' | 'paid_full',
+    paymentStatusAtBooking: 'deposit' | 'paid_full' | 'free' | 'deduct_package' | 'deduct_coupon' | 'coin',
     bookingDateTime: string,
     branch: string,
     staffId: string,
     staffName: string,
-    endDateTime?: string
+    endDateTime?: string,
+    customName?: string,
+    linkedPackageId?: string,
+    linkedCouponId?: string,
+    coinAmountUsed?: number
   ): ClientOneTimeBooking {
-    const catalog = this.db.catalogItems.find((c) => c.id === catalogId);
+    const catalog = catalogId ? this.db.catalogItems.find((c) => c.id === catalogId) : undefined;
+    const finalName = customName?.trim() || catalog?.name || 'One-Time Service';
+    const isFree = paymentStatusAtBooking === 'free';
+    const isPrepaidOrFree = ['free', 'deduct_package', 'deduct_coupon', 'coin'].includes(paymentStatusAtBooking);
+    
+    // For free, deduct_package, deduct_coupon, coin: depositAmount must be 0
+    const finalDeposit = isPrepaidOrFree ? 0 : depositAmount;
+    const finalFullPrice = isFree ? 0 : fullPrice;
+
     const booking: ClientOneTimeBooking = {
       id: `OTB-${Date.now()}`,
       clientId,
-      catalogId,
-      name: catalog?.name || 'One-Time Service',
-      description: catalog?.description || '',
+      catalogId: catalogId || '',
+      name: finalName,
+      description: catalog?.description || (customName ? 'บริการพิเศษ (Custom Service)' : ''),
       imageUrl: catalog?.imageUrl || '',
-      fullPrice,
-      depositAmount,
+      fullPrice: finalFullPrice,
+      depositAmount: finalDeposit,
       paymentStatusAtBooking,
+      linkedPackageId: paymentStatusAtBooking === 'deduct_package' ? linkedPackageId : undefined,
+      linkedCouponId: paymentStatusAtBooking === 'deduct_coupon' ? linkedCouponId : undefined,
+      coinAmountUsed: paymentStatusAtBooking === 'coin' ? coinAmountUsed : undefined,
       bookingDateTime,
       endDateTime: endDateTime || undefined,
       branch: branch || 'Me.My.Mind Spa & Massage',
@@ -2049,13 +2064,14 @@ class Store {
     }
     this.db.clientOneTimeBookings.unshift(booking);
 
-    if (depositAmount > 0) {
-      const ptsEarned = Math.floor(depositAmount / BAHT_PER_POINT);
+    // Only award points on booking creation if paying real deposit in cash/deposit mode
+    if (!isPrepaidOrFree && finalDeposit > 0) {
+      const ptsEarned = Math.floor(finalDeposit / BAHT_PER_POINT);
       if (ptsEarned > 0) {
         this.addPoints(
           clientId,
           ptsEarned,
-          `สะสมคะแนนจากการจองบริการ: ${booking.name} (฿${depositAmount.toLocaleString()})`,
+          `สะสมคะแนนจากการจองบริการ: ${booking.name} (฿${finalDeposit.toLocaleString()})`,
           staffId,
           staffName,
           'onetime_booking',
@@ -2064,12 +2080,25 @@ class Store {
       }
     }
 
+    let paymentNote = '';
+    if (paymentStatusAtBooking === 'free') {
+      paymentNote = '(กิจกรรมฟรี - Free)';
+    } else if (paymentStatusAtBooking === 'deduct_package') {
+      paymentNote = '(ตัดจากแพ็กเกจ)';
+    } else if (paymentStatusAtBooking === 'deduct_coupon') {
+      paymentNote = '(ใช้สิทธิ์คูปอง)';
+    } else if (paymentStatusAtBooking === 'coin') {
+      paymentNote = `(ใช้ Coin ฿${(coinAmountUsed || 0).toLocaleString()})`;
+    } else if (paymentStatusAtBooking === 'deposit') {
+      paymentNote = `(มัดจำ ฿${finalDeposit.toLocaleString()})`;
+    } else {
+      paymentNote = `(ชำระเต็มจำนวน ฿${finalFullPrice.toLocaleString()})`;
+    }
+
     this.notifyClient(
       clientId,
       'บันทึกการจองบริการเรียบร้อย',
-      `พนักงานได้บันทึกการจองบริการ "${booking.name}" (${booking.branch}) สำหรับวันที่ ${bookingDateTime.replace('T', ' ')} ${
-        paymentStatusAtBooking === 'deposit' ? `(มัดจำ ฿${depositAmount.toLocaleString()})` : `(ชำระเต็มจำนวน ฿${fullPrice.toLocaleString()})`
-      }`
+      `พนักงานได้บันทึกการจองบริการ "${booking.name}" (${booking.branch}) สำหรับวันที่ ${bookingDateTime.replace('T', ' ')} ${paymentNote}`
     );
 
     this.logAudit(staffId, staffName, 'BOOK_ONETIME_SERVICE', 'onetime_booking', booking.id, 'จองบริการ One-Time', null, booking);
@@ -2086,33 +2115,84 @@ class Store {
     if (booking.status !== 'booked') throw new Error('Booking is not in a usable state');
 
     const previousData = { ...booking };
+
+    // Execute deductions/point awards FIRST so if any method throws (e.g. insufficient coin/sessions), booking is not marked used
+    if (booking.paymentStatusAtBooking === 'deduct_package' && booking.linkedPackageId) {
+      this.usePackageSession(
+        booking.linkedPackageId,
+        `ใช้บริการ One-Time: ${booking.name} (ตัดจากแพ็กเกจ)`,
+        staffId,
+        staffName
+      );
+    } else if (booking.paymentStatusAtBooking === 'deduct_coupon' && booking.linkedCouponId) {
+      this.redeemCouponUnit(
+        booking.linkedCouponId,
+        `ใช้บริการ One-Time: ${booking.name} (ใช้สิทธิ์คูปอง)`,
+        staffId,
+        staffName
+      );
+    } else if (booking.paymentStatusAtBooking === 'coin' && booking.coinAmountUsed && booking.coinAmountUsed > 0) {
+      this.deductCoinCredit(
+        booking.clientId,
+        booking.coinAmountUsed,
+        `ใช้บริการ One-Time: ${booking.name} (ตัด Coin)`,
+        staffId,
+        staffName
+      );
+
+      const remaining = booking.fullPrice - booking.coinAmountUsed;
+      if (remaining > 0) {
+        booking.remainingAmountPaid = remaining;
+        const ptsEarned = Math.floor(remaining / BAHT_PER_POINT);
+        if (ptsEarned > 0) {
+          this.addPoints(
+            booking.clientId,
+            ptsEarned,
+            `สะสมคะแนนจากยอดคงเหลือ (ส่วนที่ไม่ได้จ่ายด้วย Coin): ${booking.name} (฿${remaining.toLocaleString()})`,
+            staffId,
+            staffName,
+            'onetime_booking',
+            { relatedOneTimeBookingId: booking.id }
+          );
+        }
+      }
+    } else if (booking.paymentStatusAtBooking === 'deposit') {
+      const remaining = booking.fullPrice - booking.depositAmount;
+      if (remaining > 0) {
+        booking.remainingAmountPaid = remaining;
+        const ptsEarned = Math.floor(remaining / BAHT_PER_POINT);
+        if (ptsEarned > 0) {
+          this.addPoints(
+            booking.clientId,
+            ptsEarned,
+            `สะสมคะแนนจากยอดคงเหลือของบริการ: ${booking.name} (฿${remaining.toLocaleString()})`,
+            staffId,
+            staffName,
+            'onetime_booking',
+            { relatedOneTimeBookingId: booking.id }
+          );
+        }
+      }
+    }
+
     booking.status = 'used';
     booking.usedAt = new Date().toISOString();
 
-    const remaining = booking.fullPrice - booking.depositAmount;
-    if (booking.paymentStatusAtBooking === 'deposit' && remaining > 0) {
-      const ptsEarned = Math.floor(remaining / BAHT_PER_POINT);
-      if (ptsEarned > 0) {
-        this.addPoints(
-          booking.clientId,
-          ptsEarned,
-          `สะสมคะแนนจากยอดคงเหลือของบริการ: ${booking.name} (฿${remaining.toLocaleString()})`,
-          staffId,
-          staffName,
-          'onetime_booking',
-          { relatedOneTimeBookingId: booking.id }
-        );
-      }
+    let notifyDetail = '';
+    if (booking.paymentStatusAtBooking === 'deposit' && (booking.remainingAmountPaid || 0) > 0) {
+      notifyDetail = ` (ชำระส่วนที่เหลือ ฿${booking.remainingAmountPaid?.toLocaleString()})`;
+    } else if (booking.paymentStatusAtBooking === 'deduct_package') {
+      notifyDetail = ` (ตัด 1 ครั้งจากแพ็กเกจ)`;
+    } else if (booking.paymentStatusAtBooking === 'deduct_coupon') {
+      notifyDetail = ` (ใช้สิทธิ์คูปอง 1 หน่วย)`;
+    } else if (booking.paymentStatusAtBooking === 'coin') {
+      notifyDetail = ` (ใช้ Coin ฿${(booking.coinAmountUsed || 0).toLocaleString()}${booking.remainingAmountPaid ? ` + ชำระส่วนที่เหลือ ฿${booking.remainingAmountPaid.toLocaleString()}` : ''})`;
     }
 
     this.notifyClient(
       booking.clientId,
       'ใช้บริการเรียบร้อย',
-      `พนักงานได้บันทึกการเข้ารับบริการ "${booking.name}" เรียบร้อยแล้ว${
-        booking.paymentStatusAtBooking === 'deposit' && remaining > 0
-          ? ` (ชำระส่วนที่เหลือ ฿${remaining.toLocaleString()})`
-          : ''
-      }`
+      `พนักงานได้บันทึกการเข้ารับบริการ "${booking.name}" เรียบร้อยแล้ว${notifyDetail}`
     );
 
     this.logAudit(staffId, staffName, 'MARK_ONETIME_USED', 'onetime_booking', booking.id, 'ใช้บริการ One-Time แล้ว', previousData, booking);
@@ -2519,7 +2599,7 @@ class Store {
         }
 
         if (booking.status === 'used' && booking.paymentStatusAtBooking === 'deposit') {
-          const remaining = booking.fullPrice - booking.depositAmount;
+          const remaining = booking.remainingAmountPaid || (booking.fullPrice - booking.depositAmount);
           if (remaining > 0) {
             autoEntries.push({
               id: `AUTO-OTB-${booking.id}-remaining`,
@@ -2539,6 +2619,26 @@ class Store {
               isAutoGenerated: true,
             });
           }
+        }
+
+        if (booking.status === 'used' && booking.paymentStatusAtBooking === 'coin' && booking.remainingAmountPaid && booking.remainingAmountPaid > 0) {
+          autoEntries.push({
+            id: `AUTO-OTB-${booking.id}-coin-remaining`,
+            type: 'income',
+            category: 'onetime_service',
+            categoryNameTh: 'บริการ One-Time (ยอดคงเหลือหลังใช้ Coin เป็นส่วนลด)',
+            title: `${booking.name} — ${booking.branch} (${clientName}) — ยอดคงเหลือ`,
+            amount: booking.remainingAmountPaid,
+            date: (booking.usedAt || booking.bookingDateTime).split('T')[0],
+            note: 'ชำระส่วนที่เหลือหลังใช้ Coin ช่วยเหลือบางส่วน',
+            clientId: booking.clientId,
+            clientName,
+            sourceTxId: `${booking.id}-coin-remaining`,
+            createdByStaffId: booking.createdByStaffId,
+            createdByStaffName: booking.createdByStaffName,
+            createdAt: booking.usedAt || booking.createdAt,
+            isAutoGenerated: true,
+          });
         }
       }
     }

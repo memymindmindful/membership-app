@@ -369,11 +369,11 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
                             <div className="flex items-center gap-3">
                               <img
                                 src={booking.imageUrl || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=200&q=80'}
-                                alt={booking.catalogName}
+                                alt={booking.name}
                                 className="w-14 h-14 rounded-xl object-cover border border-[#F2E3E1]"
                               />
                               <div>
-                                <h4 className="text-sm font-bold text-[#3D3835]">{booking.catalogName}</h4>
+                                <h4 className="text-sm font-bold text-[#3D3835]">{booking.name}</h4>
                                 <p className="text-[11px] text-[#6E6763]">📍 {booking.branch}</p>
                                 <p className="text-[11px] text-[#D87085] font-medium">📅 {formatDate(booking.bookingDateTime, lang)}</p>
                                 {booking.endDateTime && (
@@ -397,7 +397,25 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
 
                           <div className="p-2.5 bg-[#FAF0ED]/50 rounded-xl border border-[#F2E3E1] flex items-center justify-between text-xs">
                             <span className="text-[#6E6763]">{lang === 'th' ? 'สถานะการชำระ:' : 'Payment:'}</span>
-                            {booking.paymentStatusAtBooking === 'paid_full' ? (
+                            {booking.paymentStatusAtBooking === 'free' ? (
+                              <span className="font-bold text-sky-700">
+                                {lang === 'th' ? 'กิจกรรมฟรี (Free)' : 'Free Activity'}
+                              </span>
+                            ) : booking.paymentStatusAtBooking === 'deduct_package' ? (
+                              <span className="font-bold text-purple-700">
+                                {lang === 'th' ? 'ตัดสิทธิ์จากแพ็กเกจ' : 'Deduct from Package'}
+                              </span>
+                            ) : booking.paymentStatusAtBooking === 'deduct_coupon' ? (
+                              <span className="font-bold text-indigo-700">
+                                {lang === 'th' ? 'ใช้สิทธิ์คูปอง' : 'Use Coupon'}
+                              </span>
+                            ) : booking.paymentStatusAtBooking === 'coin' ? (
+                              <span className="font-bold text-amber-900">
+                                {lang === 'th'
+                                  ? `ใช้ Coin ฿${formatCurrency(booking.coinAmountUsed || 0)}${booking.fullPrice > (booking.coinAmountUsed || 0) ? ` (คงเหลือชำระวันบริการ ฿${formatCurrency(booking.fullPrice - (booking.coinAmountUsed || 0))})` : ' (ครบจำนวน)'}`
+                                  : `Coin ฿${formatCurrency(booking.coinAmountUsed || 0)}${booking.fullPrice > (booking.coinAmountUsed || 0) ? ` (Due: ฿${formatCurrency(booking.fullPrice - (booking.coinAmountUsed || 0))})` : ' (Covered)'}`}
+                              </span>
+                            ) : booking.paymentStatusAtBooking === 'paid_full' ? (
                               <span className="font-bold text-emerald-700">
                                 {lang === 'th' ? `ชำระเต็มจำนวนแล้ว (฿${formatCurrency(booking.fullPrice)})` : `Paid in Full (฿${formatCurrency(booking.fullPrice)})`}
                               </span>
