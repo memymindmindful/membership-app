@@ -454,7 +454,18 @@ export default function App() {
       {/* Main Body View Switching */}
       <main className="py-4">
         {activeSubView === 'bookings' && currentStaff && currentStaff.role !== 'accountant' ? (
-          <BookingsOverview lang={lang} onBack={() => setActiveSubView('main')} />
+          <BookingsOverview
+            lang={lang}
+            onBack={() => setActiveSubView('main')}
+            onSelectClient={(clientId: string) => {
+              const found = allClients.find((c) => c.id === clientId);
+              if (found) {
+                setSelectedStaffClient(found);
+                refreshStaffClientData(found);
+              }
+              setActiveSubView('main');
+            }}
+          />
         ) : activeSubView === 'catalog' && currentStaff && currentStaff.role === 'admin' ? (
           <CatalogManagement
             catalogItems={catalogItems}

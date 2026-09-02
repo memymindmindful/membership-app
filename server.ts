@@ -707,11 +707,42 @@ async function startServer() {
     try {
       const staff = (req as any).authenticatedStaff;
       if (staff.role === 'accountant') {
-        return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึงหน้านี้ (Accountant role ไม่สามารถดูหน้าการจองได้)' });
+        return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึงหน้านี้' });
       }
-      const range = req.query.range as 'today' | 'week' | 'month' | undefined;
-      const bookings = store.getAllOneTimeBookings(range);
+      const bookings = store.getAllOneTimeBookings();
       res.json(bookings);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/active-packages-overview', authenticateStaff, (req, res) => {
+    try {
+      const staff = (req as any).authenticatedStaff;
+      if (staff.role === 'accountant') {
+        return res.status(403).json({ error: 'ไม่มีสิทธิ์เข้าถึงหน้านี้' });
+      }
+      res.json(store.getAllActivePackages());
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/onetime-bookings/:id/reschedule', authenticateStaff, (req, res) => {
+    try {
+      const staff = (req as any).authenticatedStaff;
+      const { bookingDateTime, endDateTime } = req.body;
+      if (!bookingDateTime) {
+        return res.status(400).json({ error: 'กรุณาระบุวันเวลานัดหมายใหม่' });
+      }
+      const booking = store.rescheduleOneTimeBooking(
+        req.params.id,
+        bookingDateTime,
+        endDateTime,
+        staff.staffId,
+        staff.staffName
+      );
+      res.json(booking);
     } catch (err: any) {
       res.status(400).json({ error: err.message });
     }

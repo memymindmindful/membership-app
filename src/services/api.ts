@@ -523,13 +523,53 @@ export const api = {
     return res.json();
   },
 
-  async getAllOneTimeBookings(range?: 'today' | 'week' | 'month'): Promise<(ClientOneTimeBooking & { clientName: string; clientPhone: string })[]> {
+  async getAllOneTimeBookings(): Promise<(ClientOneTimeBooking & { clientName: string; clientPhone: string; clientProfilePic?: string })[]> {
     const headers = getAuthHeaders();
-    const url = range ? `/api/onetime-bookings?range=${range}` : '/api/onetime-bookings';
-    const res = await fetch(url, { headers });
+    const res = await fetch('/api/onetime-bookings', { headers, cache: 'no-store' });
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Failed to load bookings');
+    }
+    return res.json();
+  },
+
+  async getAllActivePackagesOverview(): Promise<
+    Array<{
+      packageId: string;
+      clientId: string;
+      clientName: string;
+      clientPhone: string;
+      clientProfilePic?: string;
+      packageName: string;
+      sessionsUsed: number;
+      totalSessions: number;
+      remainingSessions: number;
+      expiryDate: string;
+    }>
+  > {
+    const headers = getAuthHeaders();
+    const res = await fetch('/api/active-packages-overview', { headers, cache: 'no-store' });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to load active packages');
+    }
+    return res.json();
+  },
+
+  async rescheduleOneTimeBooking(
+    bookingId: string,
+    bookingDateTime: string,
+    endDateTime?: string
+  ): Promise<ClientOneTimeBooking> {
+    const headers = getAuthHeaders({ 'Content-Type': 'application/json' });
+    const res = await fetch(`/api/onetime-bookings/${bookingId}/reschedule`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ bookingDateTime, endDateTime }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to reschedule booking');
     }
     return res.json();
   },

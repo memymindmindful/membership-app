@@ -2005,43 +2005,108 @@ class Store {
   }
 
   // One-Time Service Bookings Operations
-  public getAllOneTimeBookings(
-    range?: 'today' | 'week' | 'month'
-  ): (ClientOneTimeBooking & { clientName: string; clientPhone: string })[] {
+  public getAllOneTimeBookings(): (ClientOneTimeBooking & { clientName: string; clientPhone: string; clientProfilePic?: string })[] {
     if (!this.db.clientOneTimeBookings) return [];
-    let bookings = this.db.clientOneTimeBookings.filter((b) => b.status !== 'voided');
-
-    if (range) {
-      const now = new Date();
-      let startDate: Date;
-      let endDate: Date;
-      if (range === 'today') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      } else if (range === 'week') {
-        const dayOfWeek = now.getDay();
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek);
-        endDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 7);
-      } else {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      }
-      bookings = bookings.filter((b) => {
-        const d = new Date(b.bookingDateTime);
-        return d >= startDate && d < endDate;
-      });
-    }
-
-    return bookings
+    const now = new Date();
+    return this.db.clientOneTimeBookings
+      .filter((b) => b.status === 'booked' && new Date(b.bookingDateTime) >= now)
       .map((b) => {
         const client = this.db.clients.find((c) => c.id === b.clientId);
         return {
           ...b,
           clientName: client ? `${client.displayName}${client.nickname ? ` (${client.nickname})` : ''}` : 'ไม่พบข้อมูลลูกค้า',
           clientPhone: client?.phone || '-',
+          clientProfilePic: client?.profilePic || undefined,
         };
       })
       .sort((a, b) => new Date(a.bookingDateTime).getTime() - new Date(b.bookingDateTime).getTime());
+  }
+
+  public getAllActivePackages(): Array<{
+    packageId: string;
+    clientId: string;
+    clientName: string;
+    clientPhone: string;
+    clientProfilePic?: string;
+    packageName: string;
+    sessionsUsed: number;
+    totalSessions: number;
+    remainingSessions: number;
+    expiryDate: string;
+  }> {
+    if (!this.db.clientPackages || !this.db.clients) return [];
+    const result: Array<{
+      packageId: string;
+      clientId: string;
+      clientName: string;
+      clientPhone: string;
+      clientProfilePic?: string;
+      packageName: string;
+      sessionsUsed: number;
+      totalSessions: number;
+      remainingSessions: number;
+      expiryDate: string;
+    }> = [];
+    for (const client of this.db.clients) {
+      const packages = this.db.clientPackages.filter(
+        (p) => p.clientId === client.id && (p.status === 'active' || p.status === 'expiring_soon')
+      );
+      for (const pkg of packages) {
+        result.push({
+          packageId: pkg.id,
+          clientId: client.id,
+          clientName: `${client.displayName}${client.nickname ? ` (${client.nickname})` : ''}`,
+          clientPhone: client.phone || '-',
+          clientProfilePic: client.profilePic || undefined,
+          packageName: pkg.name,
+          sessionsUsed: pkg.totalSessions - pkg.remainingSessions,
+          totalSessions: pkg.totalSessions,
+          remainingSessions: pkg.remainingSessions,
+          expiryDate: pkg.expiryDate,
+        });
+      }
+    }
+    return result.sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+  }
+
+  public rescheduleOneTimeBooking(
+    bookingId: string,
+    newBookingDateTime: string,
+    newEndDateTime: string | undefined,
+    staffId: string,
+    staffName: string
+  ): ClientOneTimeBooking {
+    if (!this.db.clientOneTimeBookings) {
+      this.db.clientOneTimeBookings = [];
+    }
+    const booking = this.db.clientOneTimeBookings.find((b) => b.id === bookingId);
+    if (!booking) throw new Error('Booking not found');
+    if (booking.status !== 'booked') throw new Error('ไม่สามารถเลื่อนนัดรายการที่ใช้บริการหรือยกเลิกไปแล้วได้');
+
+    const previousData = { ...booking };
+    const oldDateTime = booking.bookingDateTime;
+    booking.bookingDateTime = newBookingDateTime;
+    booking.endDateTime = newEndDateTime || undefined;
+
+    this.notifyClient(
+      booking.clientId,
+      'เลื่อนนัดหมายบริการ',
+      `นัดหมาย "${booking.name}" ถูกเลื่อนจากเดิมเป็นวันที่ใหม่เรียบร้อยแล้ว`
+    );
+
+    this.logAudit(
+      staffId,
+      staffName,
+      'RESCHEDULE_ONETIME_BOOKING',
+      'onetime_booking',
+      booking.id,
+      `เลื่อนนัดจาก ${oldDateTime} เป็น ${newBookingDateTime}`,
+      previousData,
+      booking
+    );
+
+    this.saveToDisk();
+    return booking;
   }
 
   public getClientOneTimeBookings(clientId: string): ClientOneTimeBooking[] {

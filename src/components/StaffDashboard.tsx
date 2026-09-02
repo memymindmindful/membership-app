@@ -863,44 +863,75 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
       {/* Primary Tab Switcher Bar */}
       {canAccessClientOps && canAccessFinancial ? (
         <div className="flex items-center gap-2 bg-[#FAF0ED] p-1.5 rounded-2xl border border-[#F2E3E1]">
+          {role !== 'accountant' && (
+            <button
+              onClick={onOpenBookings}
+              className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 text-[#6E6763] hover:text-[#3D3835] hover:bg-white/60 cursor-pointer"
+            >
+              <Calendar className="w-4 h-4 text-[#E88D9F]" />
+              <span>{lang === 'th' ? 'ภาพรวมการจอง (Bookings Overview)' : 'Bookings Overview'}</span>
+            </button>
+          )}
+
           <button
             onClick={() => setActiveTab('client_ops')}
-            className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
+            className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'client_ops'
                 ? 'bg-white text-[#D87085] shadow-xs border border-[#F2C2CE]'
                 : 'text-[#6E6763] hover:text-[#3D3835]'
             }`}
           >
             <User className="w-4 h-4 text-[#E88D9F]" />
-            <span>ระบบจัดการสมาชิก & บริการหน้าร้าน (Client & Operations)</span>
+            <span>{lang === 'th' ? 'ระบบจัดการสมาชิก & บริการหน้าร้าน (Client & Operations)' : 'Client & Operations'}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('financial')}
-            className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
+            className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'financial'
                 ? 'bg-white text-[#D87085] shadow-xs border border-[#F2C2CE]'
                 : 'text-[#6E6763] hover:text-[#3D3835]'
             }`}
           >
             <PieChart className="w-4 h-4 text-[#E88D9F]" />
-            <span>สรุปบัญชี & รายรับ-รายจ่าย (Financial Dashboard)</span>
+            <span>{lang === 'th' ? 'สรุปบัญชี & รายรับ-รายจ่าย (Financial Dashboard)' : 'Financial Dashboard'}</span>
           </button>
+        </div>
+      ) : role !== 'accountant' ? (
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 bg-[#FAF0ED] p-1.5 sm:px-4 sm:py-2.5 rounded-2xl border border-[#F2E3E1]">
+          <button
+            onClick={onOpenBookings}
+            className="py-2 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 bg-white text-[#D87085] shadow-xs border border-[#F2C2CE] hover:bg-[#FAF0ED] cursor-pointer"
+          >
+            <Calendar className="w-4 h-4 text-[#E88D9F]" />
+            <span>{lang === 'th' ? 'ภาพรวมการจอง (Bookings Overview)' : 'Bookings Overview'}</span>
+          </button>
+          <div className="flex items-center justify-between gap-2 px-2 sm:px-0 text-xs text-[#6E6763]">
+            <span className="font-bold flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#E88D9F] animate-pulse" />
+              <span>
+                {role === 'staff'
+                  ? (lang === 'th' ? 'พนักงานหน้าร้าน (Staff View)' : 'Staff View')
+                  : (lang === 'th' ? 'เข้าใช้งานในบทบาทจำกัดสิทธิ์' : 'Restricted Role')}
+              </span>
+            </span>
+            <span className="text-[11px] font-mono font-bold text-[#D87085] bg-white px-2.5 py-1 rounded-lg border border-[#F2C2CE]">
+              ROLE: {role.toUpperCase()}
+            </span>
+          </div>
         </div>
       ) : (
         <div className="bg-[#FAF0ED] px-4 py-2.5 rounded-2xl border border-[#F2E3E1] flex items-center justify-between text-xs">
           <span className="font-bold text-[#3D3835] flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#E88D9F] animate-pulse" />
             <span>
-              {role === 'staff'
-                ? 'เข้าใช้งานในบทบาท: พนักงานหน้าร้าน (Staff View - ระบบจัดการสมาชิกเท่านั้น)'
-                : role === 'accountant'
+              {lang === 'th'
                 ? 'เข้าใช้งานในบทบาท: ฝ่ายบัญชี (Accountant View - สรุปบัญชี รายรับ-รายจ่ายเท่านั้น)'
-                : 'เข้าใช้งานในบทบาทจำกัดสิทธิ์'}
+                : 'Accountant View - Financial Dashboard Only'}
             </span>
           </span>
           <span className="text-[11px] font-mono font-bold text-[#D87085] bg-white px-2.5 py-1 rounded-lg border border-[#F2C2CE]">
-            Role: {role.toUpperCase()}
+            ROLE: {role.toUpperCase()}
           </span>
         </div>
       )}
