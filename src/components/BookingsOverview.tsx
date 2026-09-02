@@ -24,9 +24,11 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  AlertTriangle,
 } from 'lucide-react';
-import { AppLanguage, ClientOneTimeBooking } from '../types';
+import { AppLanguage, ClientOneTimeBooking, Employee } from '../types';
 import { api } from '../services/api';
+import { ExpiringAlertTasks } from './ExpiringAlertTasks';
 
 type BookingWithClient = ClientOneTimeBooking & {
   clientName: string;
@@ -49,12 +51,14 @@ type ActivePackageItem = {
 
 interface BookingsOverviewProps {
   lang: AppLanguage;
+  currentStaff: Employee;
   onBack: () => void;
   onSelectClient: (clientId: string) => void;
 }
 
 export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
   lang,
+  currentStaff,
   onBack,
   onSelectClient,
 }) => {
@@ -71,6 +75,7 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
   // UI Accordion / Dropdown State
   const [expandedBox, setExpandedBox] = useState<'bookings' | 'packages' | null>('bookings');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showExpiringTasks, setShowExpiringTasks] = useState(false);
 
   // Reschedule Modal States
   const [rescheduleTarget, setRescheduleTarget] = useState<BookingWithClient | null>(null);
@@ -121,8 +126,18 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
     loadData();
   };
 
-  // Format real-time clock string
-  const formattedRealTimeClock = useMemo(() => {
+  // Digital clock time string (HH:mm:ss)
+  const timeOnlyString = useMemo(() => {
+    return currentDateTime.toLocaleTimeString('th-TH', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+  }, [currentDateTime]);
+
+  // Digital clock date string
+  const dateOnlyString = useMemo(() => {
     if (lang === 'th') {
       const weekdays = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'];
       const months = [
@@ -133,15 +148,14 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
       const day = currentDateTime.getDate();
       const monthName = months[currentDateTime.getMonth()];
       const thaiYear = currentDateTime.getFullYear() + 543;
-      const timeStr = currentDateTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-      return `${dayName}ที่ ${day} ${monthName} ${thaiYear} • ${timeStr} น.`;
+      return `${dayName}ที่ ${day} ${monthName} ${thaiYear}`;
     } else {
       return currentDateTime.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric',
-      }) + ' • ' + currentDateTime.toLocaleTimeString('en-US', { hour12: false });
+      });
     }
   }, [currentDateTime, lang]);
 
@@ -309,16 +323,15 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-5">
-      {/* Realtime Clock Banner */}
-      <div className="bg-[#FAF0ED] px-4 py-2.5 rounded-2xl border border-[#F2E3E1] flex flex-wrap items-center justify-between gap-2 shadow-2xs">
-        <div className="flex items-center gap-2 text-xs font-semibold text-[#8C6D5E]">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#E88D9F] animate-pulse" />
-          <Clock className="w-3.5 h-3.5 text-[#D87085]" />
-          <span>{formattedRealTimeClock}</span>
-        </div>
-        <div className="text-[11px] font-medium text-[#9C948E]">
-          {lang === 'th' ? 'Me.My.Mind Spa & Wellness' : 'Me.My.Mind Spa & Wellness'}
-        </div>
+      {/* Digital Clock Banner */}
+      <div className="bg-gradient-to-br from-[#FAF0ED] to-white px-6 py-5 rounded-2xl border border-[#F2E3E1] shadow-2xs text-center">
+        <p className="text-4xl sm:text-5xl font-extrabold text-[#3D3835] tracking-wide tabular-nums">
+          {timeOnlyString}
+        </p>
+        <p className="text-xs sm:text-sm font-semibold text-[#8C6D5E] mt-1">
+          {dateOnlyString}
+        </p>
+        <p className="text-[11px] text-[#9C948E] mt-0.5">Me.My.Mind Mindfulness Studio</p>
       </div>
 
       {/* Header */}
@@ -354,85 +367,85 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
         </button>
       </div>
 
-      {/* 3 Summary Dashboard Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* 3 Summary Dashboard Cards — Always in 1 Row */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {/* Card 1: Upcoming Booking */}
         <button
           onClick={() => setExpandedBox(expandedBox === 'bookings' ? null : 'bookings')}
-          className={`p-4 sm:p-5 rounded-2xl border text-left transition relative cursor-pointer shadow-2xs ${
+          className={`p-3 sm:p-5 rounded-2xl border text-left transition relative cursor-pointer shadow-2xs ${
             expandedBox === 'bookings'
               ? 'bg-[#E88D9F] border-[#D87085] text-white ring-2 ring-[#E88D9F]/40 shadow-sm'
               : 'bg-white border-[#F2E3E1] text-[#3D3835] hover:bg-[#FAF0ED]'
           }`}
         >
-          <div className="flex items-center justify-between mb-2">
-            <Calendar className={`w-6 h-6 ${expandedBox === 'bookings' ? 'text-white' : 'text-[#D87085]'}`} />
+          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+            <Calendar className={`w-5 h-5 sm:w-6 sm:h-6 ${expandedBox === 'bookings' ? 'text-white' : 'text-[#D87085]'}`} />
             {expandedBox === 'bookings' ? (
-              <ChevronUp className="w-5 h-5 text-white opacity-80" />
+              <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 text-white opacity-80" />
             ) : (
-              <ChevronDown className="w-5 h-5 text-[#9C948E]" />
+              <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-[#9C948E]" />
             )}
           </div>
-          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+          <p className="text-xl sm:text-3xl font-extrabold tracking-tight">
             {isLoading ? '-' : upcomingBookings.length}
           </p>
-          <p className={`text-xs font-semibold mt-1 ${expandedBox === 'bookings' ? 'text-white/95' : 'text-[#6E6763]'}`}>
-            {lang === 'th' ? 'การจองที่กำลังจะถึง (Upcoming Booking)' : 'Upcoming Booking'}
+          <p className={`text-[11px] sm:text-xs font-semibold mt-0.5 sm:mt-1 truncate ${expandedBox === 'bookings' ? 'text-white/95' : 'text-[#6E6763]'}`}>
+            {lang === 'th' ? 'การจองที่กำลังจะถึง' : 'Upcoming Bookings'}
           </p>
-          <div className={`text-[10px] mt-0.5 ${expandedBox === 'bookings' ? 'text-white/80' : 'text-[#9C948E]'}`}>
-            {lang === 'th' ? 'กดเพื่อดูรายละเอียด' : 'Click to view details'}
+          <div className={`text-[9px] sm:text-[10px] mt-0.5 truncate hidden xs:block ${expandedBox === 'bookings' ? 'text-white/80' : 'text-[#9C948E]'}`}>
+            {lang === 'th' ? 'กดเพื่อดูรายละเอียด' : 'Click to view'}
           </div>
         </button>
 
         {/* Card 2: Active Packages */}
         <button
           onClick={() => setExpandedBox(expandedBox === 'packages' ? null : 'packages')}
-          className={`p-4 sm:p-5 rounded-2xl border text-left transition relative cursor-pointer shadow-2xs ${
+          className={`p-3 sm:p-5 rounded-2xl border text-left transition relative cursor-pointer shadow-2xs ${
             expandedBox === 'packages'
               ? 'bg-[#E88D9F] border-[#D87085] text-white ring-2 ring-[#E88D9F]/40 shadow-sm'
               : 'bg-white border-[#F2E3E1] text-[#3D3835] hover:bg-[#FAF0ED]'
           }`}
         >
-          <div className="flex items-center justify-between mb-2">
-            <Package className={`w-6 h-6 ${expandedBox === 'packages' ? 'text-white' : 'text-[#D87085]'}`} />
+          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+            <Package className={`w-5 h-5 sm:w-6 sm:h-6 ${expandedBox === 'packages' ? 'text-white' : 'text-[#D87085]'}`} />
             {expandedBox === 'packages' ? (
-              <ChevronUp className="w-5 h-5 text-white opacity-80" />
+              <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 text-white opacity-80" />
             ) : (
-              <ChevronDown className="w-5 h-5 text-[#9C948E]" />
+              <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-[#9C948E]" />
             )}
           </div>
-          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+          <p className="text-xl sm:text-3xl font-extrabold tracking-tight">
             {isLoading ? '-' : activePackages.length}
           </p>
-          <p className={`text-xs font-semibold mt-1 ${expandedBox === 'packages' ? 'text-white/95' : 'text-[#6E6763]'}`}>
-            {lang === 'th' ? 'แพ็กเกจคงเหลือ (Active Packages)' : 'Active Packages'}
+          <p className={`text-[11px] sm:text-xs font-semibold mt-0.5 sm:mt-1 truncate ${expandedBox === 'packages' ? 'text-white/95' : 'text-[#6E6763]'}`}>
+            {lang === 'th' ? 'แพ็กเกจคงเหลือ' : 'Active Packages'}
           </p>
-          <div className={`text-[10px] mt-0.5 ${expandedBox === 'packages' ? 'text-white/80' : 'text-[#9C948E]'}`}>
-            {lang === 'th' ? 'กดเพื่อดูรายการลูกค้า' : 'Click to view clients'}
+          <div className={`text-[9px] sm:text-[10px] mt-0.5 truncate hidden xs:block ${expandedBox === 'packages' ? 'text-white/80' : 'text-[#9C948E]'}`}>
+            {lang === 'th' ? 'กดเพื่อดูรายการลูกค้า' : 'Click to view'}
           </div>
         </button>
 
         {/* Card 3: Calendar */}
         <button
           onClick={() => setShowCalendar(true)}
-          className="p-4 sm:p-5 rounded-2xl border border-[#F2E3E1] bg-white text-[#3D3835] text-left transition hover:bg-[#FAF0ED] cursor-pointer shadow-2xs flex flex-col justify-between"
+          className="p-3 sm:p-5 rounded-2xl border border-[#F2E3E1] bg-white text-[#3D3835] text-left transition hover:bg-[#FAF0ED] cursor-pointer shadow-2xs flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between mb-2">
-            <CalendarDays className="w-6 h-6 text-[#D87085]" />
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FAF0ED] text-[#D87085] border border-[#F2E3E1]">
-              {lang === 'th' ? 'เปิดปฏิทิน' : 'Open'}
+          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+            <CalendarDays className="w-5 h-5 sm:w-6 sm:h-6 text-[#D87085]" />
+            <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-[#FAF0ED] text-[#D87085] border border-[#F2E3E1]">
+              {lang === 'th' ? 'เปิด' : 'Open'}
             </span>
           </div>
           <div>
-            <p className="text-base sm:text-lg font-bold text-[#3D3835]">
+            <p className="text-xs sm:text-lg font-bold text-[#3D3835] truncate">
               {lang === 'th' ? 'ปฏิทินการจอง' : 'Calendar'}
             </p>
-            <p className="text-xs text-[#6E6763] mt-0.5">
-              {lang === 'th' ? 'ดูภาพรวมรายเดือน & ตารางวัน' : 'Monthly overview & schedules'}
+            <p className="text-[10px] sm:text-xs text-[#6E6763] mt-0.5 truncate hidden xs:block">
+              {lang === 'th' ? 'ดูตารางรายเดือน' : 'Monthly view'}
             </p>
           </div>
-          <div className="text-[10px] text-[#9C948E] mt-2">
-            {lang === 'th' ? 'คลิกเพื่อเปิดปฏิทินแบบเต็มจอ' : 'Click to open full calendar'}
+          <div className="text-[9px] sm:text-[10px] text-[#9C948E] mt-1 sm:mt-2 truncate hidden xs:block">
+            {lang === 'th' ? 'คลิกเปิดปฏิทิน' : 'Click to view'}
           </div>
         </button>
       </div>
@@ -451,10 +464,23 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
         </div>
       )}
 
+      {/* Expiring Alert Tasks Section Toggle & Component */}
+      <div className="space-y-3">
+        {showExpiringTasks && (
+          <div className="animate-in fade-in">
+            <ExpiringAlertTasks
+              currentStaff={currentStaff}
+              onSelectClient={onSelectClient}
+              onRefreshData={handleRefresh}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Expanded Detail Dropdown Section */}
       {expandedBox && (
         <div className="space-y-4 pt-2">
-          {/* Search Bar for the active expanded box */}
+          {/* Search Bar & Expiring Cases Toggle for the active expanded box */}
           <div className="bg-white p-4 rounded-2xl border border-[#F2E3E1] shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-3 top-3 text-[#9C948E]" />
@@ -475,14 +501,28 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
               />
             </div>
 
-            <div className="shrink-0 self-start sm:self-center text-xs font-semibold text-[#6E6763] bg-[#FAF0ED] px-3.5 py-2 rounded-xl border border-[#F2E3E1]">
-              {expandedBox === 'bookings'
-                ? lang === 'th'
-                  ? `พบการจอง ${filteredBookings.length} รายการ`
-                  : `Found ${filteredBookings.length} bookings`
-                : lang === 'th'
-                ? `พบแพ็กเกจ ${filteredPackages.length} รายการ`
-                : `Found ${filteredPackages.length} packages`}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setShowExpiringTasks(!showExpiringTasks)}
+                className={`px-3 py-2 border text-xs font-bold rounded-xl transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  showExpiringTasks
+                    ? 'bg-amber-500 border-amber-600 text-white shadow-xs'
+                    : 'bg-white border-[#F2E3E1] text-[#8C6D5E] hover:bg-[#FAF0ED]'
+                }`}
+              >
+                <AlertTriangle className={`w-3.5 h-3.5 ${showExpiringTasks ? 'text-white' : 'text-amber-500'}`} />
+                <span>{lang === 'th' ? 'งานติดตามหมดอายุ' : 'Expiring Cases'}</span>
+              </button>
+
+              <div className="text-xs font-semibold text-[#6E6763] bg-[#FAF0ED] px-3.5 py-2 rounded-xl border border-[#F2E3E1]">
+                {expandedBox === 'bookings'
+                  ? lang === 'th'
+                    ? `พบการจอง ${filteredBookings.length} รายการ`
+                    : `Found ${filteredBookings.length} bookings`
+                  : lang === 'th'
+                  ? `พบแพ็กเกจ ${filteredPackages.length} รายการ`
+                  : `Found ${filteredPackages.length} packages`}
+              </div>
             </div>
           </div>
 

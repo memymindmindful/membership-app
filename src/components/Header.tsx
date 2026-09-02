@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Globe, UserCheck, Shield, Smartphone, LogOut, RefreshCw } from 'lucide-react';
+import { Sparkles, Globe, UserCheck, LogOut, RefreshCw } from 'lucide-react';
 import { AppLanguage, Employee, Client, BrandSettings } from '../types';
 import { translations } from '../lib/translations';
 import appLogo from '../assets/images/me_my_mind_logo_1785924412256.jpg';
@@ -64,12 +64,8 @@ export const Header: React.FC<HeaderProps> = ({
   const displayName = brandSettings?.brandName || 'Me.My.Mind Membership';
   const displayTagline = brandSettings?.brandTagline || 'Your Daily Ritual of Self-Love';
 
-  // Check URL parameters for explicit staff or demo mode
-  const isStaffRequested = window.location.search.includes('staff=true') || window.location.search.includes('mode=staff');
+  // Check URL parameters for explicit demo mode
   const isDemoRequested = window.location.search.includes('demo=true') || window.location.search.includes('dev=true');
-  
-  // Mode switcher is shown ONLY if staff mode is explicitly requested or in staff view or demo URL parameter
-  const showModeSwitcher = isStaffRequested || isDemoRequested || viewMode === 'staff';
 
   // Demo user selector shown ONLY when explicitly requested with ?demo=true in URL (never to real customers)
   const showDemoSelector = viewMode === 'customer' && !isLiffLoggedIn && isDemoRequested;
@@ -98,34 +94,6 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Center / Right Action Controls */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-          {/* Mode Switcher Pills (Automatically hidden for LINE customers in production) */}
-          {showModeSwitcher && (
-            <div className="bg-[#FAF0ED] p-0.5 sm:p-1 rounded-full flex items-center text-[11px] sm:text-xs font-medium border border-[#F2E3E1]">
-              <button
-                onClick={() => setViewMode('customer')}
-                className={`flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full transition ${
-                  viewMode === 'customer'
-                    ? 'bg-[#E88D9F] text-white shadow-xs font-semibold'
-                    : 'text-[#6E6763] hover:text-[#3D3835]'
-                }`}
-              >
-                <Smartphone className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                <span className="hidden xs:inline">Customer</span>
-              </button>
-              <button
-                onClick={() => setViewMode('staff')}
-                className={`flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full transition ${
-                  viewMode === 'staff'
-                    ? 'bg-[#E88D9F] text-white shadow-xs font-semibold'
-                    : 'text-[#6E6763] hover:text-[#3D3835]'
-                }`}
-              >
-                <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                <span className="hidden xs:inline">Staff</span>
-              </button>
-            </div>
-          )}
-
           {/* Refresh Button for Staff Mode */}
           {viewMode === 'staff' && onRefreshStaffData && (
             <button

@@ -456,6 +456,7 @@ export default function App() {
         {activeSubView === 'bookings' && currentStaff && currentStaff.role !== 'accountant' ? (
           <BookingsOverview
             lang={lang}
+            currentStaff={currentStaff || { id: 'EMP-01', username: 'staff', displayName: 'Staff', role: 'staff' }}
             onBack={() => setActiveSubView('main')}
             onSelectClient={(clientId: string) => {
               const found = allClients.find((c) => c.id === clientId);
