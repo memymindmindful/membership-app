@@ -313,6 +313,12 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   const [isSubmittingVoidOneTime, setIsSubmittingVoidOneTime] = useState(false);
   const [showMobileClientList, setShowMobileClientList] = useState(false);
 
+  // Reschedule One-Time Booking (Staff) State
+  const [rescheduleTargetStaff, setRescheduleTargetStaff] = useState<ClientOneTimeBooking | null>(null);
+  const [staffNewDateTime, setStaffNewDateTime] = useState('');
+  const [staffNewEndDateTime, setStaffNewEndDateTime] = useState('');
+  const [isSubmittingRescheduleStaff, setIsSubmittingRescheduleStaff] = useState(false);
+
   // Filter clients by search query
   const filteredClients = allClients.filter(
     (c) =>
@@ -1221,6 +1227,19 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 <span>{lang === 'th' ? 'บันทึกการใช้บริการ' : 'Mark as Used'}</span>
+                              </button>
+
+                              {/* Reschedule Button */}
+                              <button
+                                onClick={() => {
+                                  setRescheduleTargetStaff(booking);
+                                  setStaffNewDateTime(booking.bookingDateTime ? booking.bookingDateTime.slice(0, 16) : '');
+                                  setStaffNewEndDateTime(booking.endDateTime ? booking.endDateTime.slice(0, 16) : '');
+                                }}
+                                className="px-3.5 py-2 bg-white border border-[#F2E3E1] text-[#8C6D5E] hover:bg-[#FAF0ED] hover:text-[#D87085] text-xs font-bold rounded-xl shadow-2xs transition flex items-center gap-1.5"
+                              >
+                                <Calendar className="w-3.5 h-3.5 text-[#D87085]" />
+                                <span>{lang === 'th' ? 'เลื่อนนัด' : 'Reschedule'}</span>
                               </button>
                             </div>
                           </div>
@@ -3185,6 +3204,79 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
             />
           </div>
         </ConfirmationModal>
+      )}
+
+      {/* MODAL: RESCHEDULE ONE-TIME BOOKING (STAFF) */}
+      {rescheduleTargetStaff && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-xl border border-[#F2E3E1] space-y-4">
+            <h3 className="text-base font-serif font-bold text-[#3D3835]">
+              {lang === 'th' ? 'เลื่อนนัดหมาย' : 'Reschedule Booking'}
+            </h3>
+            <p className="text-xs text-[#6E6763]">{rescheduleTargetStaff.name}</p>
+
+            <div>
+              <label className="block text-xs font-bold text-[#3D3835] mb-1">
+                {lang === 'th' ? 'วัน-เวลานัดหมายใหม่' : 'New Date & Time'} *
+              </label>
+              <input
+                type="datetime-local"
+                value={staffNewDateTime}
+                onChange={(e) => setStaffNewDateTime(e.target.value)}
+                className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs font-bold focus:outline-none focus:border-[#E88D9F]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#3D3835] mb-1">
+                {lang === 'th' ? 'วัน-เวลาสิ้นสุดใหม่ (ถ้ามี)' : 'New End Time (optional)'}
+              </label>
+              <input
+                type="datetime-local"
+                value={staffNewEndDateTime}
+                onChange={(e) => setStaffNewEndDateTime(e.target.value)}
+                className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs font-bold focus:outline-none focus:border-[#E88D9F]"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                disabled={isSubmittingRescheduleStaff}
+                onClick={() => setRescheduleTargetStaff(null)}
+                className="flex-1 py-2.5 bg-[#FAF0ED] text-[#6E6763] font-bold text-xs rounded-xl hover:bg-[#F2E3E1] transition cursor-pointer"
+              >
+                {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
+              </button>
+              <button
+                disabled={isSubmittingRescheduleStaff || !staffNewDateTime}
+                onClick={async () => {
+                  if (!staffNewDateTime) return;
+                  try {
+                    setIsSubmittingRescheduleStaff(true);
+                    await api.rescheduleOneTimeBooking(
+                      rescheduleTargetStaff.id,
+                      new Date(staffNewDateTime).toISOString(),
+                      staffNewEndDateTime ? new Date(staffNewEndDateTime).toISOString() : undefined
+                    );
+                    setRescheduleTargetStaff(null);
+                    onRefreshClient();
+                  } catch (err: any) {
+                    alert(err.message || 'เกิดข้อผิดพลาดในการเลื่อนนัด');
+                  } finally {
+                    setIsSubmittingRescheduleStaff(false);
+                  }
+                }}
+                className="flex-1 py-2.5 bg-[#E88D9F] text-white font-bold text-xs rounded-xl hover:bg-[#D87085] transition cursor-pointer disabled:opacity-60 flex items-center justify-center gap-1.5"
+              >
+                {isSubmittingRescheduleStaff ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <span>{lang === 'th' ? 'ยืนยันเลื่อนนัด' : 'Confirm'}</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* BRAND & LOGO SETTINGS MODAL */}

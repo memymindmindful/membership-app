@@ -9,7 +9,6 @@ import {
   Phone,
   ArrowLeft,
   Search,
-  RefreshCw,
   Loader2,
   AlertCircle,
   Sparkles,
@@ -82,6 +81,10 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
   const [newDateTime, setNewDateTime] = useState('');
   const [newEndDateTime, setNewEndDateTime] = useState('');
   const [isSubmittingReschedule, setIsSubmittingReschedule] = useState(false);
+
+  // Mark as Used Modal States
+  const [useTarget, setUseTarget] = useState<BookingWithClient | null>(null);
+  const [isSubmittingUse, setIsSubmittingUse] = useState(false);
 
   // Calendar View States
   const [showCalendar, setShowCalendar] = useState(false);
@@ -323,48 +326,37 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3 pb-3 border-b border-[#F2E3E1]">
+        <button
+          onClick={onBack}
+          className="p-2 bg-white text-[#3D3835] hover:text-[#D87085] rounded-full border border-[#F2E3E1] shadow-2xs hover:bg-[#FAF0ED] transition cursor-pointer shrink-0"
+          title={lang === 'th' ? 'ย้อนกลับ' : 'Back'}
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#3D3835] flex items-center gap-2">
+            <CalendarCheck className="w-6 h-6 text-[#D87085] shrink-0" />
+            <span>{lang === 'th' ? 'ภาพรวมการจอง & บริการ' : 'Bookings & Services Dashboard'}</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-[#6E6763]">
+            {lang === 'th'
+              ? 'ติดตามรายการนัดหมายที่กำลังจะถึง และแพ็กเกจคงเหลือของลูกค้าทั้งหมด'
+              : 'Track upcoming appointments and active client packages'}
+          </p>
+        </div>
+      </div>
+
       {/* Digital Clock Banner */}
       <div className="bg-gradient-to-br from-[#FAF0ED] to-white px-6 py-5 rounded-2xl border border-[#F2E3E1] shadow-2xs text-center">
         <p className="text-4xl sm:text-5xl font-extrabold text-[#3D3835] tracking-wide tabular-nums">
           {timeOnlyString}
         </p>
-        <p className="text-xs sm:text-sm font-semibold text-[#8C6D5E] mt-1">
+        <p className="text-sm sm:text-base font-semibold text-[#8C6D5E] mt-1">
           {dateOnlyString}
         </p>
         <p className="text-[11px] text-[#9C948E] mt-0.5">Me.My.Mind Mindfulness Studio</p>
-      </div>
-
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-[#F2E3E1]">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="p-2 bg-white text-[#3D3835] hover:text-[#D87085] rounded-full border border-[#F2E3E1] shadow-2xs hover:bg-[#FAF0ED] transition cursor-pointer"
-            title={lang === 'th' ? 'ย้อนกลับ' : 'Back'}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#3D3835] flex items-center gap-2">
-              <CalendarCheck className="w-6 h-6 text-[#D87085]" />
-              <span>{lang === 'th' ? 'ภาพรวมการจอง & บริการ' : 'Bookings & Services Dashboard'}</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-[#6E6763]">
-              {lang === 'th'
-                ? 'ติดตามรายการนัดหมายที่กำลังจะถึง และแพ็กเกจคงเหลือของลูกค้าทั้งหมด'
-                : 'Track upcoming appointments and active client packages'}
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={handleRefresh}
-          disabled={isLoading || isRefreshing}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#FAF0ED] text-[#3D3835] hover:text-[#D87085] rounded-full border border-[#F2E3E1] text-xs font-semibold shadow-2xs transition disabled:opacity-60 cursor-pointer"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 text-[#D87085] ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span>{lang === 'th' ? 'รีเฟรช' : 'Refresh'}</span>
-        </button>
       </div>
 
       {/* 3 Summary Dashboard Cards — Always in 1 Row */}
@@ -390,7 +382,7 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
             {isLoading ? '-' : upcomingBookings.length}
           </p>
           <p className={`text-[11px] sm:text-xs font-semibold mt-0.5 sm:mt-1 truncate ${expandedBox === 'bookings' ? 'text-white/95' : 'text-[#6E6763]'}`}>
-            {lang === 'th' ? 'การจองที่กำลังจะถึง' : 'Upcoming Bookings'}
+            {lang === 'th' ? 'การจองเร็วๆ นี้' : 'Upcoming Bookings'}
           </p>
           <div className={`text-[9px] sm:text-[10px] mt-0.5 truncate hidden xs:block ${expandedBox === 'bookings' ? 'text-white/80' : 'text-[#9C948E]'}`}>
             {lang === 'th' ? 'กดเพื่อดูรายละเอียด' : 'Click to view'}
@@ -641,19 +633,33 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
                           <div>{renderPaymentBadge(booking)}</div>
                         </div>
 
-                        {/* Reschedule Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRescheduleTarget(booking);
-                            setNewDateTime(booking.bookingDateTime ? booking.bookingDateTime.slice(0, 16) : '');
-                            setNewEndDateTime(booking.endDateTime ? booking.endDateTime.slice(0, 16) : '');
-                          }}
-                          className="px-3 py-1.5 bg-white border border-[#F2E3E1] text-[#8C6D5E] hover:bg-[#FAF0ED] hover:text-[#D87085] text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                        >
-                          <Calendar className="w-3.5 h-3.5 text-[#D87085]" />
-                          <span>{lang === 'th' ? 'เลื่อนนัด' : 'Reschedule'}</span>
-                        </button>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {/* Mark as Used Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUseTarget(booking);
+                            }}
+                            className="px-3 py-1.5 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>{lang === 'th' ? 'บันทึกการใช้บริการ' : 'Mark as Used'}</span>
+                          </button>
+
+                          {/* Reschedule Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRescheduleTarget(booking);
+                              setNewDateTime(booking.bookingDateTime ? booking.bookingDateTime.slice(0, 16) : '');
+                              setNewEndDateTime(booking.endDateTime ? booking.endDateTime.slice(0, 16) : '');
+                            }}
+                            className="px-3 py-1.5 bg-white border border-[#F2E3E1] text-[#8C6D5E] hover:bg-[#FAF0ED] hover:text-[#D87085] text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <Calendar className="w-3.5 h-3.5 text-[#D87085]" />
+                            <span>{lang === 'th' ? 'เลื่อนนัด' : 'Reschedule'}</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -949,8 +955,18 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 self-end sm:self-center">
+                        <div className="flex items-center gap-1.5 flex-wrap self-end sm:self-center">
                           {renderPaymentBadge(b)}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUseTarget(b);
+                            }}
+                            className="px-2.5 py-1 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-lg transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>{lang === 'th' ? 'ใช้บริการ' : 'Use'}</span>
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -958,7 +974,7 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
                               setNewDateTime(b.bookingDateTime ? b.bookingDateTime.slice(0, 16) : '');
                               setNewEndDateTime(b.endDateTime ? b.endDateTime.slice(0, 16) : '');
                             }}
-                            className="px-2.5 py-1 bg-white border border-[#F2E3E1] text-[#8C6D5E] hover:bg-[#FAF0ED] hover:text-[#D87085] text-xs font-bold rounded-lg transition"
+                            className="px-2.5 py-1 bg-white border border-[#F2E3E1] text-[#8C6D5E] hover:bg-[#FAF0ED] hover:text-[#D87085] text-xs font-bold rounded-lg transition cursor-pointer"
                           >
                             {lang === 'th' ? 'เลื่อนนัด' : 'Reschedule'}
                           </button>
@@ -1039,6 +1055,55 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <span>{lang === 'th' ? 'ยืนยันเลื่อนนัด' : 'Confirm'}</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mark as Used Modal */}
+      {useTarget && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-xl border border-[#F2E3E1] space-y-4">
+            <h3 className="text-base font-serif font-bold text-[#3D3835]">
+              {lang === 'th' ? 'ยืนยันการใช้บริการ' : 'Confirm Service Used'}
+            </h3>
+            <p className="text-xs text-[#6E6763]">
+              {useTarget.name} — {useTarget.clientName}
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button
+                disabled={isSubmittingUse}
+                onClick={() => setUseTarget(null)}
+                className="flex-1 py-2.5 bg-[#FAF0ED] text-[#6E6763] font-bold text-xs rounded-xl hover:bg-[#F2E3E1] transition cursor-pointer"
+              >
+                {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
+              </button>
+              <button
+                disabled={isSubmittingUse}
+                onClick={async () => {
+                  setIsSubmittingUse(true);
+                  try {
+                    await api.markOneTimeBookingUsed(
+                      useTarget.id,
+                      currentStaff.id,
+                      currentStaff.displayName
+                    );
+                    setUseTarget(null);
+                    loadData();
+                  } catch (err: any) {
+                    alert(err.message || 'เกิดข้อผิดพลาดในการบันทึกการใช้บริการ');
+                  } finally {
+                    setIsSubmittingUse(false);
+                  }
+                }}
+                className="flex-1 py-2.5 bg-[#E88D9F] hover:bg-[#D87085] text-white font-bold text-xs rounded-xl disabled:opacity-60 transition cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {isSubmittingUse ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <span>{lang === 'th' ? 'ยืนยัน' : 'Confirm'}</span>
                 )}
               </button>
             </div>

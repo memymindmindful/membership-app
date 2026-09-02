@@ -2879,6 +2879,19 @@ class Store {
       case 'coin_purchase':
         this.reverseCoinTransaction(sourceTxId, reason, staffId, staffName);
         break;
+      case 'marketing': {
+        this.reverseCoinTransaction(sourceTxId, reason, staffId, staffName);
+        // ลบ entry ที่บันทึกถาวรนี้ออกด้วย เพราะไม่ได้ถูกคำนวณสดเหมือน entry อื่น
+        if (this.db.financialEntries) {
+          const idx = this.db.financialEntries.findIndex(
+            (f) => f.sourceTxId === sourceTxId && f.category === 'marketing'
+          );
+          if (idx !== -1) {
+            this.db.financialEntries.splice(idx, 1);
+          }
+        }
+        break;
+      }
       case 'direct_service':
         this.reversePointsTransaction(sourceTxId, reason, staffId, staffName);
         break;
