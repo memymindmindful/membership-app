@@ -675,6 +675,8 @@ function getInitialData(): DatabaseSchema {
 
 class Store {
   private db: DatabaseSchema;
+  private saveDiskTimer: NodeJS.Timeout | null = null;
+  private pendingSaveData: DatabaseSchema | null = null;
 
   constructor() {
     this.db = this.loadFromDisk();
@@ -715,14 +717,32 @@ class Store {
   }
 
   private saveToDisk(data?: DatabaseSchema) {
-    try {
-      if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-      }
-      fs.writeFileSync(DATA_FILE, JSON.stringify(data || this.db, null, 2), 'utf-8');
-    } catch (err) {
-      console.error('Failed to save store to disk:', err);
+    this.pendingSaveData = data || this.db;
+
+    if (this.saveDiskTimer) {
+      clearTimeout(this.saveDiskTimer);
     }
+
+    this.saveDiskTimer = setTimeout(() => {
+      const dataToSave = this.pendingSaveData;
+      this.saveDiskTimer = null;
+      this.pendingSaveData = null;
+
+      if (!dataToSave) return;
+
+      try {
+        if (!fs.existsSync(DATA_DIR)) {
+          fs.mkdirSync(DATA_DIR, { recursive: true });
+        }
+        fs.writeFile(DATA_FILE, JSON.stringify(dataToSave), 'utf-8', (err) => {
+          if (err) {
+            console.error('Failed to save store to disk:', err);
+          }
+        });
+      } catch (err) {
+        console.error('Failed to save store to disk:', err);
+      }
+    }, 300);
   }
 
   /**
@@ -792,6 +812,9 @@ class Store {
       timestamp: new Date().toISOString(),
     };
     this.db.auditLogs.unshift(log);
+    if (this.db.auditLogs.length > 2000) {
+      this.db.auditLogs = this.db.auditLogs.slice(0, 2000);
+    }
     this.saveToDisk();
   }
 
