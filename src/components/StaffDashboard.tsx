@@ -42,11 +42,6 @@ import {
 } from 'lucide-react';
 import appLogo from '../assets/images/me_my_mind_logo_1785924412256.jpg';
 import { FinancialDashboard } from './FinancialDashboard';
-import { StaffManagementModal } from './StaffManagementModal';
-import { ChangePasswordModal } from './ChangePasswordModal';
-import { ExportClientsModal } from './ExportClientsModal';
-import { FactoryResetModal } from './FactoryResetModal';
-import { BackupSettingsModal } from './BackupSettingsModal';
 import {
   AppLanguage,
   CatalogItem,
@@ -85,6 +80,11 @@ interface StaffDashboardProps {
   onOpenBookings: () => void;
   onOpenCatalog: () => void;
   onOpenAuditLogs: () => void;
+  activeTab: 'client_ops' | 'financial';
+  setActiveTab: (tab: 'client_ops' | 'financial') => void;
+  isBrandModalOpen?: boolean;
+  setIsBrandModalOpen?: (open: boolean) => void;
+  onOpenExportClients?: () => void;
 }
 
 export const StaffDashboard: React.FC<StaffDashboardProps> = ({
@@ -104,24 +104,18 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   onOpenBookings,
   onOpenCatalog,
   onOpenAuditLogs,
+  activeTab,
+  setActiveTab,
+  isBrandModalOpen,
+  setIsBrandModalOpen,
+  onOpenExportClients,
 }) => {
   const t = translations[lang];
-
-  // Primary Navigation Tab State: 'client_ops' | 'financial'
-  const [activeTab, setActiveTab] = useState<'client_ops' | 'financial'>('client_ops');
 
   // Staff Login Modal State
   const [loginUsername, setLoginUsername] = useState('admin');
   const [loginPassword, setLoginPassword] = useState('admin123');
   const [loginError, setLoginError] = useState<string | null>(null);
-
-  // Staff Management, Export & Password Modals State
-  const [isStaffManagementOpen, setIsStaffManagementOpen] = useState(false);
-  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [isFactoryResetOpen, setIsFactoryResetOpen] = useState(false);
-  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
-  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
 
   // Staff Note Editing State
   const [isEditingStaffNote, setIsEditingStaffNote] = useState(false);
@@ -165,6 +159,12 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
     setPosterUploadError(null);
     setShowBrandModal(true);
   };
+
+  React.useEffect(() => {
+    if (isBrandModalOpen) {
+      handleOpenBrandModal();
+    }
+  }, [isBrandModalOpen]);
 
   const handlePosterFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -215,6 +215,9 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
       });
     }
     setShowBrandModal(false);
+    if (setIsBrandModalOpen) {
+      setIsBrandModalOpen(false);
+    }
   };
 
   // Search & Camera QR State
@@ -720,7 +723,9 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
               {(role === 'admin' || role === 'manager') && (
                 <button
                   type="button"
-                  onClick={() => setIsExportModalOpen(true)}
+                  onClick={() => {
+                    if (onOpenExportClients) onOpenExportClients();
+                  }}
                   className="text-[11px] font-semibold text-[#3D3835] bg-[#FAF0ED] hover:bg-[#F2E3E1] border border-[#F2E3E1] px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
                   title="ส่งออกข้อมูลลูกค้าเป็น Excel"
                 >
@@ -3477,14 +3482,19 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
               <div className="pt-2 border-t border-[#FAF0ED] flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowBrandModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-[#6E6763] hover:text-[#3D3835] rounded-xl transition"
+                  onClick={() => {
+                    setShowBrandModal(false);
+                    if (setIsBrandModalOpen) {
+                      setIsBrandModalOpen(false);
+                    }
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-[#6E6763] hover:text-[#3D3835] rounded-xl transition cursor-pointer"
                 >
                   {t.cancel}
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 text-xs font-bold text-white bg-[#E88D9F] hover:bg-[#D87085] rounded-full shadow-2xs transition"
+                  className="px-5 py-2.5 text-xs font-bold text-white bg-[#E88D9F] hover:bg-[#D87085] rounded-full shadow-2xs transition cursor-pointer"
                 >
                   {lang === 'th' ? 'บันทึกการตั้งค่า' : 'Save Brand Settings'}
                 </button>
@@ -3493,283 +3503,6 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
           </div>
         </div>
       )}
-
-      {/* Staff Management Modal */}
-      {currentStaff && (
-        <StaffManagementModal
-          isOpen={isStaffManagementOpen}
-          onClose={() => setIsStaffManagementOpen(false)}
-          currentStaff={currentStaff}
-          employees={employees}
-          onRefreshEmployees={() => {
-            if (onRefreshEmployees) onRefreshEmployees();
-          }}
-        />
-      )}
-
-      {/* Change Password Modal */}
-      {currentStaff && (
-        <ChangePasswordModal
-          isOpen={isChangePasswordOpen}
-          onClose={() => setIsChangePasswordOpen(false)}
-          currentStaff={currentStaff}
-          onRefreshEmployees={() => {
-            if (onRefreshEmployees) onRefreshEmployees();
-          }}
-        />
-      )}
-
-      {/* Export Clients Modal */}
-      <ExportClientsModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        staffRole={role}
-      />
-
-      {/* Factory Reset Modal (Admin Only) */}
-      <FactoryResetModal
-        isOpen={isFactoryResetOpen}
-        onClose={() => setIsFactoryResetOpen(false)}
-        currentStaff={currentStaff}
-        onSuccess={() => {
-          onRefreshClient();
-          if (onRefreshEmployees) onRefreshEmployees();
-        }}
-      />
-
-      {/* Backup & Auto-Report Settings Modal */}
-      <BackupSettingsModal
-        isOpen={isBackupModalOpen}
-        onClose={() => setIsBackupModalOpen(false)}
-      />
-
-      {/* Universal Bottom Navigation & Settings Drawer */}
-      {/* Backdrop for Tools Menu Popup */}
-      {isToolsMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-2xs z-40"
-          onClick={() => setIsToolsMenuOpen(false)}
-        />
-      )}
-
-      {/* Tools / Management Menu (Popup upwards from bottom bar) */}
-      {isToolsMenuOpen && (
-        <div className="fixed bottom-16 right-4 sm:right-10 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-[#F2E3E1] z-50 p-2.5 space-y-2 divide-y divide-[#FAF0ED] animate-in slide-in-from-bottom-5 duration-200">
-          {/* Section 1: Operations & Catalog */}
-          <div className="p-1.5 space-y-1">
-            <div className="px-2.5 py-1 text-[10px] font-bold text-[#A89F91] uppercase tracking-wider">
-              {lang === 'th' ? 'ข้อมูล & งานบริการ' : 'Services & Reports'}
-            </div>
-
-            {role !== 'accountant' && (
-              <button
-                onClick={() => {
-                  onOpenBookings();
-                  setIsToolsMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
-              >
-                <Calendar className="w-4 h-4 text-[#D87085] shrink-0" />
-                <span>{lang === 'th' ? 'ภาพรวมการจอง (Bookings)' : 'Bookings Overview'}</span>
-              </button>
-            )}
-
-            {canEditCatalog && (
-              <button
-                onClick={() => {
-                  onOpenCatalog();
-                  setIsToolsMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
-              >
-                <BookOpen className="w-4 h-4 text-[#D87085] shrink-0" />
-                <span>{t.viewCatalogBtn}</span>
-              </button>
-            )}
-
-            {canViewAuditLogs && (
-              <button
-                onClick={() => {
-                  onOpenAuditLogs();
-                  setIsToolsMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
-              >
-                <ShieldCheck className="w-4 h-4 text-[#D87085] shrink-0" />
-                <span>{t.viewAuditLogBtn}</span>
-              </button>
-            )}
-
-            {(role === 'admin' || role === 'manager') && (
-              <button
-                onClick={() => {
-                  setIsExportModalOpen(true);
-                  setIsToolsMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-[#D87085] shrink-0" />
-                <span>Export ข้อมูลลูกค้า (Excel)</span>
-              </button>
-            )}
-          </div>
-
-          {/* Section 2: Management & Roles */}
-          <div className="p-1.5 pt-2 space-y-1">
-            <div className="px-2.5 py-1 text-[10px] font-bold text-[#A89F91] uppercase tracking-wider">
-              {lang === 'th' ? 'จัดการระบบ & สิทธิ์' : 'Admin & Permissions'}
-            </div>
-
-            {canManageBrand && (
-              <>
-                <button
-                  onClick={() => {
-                    setIsStaffManagementOpen(true);
-                    setIsToolsMenuOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
-                >
-                  <Users className="w-4 h-4 text-[#D87085] shrink-0" />
-                  <span>{lang === 'th' ? 'จัดการบัญชีพนักงาน & สิทธิ์' : 'Staff & Roles'}</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    handleOpenBrandModal();
-                    setIsToolsMenuOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
-                >
-                  <Settings className="w-4 h-4 text-[#D87085] shrink-0" />
-                  <span>{lang === 'th' ? 'ตั้งค่าโลโก้ & ชื่อแอป' : 'Brand Settings'}</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setIsBackupModalOpen(true);
-                    setIsToolsMenuOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
-                >
-                  <Database className="w-4 h-4 text-[#D87085] shrink-0" />
-                  <span>{lang === 'th' ? 'สำรองข้อมูล & รายงานอัตโนมัติ' : 'Auto Backup & Reports'}</span>
-                </button>
-              </>
-            )}
-
-            {/* Admin Only: Factory Reset / Data Purge Button */}
-            {role === 'admin' && (
-              <button
-                onClick={() => {
-                  setIsFactoryResetOpen(true);
-                  setIsToolsMenuOpen(false);
-                }}
-                className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-50 rounded-xl transition text-left group cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <RotateCcw className="w-4 h-4 text-rose-600 shrink-0 group-hover:rotate-180 transition-transform duration-300" />
-                  <span className="font-bold">{lang === 'th' ? 'ล้างข้อมูลระบบ (Factory Reset)' : 'Factory Reset Data'}</span>
-                </div>
-                <span className="text-[9px] bg-rose-100 text-rose-700 font-extrabold px-1.5 py-0.5 rounded-md uppercase">
-                  Admin
-                </span>
-              </button>
-            )}
-
-            {currentStaff && (
-              <button
-                onClick={() => {
-                  setIsChangePasswordOpen(true);
-                  setIsToolsMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
-              >
-                <KeyRound className="w-4 h-4 text-[#D87085] shrink-0" />
-                <span>{lang === 'th' ? 'เปลี่ยนรหัสผ่านส่วนตัว' : 'Change Password'}</span>
-              </button>
-            )}
-          </div>
-
-          {/* Staff Role Badge Info */}
-          <div className="px-3 py-2 bg-[#FAF0ED] rounded-xl text-[11px] text-[#6E6763] flex items-center justify-between">
-            <span>สิทธิ์ปัจจุบัน:</span>
-            <span className="font-bold text-[#D87085] bg-white px-2 py-0.5 rounded-md border border-[#F2C2CE] uppercase text-[10px]">
-              {role}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Universal Fixed Bottom Navigation Bar (Visible on all screen sizes) */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#F2E3E1] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] z-40 px-3 py-2">
-        <div className="max-w-3xl mx-auto flex items-center justify-around gap-1">
-          {/* 1. Bookings Overview */}
-          {role !== 'accountant' && (
-            <button
-              onClick={onOpenBookings}
-              className="flex-1 flex flex-col items-center gap-1 py-1 px-2 rounded-xl text-[10px] sm:text-xs font-bold text-[#6E6763] hover:text-[#D87085] hover:bg-[#FAF0ED] transition cursor-pointer"
-            >
-              <Calendar className="w-5 h-5 text-[#8C6D5E]" />
-              <span className="truncate">{lang === 'th' ? 'การจอง' : 'Bookings'}</span>
-            </button>
-          )}
-
-          {/* 2. Client Management (Active Tab) */}
-          {canAccessClientOps && (
-            <button
-              onClick={() => setActiveTab('client_ops')}
-              className={`flex-1 flex flex-col items-center gap-1 py-1 px-2 rounded-xl text-[10px] sm:text-xs font-bold transition cursor-pointer ${
-                activeTab === 'client_ops'
-                  ? 'text-[#D87085] bg-[#FAF0ED] shadow-2xs font-extrabold'
-                  : 'text-[#6E6763] hover:text-[#D87085] hover:bg-[#FAF0ED]'
-              }`}
-            >
-              <User className={`w-5 h-5 ${activeTab === 'client_ops' ? 'text-[#D87085]' : 'text-[#8C6D5E]'}`} />
-              <span className="truncate">{lang === 'th' ? 'ลูกค้า' : 'Clients'}</span>
-            </button>
-          )}
-
-          {/* 3. Financial Dashboard */}
-          {canAccessFinancial && (
-            <button
-              onClick={() => setActiveTab('financial')}
-              className={`flex-1 flex flex-col items-center gap-1 py-1 px-2 rounded-xl text-[10px] sm:text-xs font-bold transition cursor-pointer ${
-                activeTab === 'financial'
-                  ? 'text-[#D87085] bg-[#FAF0ED] shadow-2xs font-extrabold'
-                  : 'text-[#6E6763] hover:text-[#D87085] hover:bg-[#FAF0ED]'
-              }`}
-            >
-              <PieChart className={`w-5 h-5 ${activeTab === 'financial' ? 'text-[#D87085]' : 'text-[#8C6D5E]'}`} />
-              <span className="truncate">{lang === 'th' ? 'การเงิน' : 'Financial'}</span>
-            </button>
-          )}
-
-          {/* 4. Catalog */}
-          {role === 'admin' && (
-            <button
-              onClick={onOpenCatalog}
-              className="flex-1 flex flex-col items-center gap-1 py-1 px-2 rounded-xl text-[10px] sm:text-xs font-bold text-[#6E6763] hover:text-[#D87085] hover:bg-[#FAF0ED] transition cursor-pointer"
-            >
-              <Package className="w-5 h-5 text-[#8C6D5E]" />
-              <span className="truncate">{lang === 'th' ? 'แคตตาล็อก' : 'Catalog'}</span>
-            </button>
-          )}
-
-          {/* 5. Settings / Management Menu */}
-          <button
-            onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}
-            className={`flex-1 flex flex-col items-center gap-1 py-1 px-2 rounded-xl text-[10px] sm:text-xs font-bold transition cursor-pointer ${
-              isToolsMenuOpen
-                ? 'text-[#D87085] bg-[#FAF0ED] shadow-2xs font-extrabold'
-                : 'text-[#6E6763] hover:text-[#D87085] hover:bg-[#FAF0ED]'
-            }`}
-          >
-            <Settings className={`w-5 h-5 ${isToolsMenuOpen ? 'text-[#D87085]' : 'text-[#8C6D5E]'}`} />
-            <span className="truncate">{lang === 'th' ? 'การตั้งค่า' : 'Settings'}</span>
-          </button>
-        </div>
-      </div>
-
     </div>
   );
 };

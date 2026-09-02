@@ -19,7 +19,27 @@ import { BookingsOverview } from './components/BookingsOverview';
 import { ConsentModal } from './components/ConsentModal';
 import { ProfileSetupModal } from './components/ProfileSetupModal';
 import { ConnectingScreen } from './components/ConnectingScreen';
-import { Loader2 } from 'lucide-react';
+import {
+  Loader2,
+  Calendar,
+  User,
+  PieChart,
+  Package,
+  Settings,
+  BookOpen,
+  ShieldCheck,
+  FileSpreadsheet,
+  Users,
+  Database,
+  RotateCcw,
+  KeyRound,
+} from 'lucide-react';
+import { StaffManagementModal } from './components/StaffManagementModal';
+import { ChangePasswordModal } from './components/ChangePasswordModal';
+import { ExportClientsModal } from './components/ExportClientsModal';
+import { FactoryResetModal } from './components/FactoryResetModal';
+import { BackupSettingsModal } from './components/BackupSettingsModal';
+import { translations } from './lib/translations';
 import defaultAppLogo from './assets/images/me_my_mind_logo_1785924412256.jpg';
 
 const DEFAULT_BRAND_SETTINGS: BrandSettings = {
@@ -43,6 +63,16 @@ export default function App() {
   const [isLiffInitializing, setIsLiffInitializing] = useState(true);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [showProfileSetupModal, setShowProfileSetupModal] = useState(false);
+
+  // Lifted Staff Navigation & Modal States
+  const [activeTab, setActiveTab] = useState<'client_ops' | 'financial'>('client_ops');
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
+  const [isStaffManagementOpen, setIsStaffManagementOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isFactoryResetOpen, setIsFactoryResetOpen] = useState(false);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
 
   const [brandSettings, setBrandSettings] = useState<BrandSettings>(() => {
     try {
@@ -382,6 +412,24 @@ export default function App() {
     }
   }, [viewMode, clientData, isLiffLoggedIn, isLoading]);
 
+  // Staff permissions & accessible tabs
+  const staffRole = currentStaff?.role || 'staff';
+  const canEditCatalog = staffRole === 'admin';
+  const canManageBrand = staffRole === 'admin';
+  const canViewAuditLogs = staffRole === 'admin' || staffRole === 'manager';
+  const canAccessClientOps = staffRole === 'admin' || staffRole === 'manager' || staffRole === 'staff';
+  const canAccessFinancial = staffRole === 'admin' || staffRole === 'manager' || staffRole === 'accountant';
+
+  useEffect(() => {
+    if (currentStaff) {
+      if (!canAccessClientOps && canAccessFinancial) {
+        setActiveTab('financial');
+      } else if (canAccessClientOps && !canAccessFinancial) {
+        setActiveTab('client_ops');
+      }
+    }
+  }, [currentStaff?.id, currentStaff?.role, canAccessClientOps, canAccessFinancial]);
+
   useEffect(() => {
     if (viewMode === 'customer' && currentClient) {
       if (!currentClient.consentAccepted) {
@@ -452,7 +500,7 @@ export default function App() {
       />
 
       {/* Main Body View Switching */}
-      <main className="py-4">
+      <main className={`py-4 ${viewMode === 'staff' && currentStaff ? 'pb-24' : ''}`}>
         {activeSubView === 'bookings' && currentStaff && currentStaff.role !== 'accountant' ? (
           <BookingsOverview
             lang={lang}
@@ -549,6 +597,11 @@ export default function App() {
               loadAuditLogs();
               setActiveSubView('audit');
             }}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            isBrandModalOpen={isBrandModalOpen}
+            setIsBrandModalOpen={setIsBrandModalOpen}
+            onOpenExportClients={() => setIsExportModalOpen(true)}
           />
         )}
       </main>
@@ -588,6 +641,311 @@ export default function App() {
             refreshCurrentClientData();
           }}
         />
+      )}
+
+      {/* Universal Staff Management Modals */}
+      {viewMode === 'staff' && currentStaff && (
+        <>
+          <StaffManagementModal
+            isOpen={isStaffManagementOpen}
+            onClose={() => setIsStaffManagementOpen(false)}
+            currentStaff={currentStaff}
+            employees={employees}
+            onRefreshEmployees={async () => {
+              const emps = await api.getEmployees();
+              setEmployees(emps);
+            }}
+          />
+
+          <ChangePasswordModal
+            isOpen={isChangePasswordOpen}
+            onClose={() => setIsChangePasswordOpen(false)}
+            currentStaff={currentStaff}
+            onRefreshEmployees={async () => {
+              const emps = await api.getEmployees();
+              setEmployees(emps);
+            }}
+          />
+
+          <ExportClientsModal
+            isOpen={isExportModalOpen}
+            onClose={() => setIsExportModalOpen(false)}
+            staffRole={staffRole}
+          />
+
+          <FactoryResetModal
+            isOpen={isFactoryResetOpen}
+            onClose={() => setIsFactoryResetOpen(false)}
+            currentStaff={currentStaff}
+            onSuccess={async () => {
+              const freshClients = await api.getClients();
+              setAllClients(freshClients);
+              const emps = await api.getEmployees();
+              setEmployees(emps);
+              await refreshStaffClientData();
+            }}
+          />
+
+          <BackupSettingsModal
+            isOpen={isBackupModalOpen}
+            onClose={() => setIsBackupModalOpen(false)}
+          />
+        </>
+      )}
+
+      {/* Universal Fixed Bottom Navigation Bar & Tools Menu for Staff */}
+      {viewMode === 'staff' && currentStaff && (
+        <>
+          {/* Backdrop for Tools Menu Popup */}
+          {isToolsMenuOpen && (
+            <div
+              className="fixed inset-0 bg-black/30 backdrop-blur-2xs z-40"
+              onClick={() => setIsToolsMenuOpen(false)}
+            />
+          )}
+
+          {/* Tools / Management Menu (Popup upwards from bottom bar) */}
+          {isToolsMenuOpen && (
+            <div className="fixed bottom-16 right-4 sm:right-10 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-[#F2E3E1] z-50 p-2.5 space-y-2 divide-y divide-[#FAF0ED] animate-in slide-in-from-bottom-5 duration-200">
+              {/* Section 1: Operations & Catalog */}
+              <div className="p-1.5 space-y-1">
+                <div className="px-2.5 py-1 text-[10px] font-bold text-[#A89F91] uppercase tracking-wider">
+                  {lang === 'th' ? 'ข้อมูล & งานบริการ' : 'Services & Reports'}
+                </div>
+
+                {staffRole !== 'accountant' && (
+                  <button
+                    onClick={() => {
+                      setActiveSubView('bookings');
+                      setIsToolsMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
+                  >
+                    <Calendar className="w-4 h-4 text-[#D87085] shrink-0" />
+                    <span>{lang === 'th' ? 'ภาพรวมการจอง (Bookings)' : 'Bookings Overview'}</span>
+                  </button>
+                )}
+
+                {canEditCatalog && (
+                  <button
+                    onClick={() => {
+                      setActiveSubView('catalog');
+                      setIsToolsMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
+                  >
+                    <BookOpen className="w-4 h-4 text-[#D87085] shrink-0" />
+                    <span>{translations[lang].viewCatalogBtn}</span>
+                  </button>
+                )}
+
+                {canViewAuditLogs && (
+                  <button
+                    onClick={() => {
+                      loadAuditLogs();
+                      setActiveSubView('audit');
+                      setIsToolsMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-[#D87085] shrink-0" />
+                    <span>{translations[lang].viewAuditLogBtn}</span>
+                  </button>
+                )}
+
+                {(staffRole === 'admin' || staffRole === 'manager') && (
+                  <button
+                    onClick={() => {
+                      setIsExportModalOpen(true);
+                      setIsToolsMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-[#D87085] shrink-0" />
+                    <span>Export ข้อมูลลูกค้า (Excel)</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Section 2: Management & Roles */}
+              <div className="p-1.5 pt-2 space-y-1">
+                <div className="px-2.5 py-1 text-[10px] font-bold text-[#A89F91] uppercase tracking-wider">
+                  {lang === 'th' ? 'จัดการระบบ & สิทธิ์' : 'Admin & Permissions'}
+                </div>
+
+                {canManageBrand && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setIsStaffManagementOpen(true);
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
+                    >
+                      <Users className="w-4 h-4 text-[#D87085] shrink-0" />
+                      <span>{lang === 'th' ? 'จัดการบัญชีพนักงาน & สิทธิ์' : 'Staff & Roles'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setActiveSubView('main');
+                        setIsBrandModalOpen(true);
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
+                    >
+                      <Settings className="w-4 h-4 text-[#D87085] shrink-0" />
+                      <span>{lang === 'th' ? 'ตั้งค่าโลโก้ & ชื่อแอป' : 'Brand Settings'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsBackupModalOpen(true);
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
+                    >
+                      <Database className="w-4 h-4 text-[#D87085] shrink-0" />
+                      <span>{lang === 'th' ? 'สำรองข้อมูล & รายงานอัตโนมัติ' : 'Auto Backup & Reports'}</span>
+                    </button>
+                  </>
+                )}
+
+                {/* Admin Only: Factory Reset / Data Purge Button */}
+                {staffRole === 'admin' && (
+                  <button
+                    onClick={() => {
+                      setIsFactoryResetOpen(true);
+                      setIsToolsMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-50 rounded-xl transition text-left group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <RotateCcw className="w-4 h-4 text-rose-600 shrink-0 group-hover:rotate-180 transition-transform duration-300" />
+                      <span className="font-bold">{lang === 'th' ? 'ล้างข้อมูลระบบ (Factory Reset)' : 'Factory Reset Data'}</span>
+                    </div>
+                    <span className="text-[9px] bg-rose-100 text-rose-700 font-extrabold px-1.5 py-0.5 rounded-md uppercase">
+                      Admin
+                    </span>
+                  </button>
+                )}
+
+                {currentStaff && (
+                  <button
+                    onClick={() => {
+                      setIsChangePasswordOpen(true);
+                      setIsToolsMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
+                  >
+                    <KeyRound className="w-4 h-4 text-[#D87085] shrink-0" />
+                    <span>{lang === 'th' ? 'เปลี่ยนรหัสผ่านส่วนตัว' : 'Change Password'}</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Staff Role Badge Info */}
+              <div className="px-3 py-2 bg-[#FAF0ED] rounded-xl text-[11px] text-[#6E6763] flex items-center justify-between">
+                <span>{lang === 'th' ? 'สิทธิ์ปัจจุบัน:' : 'Current Role:'}</span>
+                <span className="font-bold text-[#D87085] bg-white px-2 py-0.5 rounded-md border border-[#F2C2CE] uppercase text-[10px]">
+                  {staffRole}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Universal Fixed Bottom Navigation Bar (Visible across all subviews in staff mode) */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#F2E3E1] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] z-40 px-3 py-2">
+            <div className="max-w-3xl mx-auto flex items-center justify-around gap-1">
+              {/* 1. Bookings Overview */}
+              {staffRole !== 'accountant' && (
+                <button
+                  onClick={() => {
+                    setActiveSubView('bookings');
+                    setIsToolsMenuOpen(false);
+                  }}
+                  className={`flex-1 flex flex-col items-center gap-1 py-1 px-2 rounded-xl text-[10px] sm:text-xs font-bold transition cursor-pointer ${
+                    activeSubView === 'bookings'
+                      ? 'text-[#D87085] bg-[#FAF0ED] shadow-2xs font-extrabold'
+                      : 'text-[#6E6763] hover:text-[#D87085] hover:bg-[#FAF0ED]'
+                  }`}
+                >
+                  <Calendar className={`w-5 h-5 ${activeSubView === 'bookings' ? 'text-[#D87085]' : 'text-[#8C6D5E]'}`} />
+                  <span className="truncate">{lang === 'th' ? 'การจอง' : 'Bookings'}</span>
+                </button>
+              )}
+
+              {/* 2. Client Management (Active Tab) */}
+              {canAccessClientOps && (
+                <button
+                  onClick={() => {
+                    setActiveSubView('main');
+                    setActiveTab('client_ops');
+                    setIsToolsMenuOpen(false);
+                  }}
+                  className={`flex-1 flex flex-col items-center gap-1 py-1 px-2 rounded-xl text-[10px] sm:text-xs font-bold transition cursor-pointer ${
+                    activeSubView === 'main' && activeTab === 'client_ops'
+                      ? 'text-[#D87085] bg-[#FAF0ED] shadow-2xs font-extrabold'
+                      : 'text-[#6E6763] hover:text-[#D87085] hover:bg-[#FAF0ED]'
+                  }`}
+                >
+                  <User className={`w-5 h-5 ${activeSubView === 'main' && activeTab === 'client_ops' ? 'text-[#D87085]' : 'text-[#8C6D5E]'}`} />
+                  <span className="truncate">{lang === 'th' ? 'ลูกค้า' : 'Clients'}</span>
+                </button>
+              )}
+
+              {/* 3. Financial Dashboard */}
+              {canAccessFinancial && (
+                <button
+                  onClick={() => {
+                    setActiveSubView('main');
+                    setActiveTab('financial');
+                    setIsToolsMenuOpen(false);
+                  }}
+                  className={`flex-1 flex flex-col items-center gap-1 py-1 px-2 rounded-xl text-[10px] sm:text-xs font-bold transition cursor-pointer ${
+                    activeSubView === 'main' && activeTab === 'financial'
+                      ? 'text-[#D87085] bg-[#FAF0ED] shadow-2xs font-extrabold'
+                      : 'text-[#6E6763] hover:text-[#D87085] hover:bg-[#FAF0ED]'
+                  }`}
+                >
+                  <PieChart className={`w-5 h-5 ${activeSubView === 'main' && activeTab === 'financial' ? 'text-[#D87085]' : 'text-[#8C6D5E]'}`} />
+                  <span className="truncate">{lang === 'th' ? 'การเงิน' : 'Financial'}</span>
+                </button>
+              )}
+
+              {/* 4. Catalog */}
+              {staffRole === 'admin' && (
+                <button
+                  onClick={() => {
+                    setActiveSubView('catalog');
+                    setIsToolsMenuOpen(false);
+                  }}
+                  className={`flex-1 flex flex-col items-center gap-1 py-1 px-2 rounded-xl text-[10px] sm:text-xs font-bold transition cursor-pointer ${
+                    activeSubView === 'catalog'
+                      ? 'text-[#D87085] bg-[#FAF0ED] shadow-2xs font-extrabold'
+                      : 'text-[#6E6763] hover:text-[#D87085] hover:bg-[#FAF0ED]'
+                  }`}
+                >
+                  <Package className={`w-5 h-5 ${activeSubView === 'catalog' ? 'text-[#D87085]' : 'text-[#8C6D5E]'}`} />
+                  <span className="truncate">{lang === 'th' ? 'แคตตาล็อก' : 'Catalog'}</span>
+                </button>
+              )}
+
+              {/* 5. Settings / Management Menu */}
+              <button
+                onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}
+                className={`flex-1 flex flex-col items-center gap-1 py-1 px-2 rounded-xl text-[10px] sm:text-xs font-bold transition cursor-pointer ${
+                  isToolsMenuOpen
+                    ? 'text-[#D87085] bg-[#FAF0ED] shadow-2xs font-extrabold'
+                    : 'text-[#6E6763] hover:text-[#D87085] hover:bg-[#FAF0ED]'
+                }`}
+              >
+                <Settings className={`w-5 h-5 ${isToolsMenuOpen ? 'text-[#D87085]' : 'text-[#8C6D5E]'}`} />
+                <span className="truncate">{lang === 'th' ? 'การตั้งค่า' : 'Settings'}</span>
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
