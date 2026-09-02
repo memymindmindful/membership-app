@@ -86,6 +86,8 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copiedCode, setCopiedCode] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showAllPointsHistory, setShowAllPointsHistory] = useState(false);
+  const [showAllNotifications, setShowAllNotifications] = useState(false);
 
   const handleRefresh = async () => {
     if (isRefreshing || !onRefresh) return;
@@ -784,7 +786,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
                   <p className="text-xs text-stone-400 py-3 text-center">No points activity recorded</p>
                 ) : (
                   <div className="space-y-2">
-                    {pointsTransactions.map((tx) => (
+                    {(showAllPointsHistory ? pointsTransactions : pointsTransactions.slice(0, 5)).map((tx) => (
                       <div
                         key={tx.id}
                         className="p-2.5 bg-stone-50 rounded-xl border border-stone-100 text-xs flex justify-between items-center"
@@ -802,6 +804,15 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
                         </span>
                       </div>
                     ))}
+
+                    {!showAllPointsHistory && pointsTransactions.length > 5 && (
+                      <button
+                        onClick={() => setShowAllPointsHistory(true)}
+                        className="w-full py-2 text-xs font-bold text-[#8C6D5E] hover:text-[#3D3835] bg-stone-50 hover:bg-stone-100 rounded-xl transition cursor-pointer"
+                      >
+                        {lang === 'th' ? `ดูทั้งหมด (อีก ${pointsTransactions.length - 5} รายการ)` : `View All (${pointsTransactions.length - 5} more)`}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -917,20 +928,31 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
                     {t.noNotifications}
                   </div>
                 ) : (
-                  notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      className={`p-3.5 rounded-2xl border text-xs space-y-1 transition ${
-                        n.read ? 'bg-white border-stone-200' : 'bg-amber-50/70 border-amber-200'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-stone-800">{translateNotificationTitle(n.title, lang)}</span>
-                        <span className="text-[10px] text-stone-400">{formatDate(n.createdAt, lang)}</span>
+                  <>
+                    {(showAllNotifications ? notifications : notifications.slice(0, 5)).map((n) => (
+                      <div
+                        key={n.id}
+                        className={`p-3.5 rounded-2xl border text-xs space-y-1 transition ${
+                          n.read ? 'bg-white border-stone-200' : 'bg-amber-50/70 border-amber-200'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-stone-800">{translateNotificationTitle(n.title, lang)}</span>
+                          <span className="text-[10px] text-stone-400">{formatDate(n.createdAt, lang)}</span>
+                        </div>
+                        <p className="text-stone-600 leading-relaxed">{translateNotificationMessage(n.message, lang)}</p>
                       </div>
-                      <p className="text-stone-600 leading-relaxed">{translateNotificationMessage(n.message, lang)}</p>
-                    </div>
-                  ))
+                    ))}
+
+                    {!showAllNotifications && notifications.length > 5 && (
+                      <button
+                        onClick={() => setShowAllNotifications(true)}
+                        className="w-full py-2 text-xs font-bold text-[#8C6D5E] hover:text-[#3D3835] bg-stone-50 hover:bg-stone-100 rounded-xl transition cursor-pointer"
+                      >
+                        {lang === 'th' ? `ดูทั้งหมด (อีก ${notifications.length - 5} รายการ)` : `View All (${notifications.length - 5} more)`}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -974,7 +996,13 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
             }`}
           >
             <Package className="w-5 h-5" />
-            <span className="text-[9px] uppercase tracking-wider">{t.navPackages}</span>
+            <span className="text-[9px] uppercase tracking-wider text-center leading-tight">
+              {lang === 'th' ? (
+                <>แพ็คเกจ &<br />การจอง</>
+              ) : (
+                t.navPackages
+              )}
+            </span>
           </button>
 
           <button
