@@ -20,6 +20,7 @@ import {
   CreditCard,
   UserCheck,
   ChevronDown,
+  ChevronUp,
   Check
 } from 'lucide-react';
 import {
@@ -66,7 +67,7 @@ const PIE_COLORS_EXPENSE = ['#ef4444', '#f97316', '#f59e0b', '#ec4899', '#8b5cf6
 
 const ALL_CATEGORY_KEYS = Object.keys(CATEGORY_LABEL_MAP) as FinancialEntryCategory[];
 
-export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ currentStaff }) => {
+export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ currentStaff, lang = 'th' }) => {
   const [entries, setEntries] = useState<FinancialEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -84,6 +85,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ currentS
   const [endDate, setEndDate] = useState<string>('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState<boolean>(false);
+  const [showMobileFilters, setShowMobileFilters] = useState<boolean>(false);
 
   // Multi-select category checkbox helper logic
   const handleToggleCategory = (catKey: string) => {
@@ -611,77 +613,77 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ currentS
       </div>
 
       {/* Summary Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Total Income */}
-        <div className="p-5 bg-white rounded-2xl border border-[#F2E3E1] shadow-2xs space-y-2">
+        <div className="p-3.5 sm:p-5 bg-white rounded-2xl border border-[#F2E3E1] shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#6E6763] uppercase tracking-wider">
-              รายรับรวมทั้งหมด (Revenue)
+            <span className="text-[10px] sm:text-xs font-bold text-[#6E6763] uppercase tracking-wider truncate">
+              รายรับรวม (Revenue)
             </span>
-            <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600">
-              <TrendingUp className="w-5 h-5" />
+            <div className="p-1.5 sm:p-2 bg-emerald-50 rounded-xl text-emerald-600">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className="text-2xl font-mono font-extrabold text-emerald-700">
+          <div className="text-lg sm:text-2xl font-mono font-extrabold text-emerald-700">
             ฿{formatCurrency(totalIncome)}
           </div>
-          <p className="text-[11px] text-[#8C827A] flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-[#E88D9F]" />
+          <p className="text-[10px] sm:text-[11px] text-[#8C827A] flex items-center gap-1 truncate">
+            <Sparkles className="w-3 h-3 text-[#E88D9F] shrink-0" />
             <span>รวม {entries.filter((e) => e.type === 'income').length} รายการ</span>
           </p>
         </div>
 
         {/* Total Expense */}
-        <div className="p-5 bg-white rounded-2xl border border-[#F2E3E1] shadow-2xs space-y-2">
+        <div className="p-3.5 sm:p-5 bg-white rounded-2xl border border-[#F2E3E1] shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#6E6763] uppercase tracking-wider">
-              รายจ่ายรวมทั้งหมด (Expense)
+            <span className="text-[10px] sm:text-xs font-bold text-[#6E6763] uppercase tracking-wider truncate">
+              รายจ่ายรวม (Expense)
             </span>
-            <div className="p-2 bg-rose-50 rounded-xl text-rose-600">
-              <TrendingDown className="w-5 h-5" />
+            <div className="p-1.5 sm:p-2 bg-rose-50 rounded-xl text-rose-600">
+              <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className="text-2xl font-mono font-extrabold text-rose-600">
+          <div className="text-lg sm:text-2xl font-mono font-extrabold text-rose-600">
             ฿{formatCurrency(totalExpense)}
           </div>
-          <p className="text-[11px] text-[#8C827A]">
-            ค่าเช่าร้าน / ค่าน้ำไฟ / ค่าแรง / สต็อก
+          <p className="text-[10px] sm:text-[11px] text-[#8C827A] truncate">
+            ค่าเช่า / น้ำไฟ / ค่าแรง / สต็อก
           </p>
         </div>
 
         {/* Net Profit */}
-        <div className="p-5 bg-gradient-to-br from-stone-900 to-stone-800 text-white rounded-2xl shadow-xs space-y-2">
+        <div className="p-3.5 sm:p-5 bg-gradient-to-br from-stone-900 to-stone-800 text-white rounded-2xl shadow-xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-stone-300 uppercase tracking-wider">
+            <span className="text-[10px] sm:text-xs font-bold text-stone-300 uppercase tracking-wider truncate">
               กำไรสุทธิ (Net Profit)
             </span>
-            <div className={`p-2 rounded-xl ${netProfit >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
-              <DollarSign className="w-5 h-5" />
+            <div className={`p-1.5 sm:p-2 rounded-xl ${netProfit >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}`}>
+              <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className={`text-2xl font-mono font-extrabold ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+          <div className={`text-lg sm:text-2xl font-mono font-extrabold ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
             ฿{formatCurrency(netProfit)}
           </div>
-          <p className="text-[11px] text-stone-400">
-            {netProfit >= 0 ? 'กำไรสุทธิเป็นบวก (+ Margin Status)' : 'ขาดทุนสุทธิ (Net Loss)'}
+          <p className="text-[10px] sm:text-[11px] text-stone-400 truncate">
+            {netProfit >= 0 ? 'กำไรสุทธิเป็นบวก' : 'ขาดทุนสุทธิ (Net Loss)'}
           </p>
         </div>
 
         {/* Auto-Tracked Studio Revenue */}
-        <div className="p-5 bg-white rounded-2xl border border-[#F2C2CE] shadow-2xs space-y-2">
+        <div className="p-3.5 sm:p-5 bg-white rounded-2xl border border-[#F2C2CE] shadow-2xs space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#D87085] uppercase tracking-wider">
-              รายรับหน้าร้าน (Auto Sync)
+            <span className="text-[10px] sm:text-xs font-bold text-[#D87085] uppercase tracking-wider truncate">
+              หน้าร้าน (Auto Sync)
             </span>
-            <div className="p-2 bg-[#FAF0ED] rounded-xl text-[#E88D9F]">
-              <CreditCard className="w-5 h-5" />
+            <div className="p-1.5 sm:p-2 bg-[#FAF0ED] rounded-xl text-[#E88D9F]">
+              <CreditCard className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
-          <div className="text-2xl font-mono font-extrabold text-[#D87085]">
+          <div className="text-lg sm:text-2xl font-mono font-extrabold text-[#D87085]">
             ฿{formatCurrency(autoTrackedIncome)}
           </div>
-          <p className="text-[11px] text-[#6E6763]">
-            จากการเติม Coin & ยอดขายสะสมคะแนน
+          <p className="text-[10px] sm:text-[11px] text-[#6E6763] truncate">
+            เติม Coin & ยอดขายสะสมคะแนน
           </p>
         </div>
       </div>
@@ -839,9 +841,23 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ currentS
               ตารางบันทึกการเงินย้อนหลัง เรียงตามลำดับล่าสุด
             </p>
           </div>
+        </div>
+
+        {/* Mobile Filter Toggle Button */}
+        <button
+          type="button"
+          onClick={() => setShowMobileFilters(!showMobileFilters)}
+          className="lg:hidden w-full flex items-center justify-between px-4 py-2.5 bg-white border border-[#F2E3E1] rounded-xl text-xs font-bold text-[#8C6D5E] cursor-pointer"
+        >
+          <span className="flex items-center gap-1.5">
+            <Filter className="w-3.5 h-3.5 text-[#E88D9F]" />
+            {lang === 'th' ? 'ตัวกรอง & ค้นหา' : 'Filters & Search'}
+          </span>
+          {showMobileFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
 
         {/* Filter Bar */}
-        <div className="bg-[#FAF0ED]/60 p-4 rounded-2xl border border-[#F2E3E1] space-y-3">
+        <div className={`${showMobileFilters ? 'block' : 'hidden'} lg:block bg-[#FAF0ED]/60 p-4 rounded-2xl border border-[#F2E3E1] space-y-3`}>
           <div className="flex flex-wrap items-center gap-3">
             {/* Search Input */}
             <div className="relative min-w-[200px] flex-1">
@@ -991,10 +1007,9 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ currentS
             )}
           </div>
         </div>
-        </div>
 
-        {/* Table View */}
-        <div className="overflow-x-auto rounded-2xl border border-[#F2E3E1]">
+        {/* Desktop Table View */}
+        <div className="hidden lg:block overflow-x-auto rounded-2xl border border-[#F2E3E1]">
           <table className="w-full text-left text-xs text-[#3D3835]">
             <thead className="bg-[#FAF0ED] text-[#D87085] font-bold text-[11px] uppercase tracking-wider border-b border-[#F2E3E1]">
               <tr>
@@ -1011,7 +1026,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ currentS
               {filteredEntries.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-8 text-xs text-[#8C827A]">
-                    ไม่พบรายการบัญชีที่ค้นหา
+                    {lang === 'th' ? 'ไม่พบรายการบัญชีที่ค้นหา' : 'No matching entries found'}
                   </td>
                 </tr>
               ) : (
@@ -1028,7 +1043,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ currentS
                             : 'bg-rose-100 text-rose-800'
                         }`}
                       >
-                        {e.type === 'income' ? '+' : '-'} {e.type === 'income' ? 'รายรับ' : 'รายจ่าย'}
+                        {e.type === 'income' ? '+' : '-'} {e.type === 'income' ? (lang === 'th' ? 'รายรับ' : 'Income') : (lang === 'th' ? 'รายจ่าย' : 'Expense')}
                       </span>
                     </td>
                     <td className="py-3 px-4 font-semibold text-[#D87085] whitespace-nowrap">
@@ -1056,7 +1071,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ currentS
                         <button
                           onClick={() => handleDeleteEntry(e.id, e.isAutoGenerated)}
                           title="ลบรายการ (Manual Entry)"
-                          className="p-1.5 text-stone-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
+                          className="p-1.5 text-stone-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -1064,7 +1079,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ currentS
                         <button
                           onClick={() => handleDeleteAutoEntry(e)}
                           title="ยกเลิกรายการต้นทาง (Admin Void)"
-                          className="p-1.5 text-rose-400 hover:text-rose-700 rounded-lg hover:bg-rose-50 transition"
+                          className="p-1.5 text-rose-400 hover:text-rose-700 rounded-lg hover:bg-rose-50 transition cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -1077,6 +1092,71 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ currentS
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="lg:hidden space-y-2.5">
+          {filteredEntries.length === 0 ? (
+            <p className="text-center py-8 text-xs text-[#8C827A]">
+              {lang === 'th' ? 'ไม่พบรายการบัญชีที่ค้นหา' : 'No matching entries found'}
+            </p>
+          ) : (
+            filteredEntries.map((e) => (
+              <div key={e.id} className="p-3.5 bg-white rounded-2xl border border-[#F2E3E1] shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] text-[#6E6763]">{e.date}</span>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      e.type === 'income' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                    }`}
+                  >
+                    {e.type === 'income' ? '+' : '-'} {e.type === 'income' ? (lang === 'th' ? 'รายรับ' : 'Income') : (lang === 'th' ? 'รายจ่าย' : 'Expense')}
+                  </span>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold text-[#3D3835]">{e.title}</p>
+                  {e.note && <p className="text-[11px] text-[#6E6763] mt-0.5">{e.note}</p>}
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <span className="text-[10px] font-semibold text-[#D87085]">{e.categoryNameTh}</span>
+                    {e.isAutoGenerated && (
+                      <span className="text-[9px] bg-stone-100 text-stone-600 px-1.5 py-0.2 rounded border border-stone-200">
+                        Auto Sync หน้าร้าน
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-[#F2E3E1]">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-[#6E6763]">{e.createdByStaffName}</span>
+                    {!e.isAutoGenerated ? (
+                      <button
+                        onClick={() => handleDeleteEntry(e.id, e.isAutoGenerated)}
+                        title="ลบรายการ (Manual Entry)"
+                        className="p-1 text-stone-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    ) : currentStaff.role === 'admin' && e.sourceTxId ? (
+                      <button
+                        onClick={() => handleDeleteAutoEntry(e)}
+                        title="ยกเลิกรายการต้นทาง (Admin Void)"
+                        className="p-1 text-rose-400 hover:text-rose-700 rounded-lg hover:bg-rose-50 transition cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <span className="text-[9px] text-stone-400 italic">ระบบ</span>
+                    )}
+                  </div>
+                  <span className={`font-mono font-extrabold text-sm ${e.type === 'income' ? 'text-emerald-700' : 'text-rose-600'}`}>
+                    {e.type === 'income' ? '+' : '-'}฿{formatCurrency(e.amount)}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

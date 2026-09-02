@@ -2005,7 +2005,7 @@ class Store {
   }
 
   // One-Time Service Bookings Operations
-  public getAllOneTimeBookings(): (ClientOneTimeBooking & { clientName: string; clientPhone: string; clientProfilePic?: string })[] {
+  public getAllOneTimeBookings(): (ClientOneTimeBooking & { clientName: string; clientPhone: string; clientProfilePic?: string; clientCoinBalance?: number })[] {
     if (!this.db.clientOneTimeBookings) return [];
     const now = new Date();
     return this.db.clientOneTimeBookings
@@ -2017,6 +2017,7 @@ class Store {
           clientName: client ? `${client.displayName}${client.nickname ? ` (${client.nickname})` : ''}` : 'ไม่พบข้อมูลลูกค้า',
           clientPhone: client?.phone || '-',
           clientProfilePic: client?.profilePic || undefined,
+          clientCoinBalance: client ? this.getCoinBalance(client.id) : 0,
         };
       })
       .sort((a, b) => new Date(a.bookingDateTime).getTime() - new Date(b.bookingDateTime).getTime());

@@ -523,7 +523,7 @@ export const api = {
     return res.json();
   },
 
-  async getAllOneTimeBookings(): Promise<(ClientOneTimeBooking & { clientName: string; clientPhone: string; clientProfilePic?: string })[]> {
+  async getAllOneTimeBookings(): Promise<(ClientOneTimeBooking & { clientName: string; clientPhone: string; clientProfilePic?: string; clientCoinBalance?: number })[]> {
     const headers = getAuthHeaders();
     const res = await fetch('/api/onetime-bookings', { headers, cache: 'no-store' });
     if (!res.ok) {

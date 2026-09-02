@@ -28,11 +28,14 @@ import {
 import { AppLanguage, ClientOneTimeBooking, Employee } from '../types';
 import { api } from '../services/api';
 import { ExpiringAlertTasks } from './ExpiringAlertTasks';
+import { ConfirmationModal } from './ConfirmationModal';
+import { formatCurrency } from '../lib/translations';
 
 type BookingWithClient = ClientOneTimeBooking & {
   clientName: string;
   clientPhone: string;
   clientProfilePic?: string;
+  clientCoinBalance?: number;
 };
 
 type ActivePackageItem = {
@@ -84,6 +87,7 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
 
   // Mark as Used Modal States
   const [useTarget, setUseTarget] = useState<BookingWithClient | null>(null);
+  const [useCoinDiscountAmount, setUseCoinDiscountAmount] = useState<number | ''>('');
   const [isSubmittingUse, setIsSubmittingUse] = useState(false);
 
   // Calendar View States
@@ -1064,51 +1068,148 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
 
       {/* Mark as Used Modal */}
       {useTarget && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-xl border border-[#F2E3E1] space-y-4">
-            <h3 className="text-base font-serif font-bold text-[#3D3835]">
-              {lang === 'th' ? 'ยืนยันการใช้บริการ' : 'Confirm Service Used'}
-            </h3>
-            <p className="text-xs text-[#6E6763]">
-              {useTarget.name} — {useTarget.clientName}
-            </p>
-            <div className="flex gap-2 pt-2">
-              <button
-                disabled={isSubmittingUse}
-                onClick={() => setUseTarget(null)}
-                className="flex-1 py-2.5 bg-[#FAF0ED] text-[#6E6763] font-bold text-xs rounded-xl hover:bg-[#F2E3E1] transition cursor-pointer"
-              >
-                {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
-              </button>
-              <button
-                disabled={isSubmittingUse}
-                onClick={async () => {
-                  setIsSubmittingUse(true);
-                  try {
-                    await api.markOneTimeBookingUsed(
-                      useTarget.id,
-                      currentStaff.id,
-                      currentStaff.displayName
-                    );
-                    setUseTarget(null);
-                    loadData();
-                  } catch (err: any) {
-                    alert(err.message || 'เกิดข้อผิดพลาดในการบันทึกการใช้บริการ');
-                  } finally {
-                    setIsSubmittingUse(false);
-                  }
-                }}
-                className="flex-1 py-2.5 bg-[#E88D9F] hover:bg-[#D87085] text-white font-bold text-xs rounded-xl disabled:opacity-60 transition cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                {isSubmittingUse ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <span>{lang === 'th' ? 'ยืนยัน' : 'Confirm'}</span>
+        <ConfirmationModal
+          isOpen={true}
+          title={lang === 'th' ? 'บันทึกการใช้บริการรายครั้ง' : 'Confirm Service Delivery'}
+          message={
+            lang === 'th'
+              ? `ยืนยันการรับบริการ "${useTarget.name}" ของลูกค้า ${useTarget.clientName}?`
+              : `Confirm service delivery for "${useTarget.name}" for ${useTarget.clientName}?`
+          }
+          lang={lang}
+          onClose={() => {
+            setUseTarget(null);
+            setUseCoinDiscountAmount('');
+          }}
+          onConfirm={async () => {
+            try {
+              await api.markOneTimeBookingUsed(
+                useTarget.id,
+                currentStaff.id,
+                currentStaff.displayName,
+                Number(useCoinDiscountAmount) || 0
+              );
+              setUseTarget(null);
+              setUseCoinDiscountAmount('');
+              loadData();
+            } catch (err: any) {
+              alert(err.message || 'เกิดข้อผิดพลาดในการบันทึกการใช้บริการ');
+            }
+          }}
+        >
+          <div className="p-3.5 bg-[#FAF0ED]/60 rounded-xl border border-[#F2E3E1] text-xs space-y-2 mt-2">
+            {useTarget.paymentStatusAtBooking === 'free' ? (
+              <div className="text-center py-1 text-sky-800 font-bold">
+                {lang === 'th' ? '✨ กิจกรรมฟรี (ไม่มีค่าใช้จ่ายเพิ่มเติม)' : '✨ Free Service (No balance due)'}
+              </div>
+            ) : useTarget.paymentStatusAtBooking === 'deduct_package' ? (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-[#3D3835]">
+                  <span className="font-medium">{lang === 'th' ? 'วิธีชำระ:' : 'Payment Method:'}</span>
+                  <span className="font-bold text-purple-700">{lang === 'th' ? 'ตัดสิทธิ์จากแพ็กเกจ' : 'Deduct from Package'}</span>
+                </div>
+                <p className="text-[11px] text-emerald-800 font-semibold pt-1">
+                  {lang === 'th'
+                    ? '✓ ระบบจะตัด 1 ครั้งออกจากแพ็กเกจของลูกค้า และไม่มีการเรียกเก็บเงินเพิ่ม'
+                    : '✓ 1 session will be deducted from client\'s package. No additional payment required.'}
+                </p>
+              </div>
+            ) : useTarget.paymentStatusAtBooking === 'deduct_coupon' ? (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-[#3D3835]">
+                  <span className="font-medium">{lang === 'th' ? 'วิธีชำระ:' : 'Payment Method:'}</span>
+                  <span className="font-bold text-indigo-700">{lang === 'th' ? 'ใช้สิทธิ์คูปอง' : 'Use Coupon'}</span>
+                </div>
+                <p className="text-[11px] text-emerald-800 font-semibold pt-1">
+                  {lang === 'th'
+                    ? '✓ ระบบจะตัดสิทธิ์ 1 ครั้งออกจากคูปองของลูกค้า และไม่มีการเรียกเก็บเงินเพิ่ม'
+                    : '✓ 1 unit will be redeemed from client\'s coupon. No additional payment required.'}
+                </p>
+              </div>
+            ) : useTarget.paymentStatusAtBooking === 'coin' ? (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-[#3D3835]">
+                  <span className="font-medium">{lang === 'th' ? 'ราคาเต็มบริการ:' : 'Full Price:'}</span>
+                  <span className="font-bold font-mono">฿{formatCurrency(useTarget.fullPrice)}</span>
+                </div>
+                <div className="flex justify-between text-[#3D3835]">
+                  <span className="font-medium">{lang === 'th' ? 'ใช้ Coin ชำระ:' : 'Coin Used:'}</span>
+                  <span className="font-bold font-mono text-emerald-700">฿{formatCurrency(useTarget.coinAmountUsed || 0)}</span>
+                </div>
+                {useTarget.fullPrice > (useTarget.coinAmountUsed || 0) && (
+                  <div className="pt-2 border-t border-[#F2E3E1] flex justify-between text-[#D87085] font-bold">
+                    <span>{lang === 'th' ? 'ยอดที่ต้องชำระเพิ่มวันนี้:' : 'Balance to collect today:'}</span>
+                    <span className="font-mono text-sm">฿{formatCurrency(useTarget.fullPrice - (useTarget.coinAmountUsed || 0))}</span>
+                  </div>
                 )}
-              </button>
-            </div>
+                <p className="text-[11px] text-[#6E6763] pt-1">
+                  {lang === 'th'
+                    ? `ระบบจะตัด ฿${formatCurrency(useTarget.coinAmountUsed || 0)} จากกระเป๋า Coin ของลูกค้า${useTarget.fullPrice > (useTarget.coinAmountUsed || 0) ? ` และบันทึกยอดชำระเพิ่ม ฿${formatCurrency(useTarget.fullPrice - (useTarget.coinAmountUsed || 0))} เป็นรายได้วันนี้` : ''}`
+                    : `System will deduct ฿${formatCurrency(useTarget.coinAmountUsed || 0)} Coin from client's wallet.`}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between text-[#3D3835]">
+                  <span className="font-medium">{lang === 'th' ? 'ราคาเต็มบริการ:' : 'Full Price:'}</span>
+                  <span className="font-bold font-mono">฿{formatCurrency(useTarget.fullPrice)}</span>
+                </div>
+                <div className="flex justify-between text-[#3D3835]">
+                  <span className="font-medium">{lang === 'th' ? 'เงินมัดจำ (เงินสดที่รับแล้ว):' : 'Cash Deposit Paid:'}</span>
+                  <span className="font-bold font-mono text-emerald-700">฿{formatCurrency(useTarget.depositAmount)}</span>
+                </div>
+                {useTarget.coinAmountUsed && useTarget.coinAmountUsed > 0 ? (
+                  <div className="flex justify-between text-[#3D3835]">
+                    <span className="font-medium">{lang === 'th' ? 'ส่วนลด Coin ตอนจอง:' : 'Coin Discount at Booking:'}</span>
+                    <span className="font-bold font-mono text-amber-800">🪙 ฿{formatCurrency(useTarget.coinAmountUsed)}</span>
+                  </div>
+                ) : null}
+                {useTarget.fullPrice > (useTarget.depositAmount + (useTarget.coinAmountUsed || 0)) && (
+                  <div className="pt-2 border-t border-[#F2E3E1] flex justify-between text-[#D87085] font-bold">
+                    <span>{lang === 'th' ? 'ยอดที่ต้องชำระเพิ่มวันนี้:' : 'Balance to collect today:'}</span>
+                    <span className="font-mono text-sm">฿{formatCurrency(useTarget.fullPrice - (useTarget.depositAmount + (useTarget.coinAmountUsed || 0)))}</span>
+                  </div>
+                )}
+                {useTarget.fullPrice > (useTarget.depositAmount + (useTarget.coinAmountUsed || 0)) && (
+                  <div className="pt-2 space-y-1.5">
+                    <label className="block text-xs font-bold text-[#3D3835]">
+                      {lang === 'th' ? 'ใช้ Coin ช่วยเป็นส่วนลด (ถ้ามี)' : 'Use Coin as discount (optional)'}
+                    </label>
+                    <p className="text-[11px] text-[#6E6763]">
+                      {lang === 'th'
+                        ? `Coin คงเหลือของลูกค้า: ฿${formatCurrency(useTarget.clientCoinBalance || 0)}`
+                        : `Client's Coin balance: ฿${formatCurrency(useTarget.clientCoinBalance || 0)}`}
+                    </p>
+                    <input
+                      type="number"
+                      min="0"
+                      max={Math.min(
+                        useTarget.fullPrice - (useTarget.depositAmount + (useTarget.coinAmountUsed || 0)),
+                        useTarget.clientCoinBalance || 0
+                      )}
+                      value={useCoinDiscountAmount}
+                      onChange={(e) => setUseCoinDiscountAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                      placeholder={lang === 'th' ? 'เช่น 100' : 'e.g. 100'}
+                      className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs font-bold focus:outline-none focus:border-[#E88D9F]"
+                    />
+                    {Number(useCoinDiscountAmount) > 0 && (
+                      <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-800 font-medium">
+                        {lang === 'th'
+                          ? `ลูกค้าจะชำระเงินสดจริงแค่ ฿${formatCurrency(useTarget.fullPrice - (useTarget.depositAmount + (useTarget.coinAmountUsed || 0)) - Number(useCoinDiscountAmount))} (หลังหักส่วนลด Coin ฿${formatCurrency(Number(useCoinDiscountAmount))})`
+                          : `Customer pays only ฿${formatCurrency(useTarget.fullPrice - (useTarget.depositAmount + (useTarget.coinAmountUsed || 0)) - Number(useCoinDiscountAmount))} in cash (after ฿${formatCurrency(Number(useCoinDiscountAmount))} Coin discount)`}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <p className="text-[11px] text-[#6E6763] pt-1">
+                  {lang === 'th'
+                    ? 'ระบบจะบันทึกสถานะเป็น "ใช้บริการแล้ว" และรวมยอดชำระคงเหลือเข้าสู่รายได้วันนี้อัตโนมัติ'
+                    : 'System will mark status as "Used" and recognize remaining balance into today\'s revenue.'}
+                </p>
+              </>
+            )}
           </div>
-        </div>
+        </ConfirmationModal>
       )}
     </div>
   );

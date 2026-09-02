@@ -994,7 +994,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
             }`}
           >
             <Coins className="w-5 h-5" />
-            <span className="text-[9px] uppercase tracking-wider">Coin</span>
+            <span className="text-[9px] uppercase tracking-wider">{t.navCoin}</span>
           </button>
 
           <button
@@ -1004,7 +1004,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
             }`}
           >
             <Award className="w-5 h-5" />
-            <span className="text-[9px] uppercase tracking-wider">Points</span>
+            <span className="text-[9px] uppercase tracking-wider">{t.navPoints}</span>
           </button>
 
           <button

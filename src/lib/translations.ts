@@ -35,10 +35,10 @@ export const translations = {
     statusReversed: 'ยกเลิกรายการแล้ว',
 
     // Customer App Views
-    navHome: 'หน้าแรก',
-    navPackages: 'แพ็กเกจของฉัน',
-    navCoupons: 'คูปองของฉัน',
-    navCoin: 'Me.My.Mind Coin',
+    navHome: 'หน้าหลัก',
+    navPackages: 'แพ็คเกจ & การจอง',
+    navCoupons: 'คูปอง',
+    navCoin: 'เหรียญ',
     navPoints: 'คะแนนสะสม',
     navHistory: 'ประวัติรวม',
     navQr: 'คิวอาร์โค้ดสมาชิก',
@@ -218,11 +218,11 @@ export const translations = {
     statusReversed: 'Reversed',
 
     // Customer App Views
-    navHome: 'Home',
-    navPackages: 'My Packages',
-    navCoupons: 'My Coupons',
-    navCoin: 'Me.My.Mind Coin',
-    navPoints: 'Loyalty Points',
+    navHome: 'Main',
+    navPackages: 'Packages & Booking',
+    navCoupons: 'Coupons',
+    navCoin: 'Coin',
+    navPoints: 'Points',
     navHistory: 'History',
     navQr: 'Member QR',
     navNotifications: 'Notifications',
