@@ -395,6 +395,23 @@ async function startServer() {
     }
   });
 
+  app.delete('/api/clients/:id', authenticateStaff, (req, res) => {
+    try {
+      const staff = (req as any).authenticatedStaff;
+      if (staff.role !== 'admin') {
+        return res.status(403).json({ error: 'Only admins can permanently delete clients' });
+      }
+      const { reason } = req.body;
+      if (!reason || !reason.trim()) {
+        return res.status(400).json({ error: 'Deletion reason is required' });
+      }
+      store.deleteClientPermanently(req.params.id, staff.staffId, staff.staffName, reason.trim());
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   app.put('/api/clients/:id/profile', authenticateClientToken, (req, res) => {
     try {
       const { phone, birthday, nickname, displayName, staffId, staffName } = req.body;

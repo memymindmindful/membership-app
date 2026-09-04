@@ -511,8 +511,10 @@ export default function App() {
               if (found) {
                 setSelectedStaffClient(found);
                 refreshStaffClientData(found);
+                setActiveSubView('main');
+              } else {
+                alert(lang === 'th' ? 'ไม่พบข้อมูลลูกค้ารายนี้ในระบบ (อาจถูกลบข้อมูลแล้ว)' : 'Customer profile not found in system (may have been deleted)');
               }
-              setActiveSubView('main');
             }}
           />
         ) : activeSubView === 'catalog' && currentStaff && currentStaff.role === 'admin' ? (
@@ -575,6 +577,15 @@ export default function App() {
               if (found) {
                 setSelectedStaffClient(found);
                 refreshStaffClientData(found);
+              } else if (clientId) {
+                api.getClientById(clientId).then((fullData) => {
+                  if (fullData?.client) {
+                    setSelectedStaffClient(fullData.client);
+                    setStaffClientData(fullData);
+                  }
+                }).catch(() => {
+                  // Fallback if client was permanently deleted
+                });
               }
             }}
             catalogItems={catalogItems}
@@ -585,7 +596,17 @@ export default function App() {
             onRefreshClient={async () => {
               const freshClients = await api.getClients();
               setAllClients(freshClients);
-              await refreshStaffClientData();
+              if (selectedStaffClient && !freshClients.some((c) => c.id === selectedStaffClient.id)) {
+                if (freshClients.length > 0) {
+                  setSelectedStaffClient(freshClients[0]);
+                  refreshStaffClientData(freshClients[0]);
+                } else {
+                  setSelectedStaffClient(null);
+                  setStaffClientData(null);
+                }
+              } else {
+                await refreshStaffClientData();
+              }
             }}
             onRefreshEmployees={async () => {
               const emps = await api.getEmployees();

@@ -191,6 +191,18 @@ export const api = {
     return res.json();
   },
 
+  async deleteClientPermanently(clientId: string, reason: string): Promise<void> {
+    const res = await fetch(`/api/clients/${clientId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to delete client');
+    }
+  },
+
   async updateClientProfile(
     clientId: string,
     profileData: { phone?: string; birthday?: string; nickname?: string; displayName?: string }

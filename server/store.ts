@@ -1100,7 +1100,18 @@ class Store {
   }
 
   public createClient(clientData: Partial<Client>, staffId: string, staffName: string): Client {
-    const nextNum = this.db.clients.length + 1;
+    // Collect all existing member codes to find the smallest unused sequential number
+    const usedNumbers = new Set<number>();
+    for (const c of this.db.clients) {
+      const match = c.memberCode?.match(/^MMM-(\d+)$/);
+      if (match) {
+        usedNumbers.add(parseInt(match[1], 10));
+      }
+    }
+    let nextNum = 1;
+    while (usedNumbers.has(nextNum)) {
+      nextNum++;
+    }
     const memberCode = `MMM-${String(nextNum).padStart(4, '0')}`;
     const newClient: Client = {
       id: `CLI-${Date.now()}`,
@@ -1143,6 +1154,29 @@ class Store {
 
     this.saveToDisk();
     return newClient;
+  }
+
+  public deleteClientPermanently(clientId: string, staffId: string, staffName: string, reason: string): void {
+    const client = this.db.clients.find((c) => c.id === clientId);
+    if (!client) {
+      throw new Error('ไม่พบข้อมูลลูกค้ารายนี้');
+    }
+
+    // Save audit log with previous snapshot of client
+    this.logAudit(
+      staffId,
+      staffName,
+      'DELETE_CLIENT_PERMANENTLY',
+      'client',
+      clientId,
+      `ลบข้อมูลลูกค้าถาวร: ${client.displayName} (${client.memberCode}) | เหตุผล: ${reason}`,
+      client,
+      null
+    );
+
+    // Remove client record only - preserve transactions/financial/history for auditing
+    this.db.clients = this.db.clients.filter((c) => c.id !== clientId);
+    this.saveToDisk();
   }
 
   public updateClientProfile(
@@ -2622,11 +2656,17 @@ class Store {
     const manual = [...this.db.financialEntries];
     const autoEntries: FinancialEntry[] = [];
 
+    // Helper to format client name safely
+    const formatClientName = (clientId: string): string => {
+      const client = this.db.clients.find((c) => c.id === clientId);
+      if (!client) return 'ไม่พบข้อมูลลูกค้า (ถูกลบแล้ว)';
+      return `${client.displayName}${client.nickname ? ` (${client.nickname})` : ''}`;
+    };
+
     // 1. Auto-synthesize from Coin topups (ONLY non-bonus cash coin purchases)
     for (const tx of this.db.coinTransactions) {
       if (tx.type === 'credit_added' && !tx.reversed && tx.amount > 0 && !tx.isBonus) {
-        const client = this.db.clients.find((c) => c.id === tx.clientId);
-        const clientName = client ? `${client.displayName} (${client.nickname})` : 'ลูกค้าทั่วไป';
+        const clientName = formatClientName(tx.clientId);
         autoEntries.push({
           id: `AUTO-COIN-${tx.id}`,
           type: 'income',
@@ -2667,8 +2707,7 @@ class Store {
           continue;
         }
 
-        const client = this.db.clients.find((c) => c.id === tx.clientId);
-        const clientName = client ? `${client.displayName} (${client.nickname})` : 'ลูกค้าทั่วไป';
+        const clientName = formatClientName(tx.clientId);
 
         let spendAmt = 0;
         const match = note.match(/ยอดชำระ:\s*฿?\s*([0-9,]+)/i) || note.match(/฿\s*([0-9,]+)/);
@@ -2704,8 +2743,7 @@ class Store {
     // 3. Auto-synthesize from Client Packages sold
     for (const pkg of this.db.clientPackages) {
       if (pkg.pricePaid && pkg.pricePaid > 0 && pkg.status !== 'voided') {
-        const client = this.db.clients.find((c) => c.id === pkg.clientId);
-        const clientName = client ? `${client.displayName} (${client.nickname})` : 'ลูกค้าทั่วไป';
+        const clientName = formatClientName(pkg.clientId);
         autoEntries.push({
           id: `AUTO-PKG-${pkg.id}`,
           type: 'income',
@@ -2729,8 +2767,7 @@ class Store {
     // 4. Auto-synthesize from Coupons sold (paid coupons only — exclude CRM Marketing Vouchers)
     for (const cpn of this.db.clientCoupons) {
       if (cpn.pricePaid && cpn.pricePaid > 0 && !cpn.isCrmMarketingVoucher && cpn.status !== 'voided') {
-        const client = this.db.clients.find((c) => c.id === cpn.clientId);
-        const clientName = client ? `${client.displayName} (${client.nickname})` : 'ลูกค้าทั่วไป';
+        const clientName = formatClientName(cpn.clientId);
         autoEntries.push({
           id: `AUTO-CPN-${cpn.id}`,
           type: 'income',
@@ -2755,8 +2792,7 @@ class Store {
     if (this.db.clientOneTimeBookings) {
       for (const booking of this.db.clientOneTimeBookings) {
         if (booking.status === 'voided') continue;
-        const client = this.db.clients.find((c) => c.id === booking.clientId);
-        const clientName = client ? `${client.displayName} (${client.nickname})` : 'ลูกค้าทั่วไป';
+        const clientName = formatClientName(booking.clientId);
 
         if (booking.depositAmount > 0) {
           autoEntries.push({

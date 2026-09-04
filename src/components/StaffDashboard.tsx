@@ -232,6 +232,12 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   const [newClientBirthday, setNewClientBirthday] = useState('');
   const [newClientNotes, setNewClientNotes] = useState('');
 
+  // Delete Client Permanently State (Admin Only)
+  const [deleteClientTarget, setDeleteClientTarget] = useState<Client | null>(null);
+  const [deleteClientReason, setDeleteClientReason] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeletingClient, setIsDeletingClient] = useState(false);
+
   // Action Modals State
   const [activeModal, setActiveModal] = useState<
     'add_coin' | 'deduct_coin' | 'add_pts' | 'deduct_pts' | 'sell_pkg' | 'issue_cpn' | 'reverse_tx' | null
@@ -850,15 +856,29 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                     </div>
                   </div>
 
-                  {/* LINE Connected Badge */}
-                  <div className="text-right">
+                  {/* LINE Connected Badge & Admin Action */}
+                  <div className="text-right flex flex-col items-end gap-2">
                     <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-pink-50 text-[#D87085] px-3 py-1 rounded-full border border-pink-200">
                       <span className="w-2 h-2 rounded-full bg-[#E88D9F] animate-pulse" />
                       {t.lineConnected}
                     </span>
-                    <p className="text-[10px] text-[#9C948E] mt-1">
+                    <p className="text-[10px] text-[#9C948E]">
                       {t.registeredOn}: {formatShortDate(selectedClientData.client.createdAt, lang)}
                     </p>
+                    {currentStaff?.role === 'admin' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeleteClientTarget(selectedClientData.client);
+                          setDeleteClientReason('');
+                          setDeleteConfirmText('');
+                        }}
+                        className="px-3 py-1.5 bg-white border border-red-300 text-red-600 hover:bg-red-50 text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {lang === 'th' ? 'ลบข้อมูลลูกค้าถาวร' : 'Delete Client Permanently'}
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -3500,6 +3520,102 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* PERMANENT DELETE CLIENT MODAL (Admin Only) */}
+      {deleteClientTarget && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-xl border-2 border-red-300 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <h3 className="text-base font-bold">
+                {lang === 'th' ? 'ลบข้อมูลลูกค้าถาวร — กู้คืนไม่ได้' : 'Permanently Delete Client — Cannot Be Undone'}
+              </h3>
+            </div>
+
+            <p className="text-xs text-[#6E6763] leading-relaxed">
+              {lang === 'th'
+                ? `กำลังจะลบข้อมูลของ "${deleteClientTarget.displayName}" (${deleteClientTarget.memberCode}) ออกจากระบบถาวร รหัสสมาชิกนี้จะถูกนำไปใช้กับสมาชิกใหม่คนถัดไปที่สมัครเข้ามา การกระทำนี้ไม่สามารถย้อนกลับได้`
+                : `You are about to permanently delete "${deleteClientTarget.displayName}" (${deleteClientTarget.memberCode}). This member code will be reused by the next new signup. This cannot be undone.`}
+            </p>
+
+            <div>
+              <label className="block text-xs font-bold text-[#3D3835] mb-1">
+                {lang === 'th' ? 'เหตุผล *' : 'Reason *'}
+              </label>
+              <input
+                type="text"
+                value={deleteClientReason}
+                onChange={(e) => setDeleteClientReason(e.target.value)}
+                placeholder={lang === 'th' ? 'เช่น ลูกค้าขอยกเลิกสมาชิกภาพ' : 'e.g. Customer requested account closure'}
+                className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs focus:outline-none focus:border-red-400"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#3D3835] mb-1">
+                {lang === 'th'
+                  ? `พิมพ์ชื่อ "${deleteClientTarget.displayName}" เพื่อยืนยัน`
+                  : `Type "${deleteClientTarget.displayName}" to confirm`}
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="w-full px-3.5 py-2.5 border border-[#F2E3E1] rounded-xl text-xs focus:outline-none focus:border-red-400"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteClientTarget(null);
+                  setDeleteClientReason('');
+                  setDeleteConfirmText('');
+                }}
+                className="flex-1 py-2.5 bg-[#FAF0ED] text-[#6E6763] font-bold text-xs rounded-xl cursor-pointer hover:bg-stone-200 transition"
+              >
+                {lang === 'th' ? 'ยกเลิก' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                disabled={!deleteClientReason.trim() || deleteConfirmText !== deleteClientTarget.displayName || isDeletingClient}
+                onClick={async () => {
+                  if (isDeletingClient) return;
+                  setIsDeletingClient(true);
+                  try {
+                    await api.deleteClientPermanently(deleteClientTarget.id, deleteClientReason.trim());
+                    const deletedId = deleteClientTarget.id;
+                    setDeleteClientTarget(null);
+                    setDeleteClientReason('');
+                    setDeleteConfirmText('');
+                    const freshClients = await api.getClients();
+                    onRefreshClient();
+                    const remaining = freshClients.filter((c) => c.id !== deletedId);
+                    if (remaining.length > 0) {
+                      onSelectClient(remaining[0].id);
+                    }
+                  } catch (err: any) {
+                    alert(err.message || (lang === 'th' ? 'เกิดข้อผิดพลาดในการลบข้อมูล' : 'Failed to delete client'));
+                  } finally {
+                    setIsDeletingClient(false);
+                  }
+                }}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition flex items-center justify-center gap-1.5"
+              >
+                {isDeletingClient ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>{lang === 'th' ? 'กำลังลบ...' : 'Deleting...'}</span>
+                  </>
+                ) : (
+                  <span>{lang === 'th' ? 'ลบถาวร' : 'Delete Permanently'}</span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
