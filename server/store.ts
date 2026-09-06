@@ -150,10 +150,109 @@ function rowToRewardCatalogItem(row: any): RewardCatalogItem {
   };
 }
 
+function rowToClientPackage(row: any): ClientPackage {
+  let usageLogs: any[] = [];
+  if (row.usage_logs) {
+    try {
+      usageLogs = JSON.parse(row.usage_logs);
+    } catch {
+      usageLogs = [];
+    }
+  }
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    catalogId: row.catalog_id,
+    name: row.name,
+    description: row.description || '',
+    imageUrl: row.image_url || '',
+    totalSessions: Number(row.total_sessions),
+    remainingSessions: Number(row.remaining_sessions),
+    pricePaid: Number(row.price_paid),
+    purchaseDate: row.purchase_date,
+    expiryDate: row.expiry_date,
+    status: row.status as ItemStatus,
+    usedUpAt: row.used_up_at || undefined,
+    createdAt: row.created_at,
+    usageLogs,
+    followUpStatus: row.follow_up_status || undefined,
+    followUpNote: row.follow_up_note || undefined,
+    followUpUpdatedAt: row.follow_up_updated_at || undefined,
+    followUpUpdatedByStaffName: row.follow_up_updated_by_staff_name || undefined,
+    voidedAt: row.voided_at || undefined,
+    voidedBy: row.voided_by || undefined,
+    voidReason: row.void_reason || undefined,
+  };
+}
+
+function rowToClientCoupon(row: any): ClientCoupon {
+  let redemptionLogs: any[] = [];
+  if (row.redemption_logs) {
+    try {
+      redemptionLogs = JSON.parse(row.redemption_logs);
+    } catch {
+      redemptionLogs = [];
+    }
+  }
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    catalogId: row.catalog_id,
+    name: row.name,
+    description: row.description || '',
+    imageUrl: row.image_url || '',
+    couponCode: row.coupon_code,
+    totalQuantity: Number(row.total_quantity),
+    usedQuantity: Number(row.used_quantity),
+    remainingQuantity: Number(row.remaining_quantity),
+    pricePaid: Number(row.price_paid),
+    purchaseDate: row.purchase_date,
+    expiryDate: row.expiry_date,
+    status: row.status as ItemStatus,
+    usedUpAt: row.used_up_at || undefined,
+    createdAt: row.created_at,
+    redemptionLogs,
+    followUpStatus: row.follow_up_status || undefined,
+    followUpNote: row.follow_up_note || undefined,
+    followUpUpdatedAt: row.follow_up_updated_at || undefined,
+    followUpUpdatedByStaffName: row.follow_up_updated_by_staff_name || undefined,
+    isCrmMarketingVoucher: Boolean(row.is_crm_marketing_voucher),
+    voidedAt: row.voided_at || undefined,
+    voidedBy: row.voided_by || undefined,
+    voidReason: row.void_reason || undefined,
+  };
+}
+
+function rowToClientOneTimeBooking(row: any): ClientOneTimeBooking {
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    catalogId: row.catalog_id,
+    name: row.name,
+    description: row.description || '',
+    imageUrl: row.image_url || '',
+    fullPrice: Number(row.full_price),
+    depositAmount: Number(row.deposit_amount || 0),
+    paymentStatusAtBooking: row.payment_status_at_booking as any,
+    linkedPackageId: row.linked_package_id || undefined,
+    linkedCouponId: row.linked_coupon_id || undefined,
+    coinAmountUsed: Number(row.coin_amount_used || 0),
+    remainingAmountPaid: Number(row.remaining_amount_paid || 0),
+    bookingDateTime: row.booking_date_time,
+    endDateTime: row.end_date_time || undefined,
+    branch: row.branch,
+    status: row.status as any,
+    usedAt: row.used_at || undefined,
+    voidedAt: row.voided_at || undefined,
+    voidedBy: row.voided_by || undefined,
+    voidReason: row.void_reason || undefined,
+    createdAt: row.created_at,
+    createdByStaffId: row.created_by_staff_id,
+    createdByStaffName: row.created_by_staff_name,
+  };
+}
+
 interface DatabaseSchema {
-  clientPackages: ClientPackage[];
-  clientCoupons: ClientCoupon[];
-  clientOneTimeBookings?: ClientOneTimeBooking[];
   notifications: InAppNotification[];
   backupSettings?: {
     email: string;
@@ -396,13 +495,12 @@ function getInitialRewardCatalogItems(): RewardCatalogItem[] {
 }
 
 // Initial Seed Data
-function getInitialData(): DatabaseSchema {
-  const now = new Date().toISOString();
+function getInitialClientPackages(): ClientPackage[] {
   const pastDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const nearExpiryDate = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(); // 4 days from now
   const farExpiryDate = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString();
 
-  const clientPackages: ClientPackage[] = [
+  return [
     {
       id: 'CPKG-001',
       clientId: 'CLI-0001',
@@ -502,8 +600,14 @@ function getInitialData(): DatabaseSchema {
       ],
     },
   ];
+}
 
-  const clientCoupons: ClientCoupon[] = [
+function getInitialClientCoupons(): ClientCoupon[] {
+  const pastDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const nearExpiryDate = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(); // 4 days from now
+  const farExpiryDate = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString();
+
+  return [
     {
       id: 'CCPN-001',
       clientId: 'CLI-0001',
@@ -552,6 +656,11 @@ function getInitialData(): DatabaseSchema {
       redemptionLogs: [],
     },
   ];
+}
+
+function getInitialData(): DatabaseSchema {
+  const now = new Date().toISOString();
+  const pastDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const notifications: InAppNotification[] = [
     {
@@ -654,12 +763,9 @@ function getInitialData(): DatabaseSchema {
   ];
 
   return {
-    clientPackages,
-    clientCoupons,
     notifications,
     auditLogs,
     financialEntries,
-    clientOneTimeBookings: [],
   };
 }
 
@@ -822,6 +928,91 @@ class Store {
       }
     }
 
+    // Ensure initial client_packages exist if table is empty
+    const packageCount = db.prepare('SELECT count(*) as count FROM client_packages').get() as { count: number };
+    if (!packageCount || packageCount.count === 0) {
+      const initialPackages = getInitialClientPackages();
+      const insertPkg = db.prepare(`
+        INSERT OR REPLACE INTO client_packages (
+          id, client_id, catalog_id, name, description, image_url,
+          total_sessions, remaining_sessions, price_paid, purchase_date,
+          expiry_date, status, used_up_at, created_at, usage_logs,
+          follow_up_status, follow_up_note, follow_up_updated_at, follow_up_updated_by_staff_name,
+          voided_at, voided_by, void_reason
+        ) VALUES (
+          @id, @clientId, @catalogId, @name, @description, @imageUrl,
+          @totalSessions, @remainingSessions, @pricePaid, @purchaseDate,
+          @expiryDate, @status, @usedUpAt, @createdAt, @usageLogs,
+          NULL, NULL, NULL, NULL,
+          NULL, NULL, NULL
+        )
+      `);
+      for (const p of initialPackages) {
+        insertPkg.run({
+          id: p.id,
+          clientId: p.clientId,
+          catalogId: p.catalogId,
+          name: p.name,
+          description: p.description || null,
+          imageUrl: p.imageUrl || null,
+          totalSessions: p.totalSessions,
+          remainingSessions: p.remainingSessions,
+          pricePaid: p.pricePaid,
+          purchaseDate: p.purchaseDate,
+          expiryDate: p.expiryDate,
+          status: p.status,
+          usedUpAt: p.usedUpAt || null,
+          createdAt: p.createdAt,
+          usageLogs: JSON.stringify(p.usageLogs || []),
+        });
+      }
+    }
+
+    // Ensure initial client_coupons exist if table is empty
+    const couponCount = db.prepare('SELECT count(*) as count FROM client_coupons').get() as { count: number };
+    if (!couponCount || couponCount.count === 0) {
+      const initialCoupons = getInitialClientCoupons();
+      const insertCpn = db.prepare(`
+        INSERT OR REPLACE INTO client_coupons (
+          id, client_id, catalog_id, name, description, image_url,
+          coupon_code, total_quantity, used_quantity, remaining_quantity,
+          price_paid, purchase_date, expiry_date, status, used_up_at,
+          created_at, redemption_logs, follow_up_status, follow_up_note,
+          follow_up_updated_at, follow_up_updated_by_staff_name,
+          is_crm_marketing_voucher, voided_at, voided_by, void_reason
+        ) VALUES (
+          @id, @clientId, @catalogId, @name, @description, @imageUrl,
+          @couponCode, @totalQuantity, @usedQuantity, @remainingQuantity,
+          @pricePaid, @purchaseDate, @expiryDate, @status, @usedUpAt,
+          @createdAt, @redemptionLogs, NULL, NULL,
+          NULL, NULL,
+          @isCrmMarketingVoucher, NULL, NULL, NULL
+        )
+      `);
+      for (const c of initialCoupons) {
+        insertCpn.run({
+          id: c.id,
+          clientId: c.clientId,
+          catalogId: c.catalogId,
+          name: c.name,
+          description: c.description || null,
+          imageUrl: c.imageUrl || null,
+          couponCode: c.couponCode,
+          totalQuantity: c.totalQuantity,
+          usedQuantity: c.usedQuantity,
+          remainingQuantity: c.remainingQuantity,
+          pricePaid: c.pricePaid,
+          purchaseDate: c.purchaseDate,
+          expiryDate: c.expiryDate,
+          status: c.status,
+          usedUpAt: c.usedUpAt || null,
+          createdAt: c.createdAt,
+          redemptionLogs: JSON.stringify(c.redemptionLogs || []),
+          isCrmMarketingVoucher: c.isCrmMarketingVoucher ? 1 : 0,
+        });
+      }
+    }
+
     return db;
   }
 
@@ -841,7 +1032,10 @@ class Store {
           'pointsWallets' in parsed ||
           'pointsTransactions' in parsed ||
           'catalogItems' in parsed ||
-          'rewardCatalogItems' in parsed;
+          'rewardCatalogItems' in parsed ||
+          'clientPackages' in parsed ||
+          'clientCoupons' in parsed ||
+          'clientOneTimeBookings' in parsed;
         delete parsed.clients;
         delete parsed.employees;
         delete parsed.coinWallets;
@@ -850,9 +1044,9 @@ class Store {
         delete parsed.pointsTransactions;
         delete parsed.catalogItems;
         delete parsed.rewardCatalogItems;
-        if (!parsed.clientOneTimeBookings) {
-          parsed.clientOneTimeBookings = [];
-        }
+        delete parsed.clientPackages;
+        delete parsed.clientCoupons;
+        delete parsed.clientOneTimeBookings;
         if (hadOldFields) {
           this.saveToDisk(parsed);
         }
@@ -899,6 +1093,16 @@ class Store {
     }, 300);
   }
 
+  public getAllClientPackages(): ClientPackage[] {
+    const rows = this.sqlite.prepare('SELECT * FROM client_packages ORDER BY created_at DESC').all();
+    return rows.map(rowToClientPackage);
+  }
+
+  public getAllClientCoupons(): ClientCoupon[] {
+    const rows = this.sqlite.prepare('SELECT * FROM client_coupons ORDER BY created_at DESC').all();
+    return rows.map(rowToClientCoupon);
+  }
+
   /**
    * Recalculates expiry status for packages and coupons (active, expiring_soon, used_up)
    */
@@ -906,37 +1110,51 @@ class Store {
     const now = new Date().getTime();
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 
-    this.db.clientPackages.forEach((pkg) => {
-      if (pkg.status === 'voided') return;
+    const updatePkgStmt = this.sqlite.prepare('UPDATE client_packages SET status = ?, used_up_at = ? WHERE id = ?');
+    for (const pkg of this.getAllClientPackages()) {
+      if (pkg.status === 'voided') continue;
+      let newStatus = pkg.status;
+      let newUsedUpAt = pkg.usedUpAt;
+
       if (pkg.remainingSessions <= 0) {
-        pkg.status = 'used_up';
-        if (!pkg.usedUpAt) pkg.usedUpAt = new Date().toISOString();
+        newStatus = 'used_up';
+        if (!newUsedUpAt) newUsedUpAt = new Date().toISOString();
       } else {
         const expTime = new Date(pkg.expiryDate).getTime();
         if (expTime - now <= sevenDaysMs) {
-          pkg.status = 'expiring_soon';
+          newStatus = 'expiring_soon';
         } else {
-          pkg.status = 'active';
+          newStatus = 'active';
         }
       }
-    });
 
-    this.db.clientCoupons.forEach((cpn) => {
-      if (cpn.status === 'voided') return;
+      if (newStatus !== pkg.status || newUsedUpAt !== pkg.usedUpAt) {
+        updatePkgStmt.run(newStatus, newUsedUpAt || null, pkg.id);
+      }
+    }
+
+    const updateCpnStmt = this.sqlite.prepare('UPDATE client_coupons SET status = ?, used_up_at = ? WHERE id = ?');
+    for (const cpn of this.getAllClientCoupons()) {
+      if (cpn.status === 'voided') continue;
+      let newStatus = cpn.status;
+      let newUsedUpAt = cpn.usedUpAt;
+
       if (cpn.usedQuantity >= cpn.totalQuantity) {
-        cpn.status = 'used_up';
-        if (!cpn.usedUpAt) cpn.usedUpAt = new Date().toISOString();
+        newStatus = 'used_up';
+        if (!newUsedUpAt) newUsedUpAt = new Date().toISOString();
       } else {
         const expTime = new Date(cpn.expiryDate).getTime();
         if (expTime - now <= sevenDaysMs) {
-          cpn.status = 'expiring_soon';
+          newStatus = 'expiring_soon';
         } else {
-          cpn.status = 'active';
+          newStatus = 'active';
         }
       }
-    });
 
-    this.saveToDisk();
+      if (newStatus !== cpn.status || newUsedUpAt !== cpn.usedUpAt) {
+        updateCpnStmt.run(newStatus, newUsedUpAt || null, cpn.id);
+      }
+    }
   }
 
   // Helper Audit Logger
@@ -1187,8 +1405,8 @@ class Store {
     return this.getClients().map((client) => {
       const coinBalance = this.getCoinBalance(client.id);
       const pointsWallet = this.getPointsWallet(client.id);
-      const packages = this.db.clientPackages.filter((p) => p.clientId === client.id);
-      const coupons = this.db.clientCoupons.filter((c) => c.clientId === client.id);
+      const packages = this.getClientPackages(client.id);
+      const coupons = this.getClientCoupons(client.id);
       const coinTxs = this.getCoinTransactions(client.id).filter((tx) => !tx.reversed);
 
       const coinSpent = coinTxs
@@ -2229,7 +2447,8 @@ class Store {
   // Sell/Issue Packages to Clients
   public getClientPackages(clientId: string): ClientPackage[] {
     this.refreshItemStatuses();
-    return this.db.clientPackages.filter((p) => p.clientId === clientId);
+    const rows = this.sqlite.prepare('SELECT * FROM client_packages WHERE client_id = ? ORDER BY created_at DESC').all(clientId);
+    return rows.map(rowToClientPackage);
   }
 
   public sellPackageToClient(
@@ -2265,7 +2484,37 @@ class Store {
       usageLogs: [],
     };
 
-    this.db.clientPackages.unshift(clientPkg);
+    this.sqlite.prepare(`
+      INSERT INTO client_packages (
+        id, client_id, catalog_id, name, description, image_url,
+        total_sessions, remaining_sessions, price_paid, purchase_date,
+        expiry_date, status, used_up_at, created_at, usage_logs,
+        follow_up_status, follow_up_note, follow_up_updated_at, follow_up_updated_by_staff_name,
+        voided_at, voided_by, void_reason
+      ) VALUES (
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, NULL, ?, ?,
+        NULL, NULL, NULL, NULL,
+        NULL, NULL, NULL
+      )
+    `).run(
+      clientPkg.id,
+      clientPkg.clientId,
+      clientPkg.catalogId,
+      clientPkg.name,
+      clientPkg.description || null,
+      clientPkg.imageUrl || null,
+      clientPkg.totalSessions,
+      clientPkg.remainingSessions,
+      clientPkg.pricePaid,
+      clientPkg.purchaseDate,
+      clientPkg.expiryDate,
+      clientPkg.status,
+      clientPkg.createdAt,
+      JSON.stringify(clientPkg.usageLogs)
+    );
+
     if (pricePaid > 0) {
       const ptsEarned = Math.floor(pricePaid / BAHT_PER_POINT);
       if (ptsEarned > 0) {
@@ -2295,8 +2544,9 @@ class Store {
     staffId: string,
     staffName: string
   ): ClientPackage {
-    const pkg = this.db.clientPackages.find((p) => p.id === clientPackageId);
-    if (!pkg) throw new Error('Client package not found');
+    const row = this.sqlite.prepare('SELECT * FROM client_packages WHERE id = ?').get(clientPackageId);
+    if (!row) throw new Error('Client package not found');
+    const pkg = rowToClientPackage(row);
     if (pkg.remainingSessions <= 0) throw new Error('Package has no remaining sessions (used up)');
 
     pkg.remainingSessions -= 1;
@@ -2320,6 +2570,18 @@ class Store {
       pkg.usedUpAt = new Date().toISOString();
     }
 
+    this.sqlite.prepare(`
+      UPDATE client_packages
+      SET remaining_sessions = ?, status = ?, used_up_at = ?, usage_logs = ?
+      WHERE id = ?
+    `).run(
+      pkg.remainingSessions,
+      pkg.status,
+      pkg.usedUpAt || null,
+      JSON.stringify(pkg.usageLogs),
+      pkg.id
+    );
+
     this.notifyClient(pkg.clientId, 'ตัดใช้บริการแพ็กเกจ 1 ครั้ง', `บันทึกการใช้บริการ 1 ครั้งสำหรับแพ็กเกจ "${pkg.name}" คงเหลืออีก ${pkg.remainingSessions} ครั้ง`);
     this.logAudit(staffId, staffName, 'USE_PACKAGE_SESSION', 'package', pkg.id, note || `Used session ${sessionNumber}`, null, log);
 
@@ -2333,8 +2595,9 @@ class Store {
     staffName: string,
     reason: string
   ): ClientPackage {
-    const pkg = this.db.clientPackages.find((p) => p.id === clientPackageId);
-    if (!pkg) throw new Error('Client package not found');
+    const row = this.sqlite.prepare('SELECT * FROM client_packages WHERE id = ?').get(clientPackageId);
+    if (!row) throw new Error('Client package not found');
+    const pkg = rowToClientPackage(row);
     if (pkg.status === 'voided') throw new Error('This package has already been voided');
 
     const previousData = { ...pkg };
@@ -2342,6 +2605,18 @@ class Store {
     pkg.voidedAt = new Date().toISOString();
     pkg.voidedBy = staffName;
     pkg.voidReason = reason || 'ยกเลิกรายการโดยผู้ดูแลระบบ';
+
+    this.sqlite.prepare(`
+      UPDATE client_packages
+      SET status = ?, voided_at = ?, voided_by = ?, void_reason = ?
+      WHERE id = ?
+    `).run(
+      pkg.status,
+      pkg.voidedAt,
+      pkg.voidedBy,
+      pkg.voidReason,
+      pkg.id
+    );
 
     // Reverse any points awarded for this package
     const relatedPtsTx = this.getAllPointsTransactions().find(
@@ -2369,7 +2644,8 @@ class Store {
   // Issue Coupons to Clients
   public getClientCoupons(clientId: string): ClientCoupon[] {
     this.refreshItemStatuses();
-    return this.db.clientCoupons.filter((c) => c.clientId === clientId);
+    const rows = this.sqlite.prepare('SELECT * FROM client_coupons WHERE client_id = ? ORDER BY created_at DESC').all(clientId);
+    return rows.map(rowToClientCoupon);
   }
 
   public issueCouponToClient(
@@ -2409,7 +2685,42 @@ class Store {
       isCrmMarketingVoucher: catalog?.isCrmMarketingVoucher || false,
     };
 
-    this.db.clientCoupons.unshift(coupon);
+    this.sqlite.prepare(`
+      INSERT INTO client_coupons (
+        id, client_id, catalog_id, name, description, image_url,
+        coupon_code, total_quantity, used_quantity, remaining_quantity,
+        price_paid, purchase_date, expiry_date, status, used_up_at,
+        created_at, redemption_logs, follow_up_status, follow_up_note,
+        follow_up_updated_at, follow_up_updated_by_staff_name,
+        is_crm_marketing_voucher, voided_at, voided_by, void_reason
+      ) VALUES (
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?, ?, NULL,
+        ?, ?, NULL, NULL,
+        NULL, NULL,
+        ?, NULL, NULL, NULL
+      )
+    `).run(
+      coupon.id,
+      coupon.clientId,
+      coupon.catalogId,
+      coupon.name,
+      coupon.description || null,
+      coupon.imageUrl || null,
+      coupon.couponCode,
+      coupon.totalQuantity,
+      coupon.usedQuantity,
+      coupon.remainingQuantity,
+      coupon.pricePaid,
+      coupon.purchaseDate,
+      coupon.expiryDate,
+      coupon.status,
+      coupon.createdAt,
+      JSON.stringify(coupon.redemptionLogs),
+      coupon.isCrmMarketingVoucher ? 1 : 0
+    );
+
     if (!coupon.isCrmMarketingVoucher && pricePaid > 0) {
       const ptsEarned = Math.floor(pricePaid / BAHT_PER_POINT);
       if (ptsEarned > 0) {
@@ -2439,8 +2750,9 @@ class Store {
     staffId: string,
     staffName: string
   ): ClientCoupon {
-    const cpn = this.db.clientCoupons.find((c) => c.id === clientCouponId);
-    if (!cpn) throw new Error('Client coupon not found');
+    const row = this.sqlite.prepare('SELECT * FROM client_coupons WHERE id = ?').get(clientCouponId);
+    if (!row) throw new Error('Client coupon not found');
+    const cpn = rowToClientCoupon(row);
     if (cpn.usedQuantity >= cpn.totalQuantity) throw new Error('Coupon is fully used up');
 
     cpn.usedQuantity += 1;
@@ -2498,6 +2810,19 @@ class Store {
       cpn.usedUpAt = new Date().toISOString();
     }
 
+    this.sqlite.prepare(`
+      UPDATE client_coupons
+      SET used_quantity = ?, remaining_quantity = ?, status = ?, used_up_at = ?, redemption_logs = ?
+      WHERE id = ?
+    `).run(
+      cpn.usedQuantity,
+      cpn.remainingQuantity,
+      cpn.status,
+      cpn.usedUpAt || null,
+      JSON.stringify(cpn.redemptionLogs),
+      cpn.id
+    );
+
     this.notifyClient(cpn.clientId, 'ตัดใช้สิทธิ์คูปองเรียบร้อย', `พนักงานได้ทำการตัดใช้สิทธิ์ 1 ครั้งสำหรับคูปอง "${cpn.name}" คงเหลืออีก ${cpn.remainingQuantity} สิทธิ์`);
     this.logAudit(staffId, staffName, 'REDEEM_COUPON_UNIT', 'coupon', cpn.id, note || `Redeemed unit ${redemptionNumber}`, null, log);
 
@@ -2511,8 +2836,9 @@ class Store {
     staffName: string,
     reason: string
   ): ClientCoupon {
-    const cpn = this.db.clientCoupons.find((c) => c.id === clientCouponId);
-    if (!cpn) throw new Error('Client coupon not found');
+    const row = this.sqlite.prepare('SELECT * FROM client_coupons WHERE id = ?').get(clientCouponId);
+    if (!row) throw new Error('Client coupon not found');
+    const cpn = rowToClientCoupon(row);
     if (cpn.status === 'voided') throw new Error('This coupon has already been voided');
 
     const previousData = { ...cpn };
@@ -2520,6 +2846,18 @@ class Store {
     cpn.voidedAt = new Date().toISOString();
     cpn.voidedBy = staffName;
     cpn.voidReason = reason || 'ยกเลิกรายการโดยผู้ดูแลระบบ';
+
+    this.sqlite.prepare(`
+      UPDATE client_coupons
+      SET status = ?, voided_at = ?, voided_by = ?, void_reason = ?
+      WHERE id = ?
+    `).run(
+      cpn.status,
+      cpn.voidedAt,
+      cpn.voidedBy,
+      cpn.voidReason,
+      cpn.id
+    );
 
     // Reverse any points awarded for this coupon
     const relatedPtsTx = this.getAllPointsTransactions().find(
@@ -2544,12 +2882,18 @@ class Store {
     return cpn;
   }
 
+  public getAllRawOneTimeBookings(): ClientOneTimeBooking[] {
+    const rows = this.sqlite.prepare('SELECT * FROM client_one_time_bookings ORDER BY booking_date_time ASC').all();
+    return rows.map(rowToClientOneTimeBooking);
+  }
+
   // One-Time Service Bookings Operations
   public getAllOneTimeBookings(): (ClientOneTimeBooking & { clientName: string; clientPhone: string; clientProfilePic?: string; clientCoinBalance?: number })[] {
-    if (!this.db.clientOneTimeBookings) return [];
     const now = new Date();
-    return this.db.clientOneTimeBookings
-      .filter((b) => b.status === 'booked' && new Date(b.bookingDateTime) >= now)
+    const rows = this.sqlite.prepare("SELECT * FROM client_one_time_bookings WHERE status = 'booked' ORDER BY booking_date_time ASC").all();
+    const allBookings = rows.map(rowToClientOneTimeBooking);
+    return allBookings
+      .filter((b) => new Date(b.bookingDateTime) >= now)
       .map((b) => {
         const client = this.getClientById(b.clientId);
         return {
@@ -2575,7 +2919,8 @@ class Store {
     remainingSessions: number;
     expiryDate: string;
   }> {
-    if (!this.db.clientPackages) return [];
+    const rows = this.sqlite.prepare("SELECT * FROM client_packages WHERE status IN ('active', 'expiring_soon') ORDER BY expiry_date ASC").all();
+    const packages = rows.map(rowToClientPackage);
     const result: Array<{
       packageId: string;
       clientId: string;
@@ -2589,24 +2934,23 @@ class Store {
       expiryDate: string;
     }> = [];
     const allClients = this.getClients();
-    for (const client of allClients) {
-      const packages = this.db.clientPackages.filter(
-        (p) => p.clientId === client.id && (p.status === 'active' || p.status === 'expiring_soon')
-      );
-      for (const pkg of packages) {
-        result.push({
-          packageId: pkg.id,
-          clientId: client.id,
-          clientName: `${client.displayName}${client.nickname ? ` (${client.nickname})` : ''}`,
-          clientPhone: client.phone || '-',
-          clientProfilePic: client.profilePic || undefined,
-          packageName: pkg.name,
-          sessionsUsed: pkg.totalSessions - pkg.remainingSessions,
-          totalSessions: pkg.totalSessions,
-          remainingSessions: pkg.remainingSessions,
-          expiryDate: pkg.expiryDate,
-        });
-      }
+    const clientMap = new Map(allClients.map((c) => [c.id, c]));
+
+    for (const pkg of packages) {
+      const client = clientMap.get(pkg.clientId);
+      if (!client) continue;
+      result.push({
+        packageId: pkg.id,
+        clientId: client.id,
+        clientName: `${client.displayName}${client.nickname ? ` (${client.nickname})` : ''}`,
+        clientPhone: client.phone || '-',
+        clientProfilePic: client.profilePic || undefined,
+        packageName: pkg.name,
+        sessionsUsed: pkg.totalSessions - pkg.remainingSessions,
+        totalSessions: pkg.totalSessions,
+        remainingSessions: pkg.remainingSessions,
+        expiryDate: pkg.expiryDate,
+      });
     }
     return result.sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
   }
@@ -2618,17 +2962,25 @@ class Store {
     staffId: string,
     staffName: string
   ): ClientOneTimeBooking {
-    if (!this.db.clientOneTimeBookings) {
-      this.db.clientOneTimeBookings = [];
-    }
-    const booking = this.db.clientOneTimeBookings.find((b) => b.id === bookingId);
-    if (!booking) throw new Error('Booking not found');
+    const row = this.sqlite.prepare('SELECT * FROM client_one_time_bookings WHERE id = ?').get(bookingId);
+    if (!row) throw new Error('Booking not found');
+    const booking = rowToClientOneTimeBooking(row);
     if (booking.status !== 'booked') throw new Error('ไม่สามารถเลื่อนนัดรายการที่ใช้บริการหรือยกเลิกไปแล้วได้');
 
     const previousData = { ...booking };
     const oldDateTime = booking.bookingDateTime;
     booking.bookingDateTime = newBookingDateTime;
     booking.endDateTime = newEndDateTime || undefined;
+
+    this.sqlite.prepare(`
+      UPDATE client_one_time_bookings
+      SET booking_date_time = ?, end_date_time = ?
+      WHERE id = ?
+    `).run(
+      booking.bookingDateTime,
+      booking.endDateTime || null,
+      booking.id
+    );
 
     this.notifyClient(
       booking.clientId,
@@ -2652,10 +3004,8 @@ class Store {
   }
 
   public getClientOneTimeBookings(clientId: string): ClientOneTimeBooking[] {
-    if (!this.db.clientOneTimeBookings) {
-      this.db.clientOneTimeBookings = [];
-    }
-    return this.db.clientOneTimeBookings.filter((b) => b.clientId === clientId);
+    const rows = this.sqlite.prepare('SELECT * FROM client_one_time_bookings WHERE client_id = ? ORDER BY booking_date_time DESC').all(clientId);
+    return rows.map(rowToClientOneTimeBooking);
   }
 
   public bookOneTimeService(
@@ -2720,10 +3070,41 @@ class Store {
       createdByStaffName: staffName,
     };
 
-    if (!this.db.clientOneTimeBookings) {
-      this.db.clientOneTimeBookings = [];
-    }
-    this.db.clientOneTimeBookings.unshift(booking);
+    this.sqlite.prepare(`
+      INSERT INTO client_one_time_bookings (
+        id, client_id, catalog_id, name, description, image_url,
+        full_price, deposit_amount, payment_status_at_booking, linked_package_id,
+        linked_coupon_id, coin_amount_used, remaining_amount_paid, booking_date_time,
+        end_date_time, branch, status, used_at, voided_at, voided_by, void_reason,
+        created_at, created_by_staff_id, created_by_staff_name
+      ) VALUES (
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, 0, ?,
+        ?, ?, ?, NULL, NULL, NULL, NULL,
+        ?, ?, ?
+      )
+    `).run(
+      booking.id,
+      booking.clientId,
+      booking.catalogId,
+      booking.name,
+      booking.description || null,
+      booking.imageUrl || null,
+      booking.fullPrice,
+      booking.depositAmount,
+      booking.paymentStatusAtBooking,
+      booking.linkedPackageId || null,
+      booking.linkedCouponId || null,
+      booking.coinAmountUsed || 0,
+      booking.bookingDateTime,
+      booking.endDateTime || null,
+      booking.branch,
+      booking.status,
+      booking.createdAt,
+      booking.createdByStaffId,
+      booking.createdByStaffName
+    );
 
     // Only award points on booking creation if paying real deposit in cash/deposit mode
     if (!isPrepaidOrFree && finalDeposit > 0) {
@@ -2773,11 +3154,9 @@ class Store {
     staffName: string,
     coinDiscountAmount?: number
   ): ClientOneTimeBooking {
-    if (!this.db.clientOneTimeBookings) {
-      this.db.clientOneTimeBookings = [];
-    }
-    const booking = this.db.clientOneTimeBookings.find((b) => b.id === bookingId);
-    if (!booking) throw new Error('Booking not found');
+    const row = this.sqlite.prepare('SELECT * FROM client_one_time_bookings WHERE id = ?').get(bookingId);
+    if (!row) throw new Error('Booking not found');
+    const booking = rowToClientOneTimeBooking(row);
     if (booking.status !== 'booked') throw new Error('Booking is not in a usable state');
 
     const previousData = { ...booking };
@@ -2862,6 +3241,18 @@ class Store {
     booking.status = 'used';
     booking.usedAt = new Date().toISOString();
 
+    this.sqlite.prepare(`
+      UPDATE client_one_time_bookings
+      SET status = ?, used_at = ?, coin_amount_used = ?, remaining_amount_paid = ?
+      WHERE id = ?
+    `).run(
+      booking.status,
+      booking.usedAt,
+      booking.coinAmountUsed || 0,
+      booking.remainingAmountPaid || 0,
+      booking.id
+    );
+
     let notifyDetail = '';
     if (booking.paymentStatusAtBooking === 'deposit' && (booking.remainingAmountPaid || 0) > 0) {
       notifyDetail = ` (ชำระส่วนที่เหลือ ฿${booking.remainingAmountPaid?.toLocaleString()})`;
@@ -2890,11 +3281,9 @@ class Store {
     staffName: string,
     reason: string
   ): ClientOneTimeBooking {
-    if (!this.db.clientOneTimeBookings) {
-      this.db.clientOneTimeBookings = [];
-    }
-    const booking = this.db.clientOneTimeBookings.find((b) => b.id === bookingId);
-    if (!booking) throw new Error('One-time booking not found');
+    const row = this.sqlite.prepare('SELECT * FROM client_one_time_bookings WHERE id = ?').get(bookingId);
+    if (!row) throw new Error('One-time booking not found');
+    const booking = rowToClientOneTimeBooking(row);
     if (booking.status === 'voided') throw new Error('This booking has already been voided');
 
     const previousData = { ...booking };
@@ -2902,6 +3291,18 @@ class Store {
     booking.voidedAt = new Date().toISOString();
     booking.voidedBy = staffName;
     booking.voidReason = reason || 'ยกเลิกรายการโดยผู้ดูแลระบบ';
+
+    this.sqlite.prepare(`
+      UPDATE client_one_time_bookings
+      SET status = ?, voided_at = ?, voided_by = ?, void_reason = ?
+      WHERE id = ?
+    `).run(
+      booking.status,
+      booking.voidedAt,
+      booking.voidedBy,
+      booking.voidReason,
+      booking.id
+    );
 
     // Reverse any points awarded for this booking
     const relatedPtsTxs = this.getAllPointsTransactions().filter(
@@ -2936,7 +3337,7 @@ class Store {
     this.getClients().forEach((c) => clientMap.set(c.id, c));
 
     // Process Packages
-    this.db.clientPackages.forEach((pkg) => {
+    this.getAllClientPackages().forEach((pkg) => {
       if (pkg.status === 'voided' || pkg.remainingSessions <= 0) return;
       const client = clientMap.get(pkg.clientId);
       if (!client) return;
@@ -2969,7 +3370,7 @@ class Store {
     });
 
     // Process Coupons
-    this.db.clientCoupons.forEach((cpn) => {
+    this.getAllClientCoupons().forEach((cpn) => {
       if (cpn.status === 'voided' || cpn.remainingQuantity <= 0) return;
       const client = clientMap.get(cpn.clientId);
       if (!client) return;
@@ -3012,13 +3413,26 @@ class Store {
     staffId: string,
     staffName: string
   ): ClientPackage {
-    const pkg = this.db.clientPackages.find((p) => p.id === packageId);
-    if (!pkg) throw new Error('Client package not found');
+    const row = this.sqlite.prepare('SELECT * FROM client_packages WHERE id = ?').get(packageId);
+    if (!row) throw new Error('Client package not found');
+    const pkg = rowToClientPackage(row);
 
     pkg.followUpStatus = followUpStatus;
     pkg.followUpNote = followUpNote;
     pkg.followUpUpdatedAt = new Date().toISOString();
     pkg.followUpUpdatedByStaffName = staffName;
+
+    this.sqlite.prepare(`
+      UPDATE client_packages
+      SET follow_up_status = ?, follow_up_note = ?, follow_up_updated_at = ?, follow_up_updated_by_staff_name = ?
+      WHERE id = ?
+    `).run(
+      pkg.followUpStatus,
+      pkg.followUpNote,
+      pkg.followUpUpdatedAt,
+      pkg.followUpUpdatedByStaffName,
+      pkg.id
+    );
 
     this.logAudit(
       staffId,
@@ -3041,13 +3455,26 @@ class Store {
     staffId: string,
     staffName: string
   ): ClientCoupon {
-    const cpn = this.db.clientCoupons.find((c) => c.id === couponId);
-    if (!cpn) throw new Error('Client coupon not found');
+    const row = this.sqlite.prepare('SELECT * FROM client_coupons WHERE id = ?').get(couponId);
+    if (!row) throw new Error('Client coupon not found');
+    const cpn = rowToClientCoupon(row);
 
     cpn.followUpStatus = followUpStatus;
     cpn.followUpNote = followUpNote;
     cpn.followUpUpdatedAt = new Date().toISOString();
     cpn.followUpUpdatedByStaffName = staffName;
+
+    this.sqlite.prepare(`
+      UPDATE client_coupons
+      SET follow_up_status = ?, follow_up_note = ?, follow_up_updated_at = ?, follow_up_updated_by_staff_name = ?
+      WHERE id = ?
+    `).run(
+      cpn.followUpStatus,
+      cpn.followUpNote,
+      cpn.followUpUpdatedAt,
+      cpn.followUpUpdatedByStaffName,
+      cpn.id
+    );
 
     this.logAudit(
       staffId,
@@ -3252,7 +3679,7 @@ class Store {
     }
 
     // 3. Auto-synthesize from Client Packages sold
-    for (const pkg of this.db.clientPackages) {
+    for (const pkg of this.getAllClientPackages()) {
       if (pkg.pricePaid && pkg.pricePaid > 0 && pkg.status !== 'voided') {
         const clientName = formatClientName(pkg.clientId);
         autoEntries.push({
@@ -3276,7 +3703,7 @@ class Store {
     }
 
     // 4. Auto-synthesize from Coupons sold (paid coupons only — exclude CRM Marketing Vouchers)
-    for (const cpn of this.db.clientCoupons) {
+    for (const cpn of this.getAllClientCoupons()) {
       if (cpn.pricePaid && cpn.pricePaid > 0 && !cpn.isCrmMarketingVoucher && cpn.status !== 'voided') {
         const clientName = formatClientName(cpn.clientId);
         autoEntries.push({
@@ -3300,8 +3727,7 @@ class Store {
     }
 
     // 5. Auto-synthesize from One-Time Service Bookings (deposits and remaining balance upon usage)
-    if (this.db.clientOneTimeBookings) {
-      for (const booking of this.db.clientOneTimeBookings) {
+    for (const booking of this.getAllRawOneTimeBookings()) {
         if (booking.status === 'voided') continue;
         const clientName = formatClientName(booking.clientId);
 
@@ -3368,7 +3794,6 @@ class Store {
           });
         }
       }
-    }
 
     // Combine & Sort descending by createdAt
     const all = [...manual, ...autoEntries];
@@ -3514,9 +3939,9 @@ class Store {
       this.sqlite.prepare('DELETE FROM clients').run();
       this.sqlite.prepare('DELETE FROM coin_wallets').run();
       this.sqlite.prepare('DELETE FROM points_wallets').run();
-      this.db.clientPackages = [];
-      this.db.clientCoupons = [];
-      this.db.clientOneTimeBookings = [];
+      this.sqlite.prepare('DELETE FROM client_packages').run();
+      this.sqlite.prepare('DELETE FROM client_coupons').run();
+      this.sqlite.prepare('DELETE FROM client_one_time_bookings').run();
       this.db.notifications = [];
     }
 
@@ -3635,6 +4060,10 @@ class Store {
       pointsWallets[c.id] = this.getPointsWallet(c.id);
     }
 
+    const allPackages = this.getAllClientPackages();
+    const allCoupons = this.getAllClientCoupons();
+    const allBookings = this.getAllRawOneTimeBookings();
+
     return {
       appName: 'Me.My.Mind Membership',
       backupTimestamp: timestamp,
@@ -3649,14 +4078,14 @@ class Store {
         ...c,
         coinBalance: coinWallets[c.id] || 0,
         pointsWallet: pointsWallets[c.id] || { totalPoints: 0, currentTier: 'Bronze' },
-        activePackagesCount: (this.db.clientPackages || []).filter((p) => p.clientId === c.id && p.status === 'active').length,
-        activeCouponsCount: (this.db.clientCoupons || []).filter((cpn) => cpn.clientId === c.id && cpn.status === 'active').length,
+        activePackagesCount: allPackages.filter((p) => p.clientId === c.id && p.status === 'active').length,
+        activeCouponsCount: allCoupons.filter((cpn) => cpn.clientId === c.id && cpn.status === 'active').length,
       })),
       coinWallets,
       pointsWallets,
-      clientPackages: this.db.clientPackages,
-      clientCoupons: this.db.clientCoupons,
-      clientOneTimeBookings: this.db.clientOneTimeBookings || [],
+      clientPackages: allPackages,
+      clientCoupons: allCoupons,
+      clientOneTimeBookings: allBookings,
       coinTransactions: allCoinTxs,
       pointsTransactions: allPointsTxs,
       financialEntries: this.db.financialEntries,
