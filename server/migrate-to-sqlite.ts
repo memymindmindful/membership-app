@@ -46,7 +46,8 @@ function runMigration() {
   // 2. Initialize SQLite Database and apply schema
   console.log(`Initializing SQLite database at: ${SQLITE_DB_FILE}`);
   const db = new Database(SQLITE_DB_FILE);
-  db.pragma('journal_mode = WAL');
+  db.pragma('journal_mode = DELETE');
+  db.pragma('mmap_size = 0');
   db.pragma('foreign_keys = ON');
 
   const schemaSql = fs.readFileSync(SCHEMA_FILE, 'utf-8');

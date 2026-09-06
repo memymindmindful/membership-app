@@ -726,7 +726,8 @@ class Store {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     const db = new Database(SQLITE_FILE);
-    db.pragma('journal_mode = WAL');
+    db.pragma('journal_mode = DELETE');
+    db.pragma('mmap_size = 0');
     db.pragma('foreign_keys = ON');
 
     if (fs.existsSync(SCHEMA_FILE)) {
