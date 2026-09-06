@@ -1,38 +1,23 @@
 # Multi-stage Dockerfile for Me.My.Mind Membership App
-
 # Stage 1: Build stage
-FROM node:20-alpine AS builder
-
+FROM node:20-slim AS builder
 WORKDIR /app
-
-# Install dependencies
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 COPY package*.json ./
-RUN npm install
-
-# Copy application code
+RUN npm install --build-from-source
 COPY . .
-
-# Build Vite client assets and esbuild server bundle
 RUN npm run build
 
 # Stage 2: Production runtime stage
-FROM node:20-alpine AS runner
-
+FROM node:20-slim AS runner
 WORKDIR /app
-
 ENV NODE_ENV=production
 ENV PORT=3000
-
-# Copy package files and install production dependencies
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 COPY package*.json ./
-RUN npm install --only=production
-
-# Copy compiled build output from builder stage
+RUN npm install --only=production --build-from-source
 COPY --from=builder /app/dist ./dist
-
-# Ensure persistent data directory exists
+COPY --from=builder /app/server/schema.sql ./server/schema.sql
 RUN mkdir -p /app/data
-
 EXPOSE 3000
-
 CMD ["node", "dist/server.cjs"]
