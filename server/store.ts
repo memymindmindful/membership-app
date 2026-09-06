@@ -792,11 +792,15 @@ class Store {
       if (fs.existsSync(DATA_FILE)) {
         const fileData = fs.readFileSync(DATA_FILE, 'utf-8');
         const parsed: any = JSON.parse(fileData);
+        const hadClientsOrEmployees = 'clients' in parsed || 'employees' in parsed;
+        delete parsed.clients;
+        delete parsed.employees;
         if (!parsed.clientOneTimeBookings) {
           parsed.clientOneTimeBookings = [];
         }
-        delete parsed.employees;
-        delete parsed.clients;
+        if (hadClientsOrEmployees) {
+          this.saveToDisk(parsed);
+        }
         return parsed as DatabaseSchema;
       }
     } catch (err) {
@@ -829,7 +833,7 @@ class Store {
         delete payload.employees;
         delete payload.clients;
 
-        fs.writeFile(DATA_FILE, JSON.stringify(payload), 'utf-8', (err) => {
+        fs.writeFile(DATA_FILE, JSON.stringify(payload, null, 2), 'utf-8', (err) => {
           if (err) {
             console.error('Failed to save store to disk:', err);
           }

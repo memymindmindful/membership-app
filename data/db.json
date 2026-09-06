@@ -1,81 +1,35 @@
 {
-  "employees": [
-    {
-      "id": "EMP-01",
-      "username": "admin",
-      "password": "admin123",
-      "displayName": "Khun Nat (Admin)",
-      "role": "admin",
-      "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
-    },
-    {
-      "id": "EMP-02",
-      "username": "manager",
-      "password": "manager123",
-      "displayName": "Khun May (Manager)",
-      "role": "manager",
-      "avatarUrl": "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80"
-    },
-    {
-      "id": "EMP-03",
-      "username": "staff",
-      "password": "staff123",
-      "displayName": "Khun Joy (Therapist Staff)",
-      "role": "staff",
-      "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80"
-    },
-    {
-      "id": "EMP-04",
-      "username": "accountant",
-      "password": "account123",
-      "displayName": "Khun Pim (Accountant)",
-      "role": "accountant",
-      "avatarUrl": "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=200&q=80"
-    }
-  ],
-  "clients": [
-    {
-      "id": "CLI-0001",
-      "memberCode": "MMM-0001",
-      "lineUserId": "U1001_SOMCHAI",
-      "displayName": "Khun Somchai Prasert",
-      "nickname": "Somchai",
-      "phone": "081-234-5678",
-      "birthday": "1988-05-15",
-      "profilePic": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
-      "notes": "Prefers medium pressure during facial massage",
-      "createdAt": "2026-08-07T01:33:08.529Z"
-    },
-    {
-      "id": "CLI-0002",
-      "memberCode": "MMM-0002",
-      "lineUserId": "U1002_ANANYA",
-      "displayName": "Khun Ananya Sukhumvit",
-      "nickname": "Ann",
-      "phone": "089-876-5432",
-      "birthday": "1993-11-20",
-      "profilePic": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80",
-      "notes": "Allergic to peppermint essential oil",
-      "createdAt": "2026-08-07T01:33:08.529Z"
-    },
-    {
-      "id": "CLI-0003",
-      "memberCode": "MMM-0003",
-      "lineUserId": "U1003_PATCHARA",
-      "displayName": "Khun Patchara Wong",
-      "nickname": "Pat",
-      "phone": "092-111-2233",
-      "birthday": "1995-02-10",
-      "profilePic": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
-      "createdAt": "2026-09-06T01:33:08.529Z"
-    }
-  ],
   "coinWallets": {
-    "CLI-0001": 3500,
+    "CLI-0001": 3600,
     "CLI-0002": 8000,
-    "CLI-0003": 500
+    "CLI-0003": 500,
+    "CLI-1788663039422": 100
   },
   "coinTransactions": [
+    {
+      "id": "TX-COIN-1788663401914",
+      "clientId": "CLI-0001",
+      "amount": 100,
+      "type": "credit_added",
+      "note": "Test verification top-up",
+      "isBonus": false,
+      "resultingBalance": 3600,
+      "createdByStaffId": "EMP-01",
+      "createdByStaffName": "Khun Nat (Admin)",
+      "createdAt": "2026-09-06T02:56:41.914Z"
+    },
+    {
+      "id": "TX-COIN-1788663039423",
+      "clientId": "CLI-1788663039422",
+      "amount": 100,
+      "type": "credit_added",
+      "note": "(Bonus Coins) Welcome Bonus Coins - สมาชิกใหม่ Me.My.Mind Membership รับฟรี 100 Bonus Coins",
+      "isBonus": true,
+      "resultingBalance": 100,
+      "createdByStaffId": "EMP-01",
+      "createdByStaffName": "Khun Nat (Admin)",
+      "createdAt": "2026-09-06T02:50:39.423Z"
+    },
     {
       "id": "TX-COIN-001",
       "clientId": "CLI-0001",
@@ -124,8 +78,8 @@
   "pointsWallets": {
     "CLI-0001": {
       "clientId": "CLI-0001",
-      "balance": 850,
-      "lifetimeEarned": 1100,
+      "balance": 851,
+      "lifetimeEarned": 1101,
       "lifetimeRedeemed": 250,
       "tier": "Silver"
     },
@@ -142,9 +96,29 @@
       "lifetimeEarned": 200,
       "lifetimeRedeemed": 0,
       "tier": "Bronze"
+    },
+    "CLI-1788663039422": {
+      "clientId": "CLI-1788663039422",
+      "balance": 0,
+      "lifetimeEarned": 0,
+      "lifetimeRedeemed": 0,
+      "tier": "Bronze"
     }
   },
   "pointsTransactions": [
+    {
+      "id": "TX-PTS-1788663401915",
+      "clientId": "CLI-0001",
+      "amount": 1,
+      "type": "points_earned",
+      "note": "สะสมคะแนนจากการเติมเงิน 100 บาท",
+      "sourceType": "coin_topup",
+      "relatedCoinTxId": "TX-COIN-1788663401914",
+      "resultingBalance": 851,
+      "createdByStaffId": "EMP-01",
+      "createdByStaffName": "Khun Nat (Admin)",
+      "createdAt": "2026-09-06T02:56:41.915Z"
+    },
     {
       "id": "TX-PTS-001",
       "clientId": "CLI-0001",
@@ -515,6 +489,33 @@
   ],
   "notifications": [
     {
+      "id": "NOTIF-1788663401938-402",
+      "clientId": "CLI-0001",
+      "title": "เติม Coin สำเร็จ",
+      "message": "บันทึกการรับชำระเงินและเติม +100 Coins เข้ากระเป๋าของคุณเรียบร้อยแล้ว ยอดคงเหลือปัจจุบันคือ 3,600 Coins",
+      "createdAt": "2026-09-06T02:56:41.938Z",
+      "read": false,
+      "reservedForLinePush": true
+    },
+    {
+      "id": "NOTIF-1788663401937-256",
+      "clientId": "CLI-0001",
+      "title": "ได้รับคะแนนสะสมใหม่",
+      "message": "คุณได้รับ +1 คะแนนสะสม! ยอดคะแนนสะสมรวมปัจจุบันคือ 851 คะแนน",
+      "createdAt": "2026-09-06T02:56:41.937Z",
+      "read": false,
+      "reservedForLinePush": true
+    },
+    {
+      "id": "NOTIF-1788663039442-843",
+      "clientId": "CLI-1788663039422",
+      "title": "คุณได้รับ Bonus Coins ฟรี!",
+      "message": "ยินดีด้วย! ร้านค้ามอบ +100 Bonus Coins ฟรีเข้าบัญชีของคุณเรียบร้อยแล้ว สามารถใช้แทนเงินสดในการรับบริการที่ร้านได้เลย",
+      "createdAt": "2026-09-06T02:50:39.442Z",
+      "read": false,
+      "reservedForLinePush": true
+    },
+    {
       "id": "NOTIF-001",
       "clientId": "CLI-0001",
       "title": "พนักงานยืนยันการเติม Coin",
@@ -543,6 +544,166 @@
     }
   ],
   "auditLogs": [
+    {
+      "id": "AUDIT-1788663401938-316",
+      "staffId": "EMP-01",
+      "staffName": "Khun Nat (Admin)",
+      "action": "ADD_COIN_CREDIT",
+      "entityType": "coin",
+      "entityId": "CLI-0001",
+      "previousData": {
+        "balance": 3500
+      },
+      "newData": {
+        "balance": 3600,
+        "amount": 100,
+        "isBonus": false
+      },
+      "reason": "Test verification top-up",
+      "timestamp": "2026-09-06T02:56:41.938Z"
+    },
+    {
+      "id": "AUDIT-1788663401938-518",
+      "staffId": "EMP-01",
+      "staffName": "Khun Nat (Admin)",
+      "action": "AWARD_POINTS",
+      "entityType": "points",
+      "entityId": "CLI-0001",
+      "previousData": null,
+      "newData": {
+        "clientId": "CLI-0001",
+        "balance": 851,
+        "lifetimeEarned": 1101,
+        "lifetimeRedeemed": 250,
+        "tier": "Silver"
+      },
+      "reason": "สะสมคะแนนจากการเติมเงิน 100 บาท",
+      "timestamp": "2026-09-06T02:56:41.938Z"
+    },
+    {
+      "id": "AUDIT-1788663046786-101",
+      "staffId": "EMP-01",
+      "staffName": "Khun Nat (Admin)",
+      "action": "DELETE_EMPLOYEE",
+      "entityType": "staff",
+      "entityId": "EMP-1788663046751",
+      "previousData": {
+        "id": "EMP-1788663046751",
+        "username": "teststaff",
+        "password": "password123",
+        "displayName": "Khun Test Staff Senior",
+        "role": "manager",
+        "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
+      },
+      "reason": "ลบบัญชีผู้ใช้งาน: Khun Test Staff Senior (manager)",
+      "timestamp": "2026-09-06T02:50:46.786Z"
+    },
+    {
+      "id": "AUDIT-1788663046783-411",
+      "staffId": "EMP-01",
+      "staffName": "Khun Nat (Admin)",
+      "action": "UPDATE_EMPLOYEE",
+      "entityType": "staff",
+      "entityId": "EMP-1788663046751",
+      "previousData": {
+        "id": "EMP-1788663046751",
+        "username": "teststaff",
+        "password": "password123",
+        "displayName": "Khun Test Staff",
+        "role": "staff",
+        "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
+      },
+      "newData": {
+        "id": "EMP-1788663046751",
+        "username": "teststaff",
+        "password": "password123",
+        "displayName": "Khun Test Staff Senior",
+        "role": "manager",
+        "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
+      },
+      "reason": "แก้ไขข้อมูลบัญชีผู้ใช้งาน: Khun Test Staff Senior (manager)",
+      "timestamp": "2026-09-06T02:50:46.783Z"
+    },
+    {
+      "id": "AUDIT-1788663046752-512",
+      "staffId": "EMP-01",
+      "staffName": "Khun Nat (Admin)",
+      "action": "CREATE_EMPLOYEE",
+      "entityType": "staff",
+      "entityId": "EMP-1788663046751",
+      "newData": {
+        "id": "EMP-1788663046751",
+        "username": "teststaff",
+        "password": "password123",
+        "displayName": "Khun Test Staff",
+        "role": "staff",
+        "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
+      },
+      "reason": "สร้างบัญชีผู้ใช้งานใหม่: Khun Test Staff (staff)",
+      "timestamp": "2026-09-06T02:50:46.752Z"
+    },
+    {
+      "id": "AUDIT-1788663039475-743",
+      "staffId": "EMP-01",
+      "staffName": "Khun Nat (Admin)",
+      "action": "DELETE_CLIENT_PERMANENTLY",
+      "entityType": "client",
+      "entityId": "CLI-1788663039422",
+      "previousData": {
+        "id": "CLI-1788663039422",
+        "memberCode": "MMM-0004",
+        "displayName": "Test SQLite Member",
+        "nickname": "Tester",
+        "phone": "099-999-8888",
+        "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
+        "notes": "Testing sqlite integration",
+        "createdAt": "2026-09-06T02:50:39.422Z",
+        "consentAccepted": false
+      },
+      "newData": null,
+      "reason": "ลบข้อมูลลูกค้าถาวร: Test SQLite Member (MMM-0004) | เหตุผล: Automated test cleanup",
+      "timestamp": "2026-09-06T02:50:39.475Z"
+    },
+    {
+      "id": "AUDIT-1788663039442-323",
+      "staffId": "EMP-01",
+      "staffName": "Khun Nat (Admin)",
+      "action": "ADD_BONUS_COINS",
+      "entityType": "coin",
+      "entityId": "CLI-1788663039422",
+      "previousData": {
+        "balance": 0
+      },
+      "newData": {
+        "balance": 100,
+        "amount": 100,
+        "isBonus": true
+      },
+      "reason": "Welcome Bonus Coins - สมาชิกใหม่ Me.My.Mind Membership รับฟรี 100 Bonus Coins",
+      "timestamp": "2026-09-06T02:50:39.442Z"
+    },
+    {
+      "id": "AUDIT-1788663039423-106",
+      "staffId": "EMP-01",
+      "staffName": "Khun Nat (Admin)",
+      "action": "CREATE_CLIENT",
+      "entityType": "client",
+      "entityId": "CLI-1788663039422",
+      "previousData": null,
+      "newData": {
+        "id": "CLI-1788663039422",
+        "memberCode": "MMM-0004",
+        "displayName": "Test SQLite Member",
+        "nickname": "Tester",
+        "phone": "099-999-8888",
+        "profilePic": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
+        "notes": "Testing sqlite integration",
+        "createdAt": "2026-09-06T02:50:39.422Z",
+        "consentAccepted": false
+      },
+      "reason": "New client registered",
+      "timestamp": "2026-09-06T02:50:39.423Z"
+    },
     {
       "id": "AUDIT-001",
       "staffId": "EMP-02",
@@ -575,6 +736,23 @@
     }
   ],
   "financialEntries": [
+    {
+      "id": "FIN-EXP-1788663039424-936",
+      "type": "expense",
+      "category": "marketing",
+      "categoryNameTh": "ค่าใช้จ่าย Bonus Coins (CRM Marketing)",
+      "title": "แจก Bonus Coins ให้ลูกค้า: Test SQLite Member",
+      "amount": 100,
+      "date": "2026-09-06",
+      "note": "Bonus Coins CRM Marketing: Welcome Bonus Coins - สมาชิกใหม่ Me.My.Mind Membership รับฟรี 100 Bonus Coins",
+      "clientId": "CLI-1788663039422",
+      "clientName": "Test SQLite Member",
+      "sourceTxId": "TX-COIN-1788663039423",
+      "createdByStaffId": "EMP-01",
+      "createdByStaffName": "Khun Nat (Admin)",
+      "createdAt": "2026-09-06T02:50:39.424Z",
+      "isAutoGenerated": true
+    },
     {
       "id": "FIN-001",
       "type": "income",
