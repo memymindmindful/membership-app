@@ -4,6 +4,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import Database from 'better-sqlite3';
 import {
   AuditLog,
   CatalogItem,
@@ -28,10 +29,38 @@ import { getTierFromPoints } from '../src/lib/translations';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DATA_FILE = path.join(DATA_DIR, 'db.json');
+const SQLITE_FILE = path.join(DATA_DIR, 'membership.db');
+const SCHEMA_FILE = path.join(process.cwd(), 'server', 'schema.sql');
+
+function rowToEmployee(row: any): Employee {
+  return {
+    id: row.id,
+    username: row.username,
+    password: row.password || '',
+    displayName: row.display_name,
+    role: row.role as any,
+    avatarUrl: row.avatar_url || undefined,
+  };
+}
+
+function rowToClient(row: any): Client {
+  return {
+    id: row.id,
+    memberCode: row.member_code,
+    lineUserId: row.line_user_id || undefined,
+    displayName: row.display_name,
+    nickname: row.nickname || undefined,
+    phone: row.phone || undefined,
+    birthday: row.birthday || undefined,
+    profilePic: row.profile_pic || undefined,
+    notes: row.notes || undefined,
+    createdAt: row.created_at,
+    consentAccepted: Boolean(row.consent_accepted),
+    consentAcceptedAt: row.consent_accepted_at || undefined,
+  };
+}
 
 interface DatabaseSchema {
-  employees: Employee[];
-  clients: Client[];
   coinWallets: Record<string, number>; // clientId -> balance
   coinTransactions: CoinTransaction[];
   pointsWallets: Record<string, PointsWallet>; // clientId -> wallet
@@ -66,14 +95,8 @@ interface DatabaseSchema {
   };
 }
 
-// Initial Seed Data
-function getInitialData(): DatabaseSchema {
-  const now = new Date().toISOString();
-  const pastDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const nearExpiryDate = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(); // 4 days from now
-  const farExpiryDate = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString();
-
-  const employees: Employee[] = [
+function getInitialEmployees(): Employee[] {
+  return [
     {
       id: 'EMP-01',
       username: 'admin',
@@ -107,8 +130,11 @@ function getInitialData(): DatabaseSchema {
       avatarUrl: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=200&q=80',
     },
   ];
+}
 
-  const clients: Client[] = [
+function getInitialClients(): Client[] {
+  const pastDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  return [
     {
       id: 'CLI-0001',
       memberCode: 'MMM-0001',
@@ -120,6 +146,7 @@ function getInitialData(): DatabaseSchema {
       profilePic: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
       notes: 'Prefers medium pressure during facial massage',
       createdAt: pastDate,
+      consentAccepted: false,
     },
     {
       id: 'CLI-0002',
@@ -132,6 +159,7 @@ function getInitialData(): DatabaseSchema {
       profilePic: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
       notes: 'Allergic to peppermint essential oil',
       createdAt: pastDate,
+      consentAccepted: false,
     },
     {
       id: 'CLI-0003',
@@ -142,9 +170,19 @@ function getInitialData(): DatabaseSchema {
       phone: '092-111-2233',
       birthday: '1995-02-10',
       profilePic: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
-      createdAt: now,
+      notes: '',
+      createdAt: new Date().toISOString(),
+      consentAccepted: false,
     },
   ];
+}
+
+// Initial Seed Data
+function getInitialData(): DatabaseSchema {
+  const now = new Date().toISOString();
+  const pastDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const nearExpiryDate = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(); // 4 days from now
+  const farExpiryDate = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString();
 
   const coinWallets: Record<string, number> = {
     'CLI-0001': 3500,
@@ -656,8 +694,6 @@ function getInitialData(): DatabaseSchema {
   ];
 
   return {
-    employees,
-    clients,
     coinWallets,
     coinTransactions,
     pointsWallets,
@@ -675,12 +711,77 @@ function getInitialData(): DatabaseSchema {
 
 class Store {
   private db: DatabaseSchema;
+  private sqlite: Database.Database;
   private saveDiskTimer: NodeJS.Timeout | null = null;
   private pendingSaveData: DatabaseSchema | null = null;
 
   constructor() {
+    this.sqlite = this.initSqlite();
     this.db = this.loadFromDisk();
     this.refreshItemStatuses();
+  }
+
+  private initSqlite(): Database.Database {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const db = new Database(SQLITE_FILE);
+    db.pragma('journal_mode = WAL');
+    db.pragma('foreign_keys = ON');
+
+    if (fs.existsSync(SCHEMA_FILE)) {
+      const schemaSql = fs.readFileSync(SCHEMA_FILE, 'utf-8');
+      db.exec(schemaSql);
+    }
+
+    // Ensure initial employees exist if table is empty
+    const empCount = db.prepare('SELECT count(*) as count FROM employees').get() as { count: number };
+    if (!empCount || empCount.count === 0) {
+      const initialEmps = getInitialEmployees();
+      const insertStmt = db.prepare(`
+        INSERT OR REPLACE INTO employees (id, username, password, display_name, role, avatar_url)
+        VALUES (@id, @username, @password, @displayName, @role, @avatarUrl)
+      `);
+      for (const emp of initialEmps) {
+        insertStmt.run({
+          id: emp.id,
+          username: emp.username,
+          password: emp.password || null,
+          displayName: emp.displayName,
+          role: emp.role,
+          avatarUrl: emp.avatarUrl || null,
+        });
+      }
+    }
+
+    // Ensure initial clients exist if table is empty
+    const clientCount = db.prepare('SELECT count(*) as count FROM clients').get() as { count: number };
+    if (!clientCount || clientCount.count === 0) {
+      const initialClients = getInitialClients();
+      const insertClient = db.prepare(`
+        INSERT OR REPLACE INTO clients (
+          id, member_code, line_user_id, display_name, nickname, phone,
+          birthday, profile_pic, notes, created_at, consent_accepted, consent_accepted_at
+        )
+        VALUES (@id, @memberCode, @lineUserId, @displayName, @nickname, @phone, @birthday, @profilePic, @notes, @createdAt, 0, NULL)
+      `);
+      for (const c of initialClients) {
+        insertClient.run({
+          id: c.id,
+          memberCode: c.memberCode,
+          lineUserId: c.lineUserId || null,
+          displayName: c.displayName,
+          nickname: c.nickname || null,
+          phone: c.phone || null,
+          birthday: c.birthday || null,
+          profilePic: c.profilePic || null,
+          notes: c.notes || null,
+          createdAt: c.createdAt,
+        });
+      }
+    }
+
+    return db;
   }
 
   private loadFromDisk(): DatabaseSchema {
@@ -690,23 +791,13 @@ class Store {
       }
       if (fs.existsSync(DATA_FILE)) {
         const fileData = fs.readFileSync(DATA_FILE, 'utf-8');
-        const parsed: DatabaseSchema = JSON.parse(fileData);
+        const parsed: any = JSON.parse(fileData);
         if (!parsed.clientOneTimeBookings) {
           parsed.clientOneTimeBookings = [];
         }
-        // Ensure employees list exists and includes initial roles if empty
-        if (!parsed.employees || parsed.employees.length === 0) {
-          parsed.employees = getInitialData().employees;
-        } else {
-          // Merge initial roles if missing
-          const initialEmps = getInitialData().employees;
-          initialEmps.forEach((initEmp) => {
-            if (!parsed.employees.some((e) => e.username.toLowerCase() === initEmp.username.toLowerCase())) {
-              parsed.employees.push(initEmp);
-            }
-          });
-        }
-        return parsed;
+        delete parsed.employees;
+        delete parsed.clients;
+        return parsed as DatabaseSchema;
       }
     } catch (err) {
       console.error('Failed to load db.json, initializing fresh store:', err);
@@ -734,7 +825,11 @@ class Store {
         if (!fs.existsSync(DATA_DIR)) {
           fs.mkdirSync(DATA_DIR, { recursive: true });
         }
-        fs.writeFile(DATA_FILE, JSON.stringify(dataToSave), 'utf-8', (err) => {
+        const payload: any = { ...dataToSave };
+        delete payload.employees;
+        delete payload.clients;
+
+        fs.writeFile(DATA_FILE, JSON.stringify(payload), 'utf-8', (err) => {
           if (err) {
             console.error('Failed to save store to disk:', err);
           }
@@ -835,16 +930,21 @@ class Store {
 
   // Employees
   public getEmployees(): Employee[] {
-    return this.db.employees;
+    const rows = this.sqlite.prepare('SELECT * FROM employees ORDER BY id ASC').all();
+    return rows.map(rowToEmployee);
+  }
+
+  public getEmployeeById(id: string): Employee | undefined {
+    if (!id || typeof id !== 'string') return undefined;
+    const row = this.sqlite.prepare('SELECT * FROM employees WHERE id = ?').get(id);
+    return row ? rowToEmployee(row) : undefined;
   }
 
   public verifyStaffPinAndGetStaff(pin: string): Employee | null {
     if (!pin || typeof pin !== 'string') return null;
     const trimmed = pin.trim();
-    const emp = this.db.employees.find(
-      (e) => e.password === trimmed || e.id === trimmed
-    );
-    return emp || null;
+    const row = this.sqlite.prepare('SELECT * FROM employees WHERE password = ? OR id = ?').get(trimmed, trimmed);
+    return row ? rowToEmployee(row) : null;
   }
 
   public createEmployee(
@@ -852,9 +952,7 @@ class Store {
     staffId: string,
     staffName: string
   ): Employee {
-    const existing = this.db.employees.find(
-      (e) => e.username.toLowerCase() === (empData.username || '').trim().toLowerCase()
-    );
+    const existing = this.sqlite.prepare('SELECT id FROM employees WHERE LOWER(username) = LOWER(?)').get((empData.username || '').trim());
     if (existing) {
       throw new Error(`ชื่อผู้ใช้งาน (Username) "${empData.username}" มีอยู่ในระบบแล้ว`);
     }
@@ -868,7 +966,18 @@ class Store {
       avatarUrl: empData.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
     };
 
-    this.db.employees.push(newEmp);
+    this.sqlite.prepare(`
+      INSERT INTO employees (id, username, password, display_name, role, avatar_url)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      newEmp.id,
+      newEmp.username,
+      newEmp.password || null,
+      newEmp.displayName,
+      newEmp.role,
+      newEmp.avatarUrl || null
+    );
+
     this.logAudit(
       staffId,
       staffName,
@@ -889,18 +998,14 @@ class Store {
     staffId: string,
     staffName: string
   ): Employee {
-    const index = this.db.employees.findIndex((e) => e.id === id);
-    if (index === -1) {
+    const current = this.getEmployeeById(id);
+    if (!current) {
       throw new Error('Employee not found');
     }
 
-    const current = this.db.employees[index];
-
     // Check username uniqueness if changed
     if (empData.username && empData.username.toLowerCase() !== current.username.toLowerCase()) {
-      const exists = this.db.employees.some(
-        (e) => e.id !== id && e.username.toLowerCase() === empData.username!.trim().toLowerCase()
-      );
+      const exists = this.sqlite.prepare('SELECT id FROM employees WHERE id != ? AND LOWER(username) = LOWER(?)').get(id, empData.username.trim());
       if (exists) {
         throw new Error(`ชื่อผู้ใช้งาน "${empData.username}" มีอยู่ในระบบแล้ว`);
       }
@@ -915,7 +1020,19 @@ class Store {
       avatarUrl: empData.avatarUrl !== undefined ? empData.avatarUrl : current.avatarUrl,
     };
 
-    this.db.employees[index] = updated;
+    this.sqlite.prepare(`
+      UPDATE employees
+      SET username = ?, password = ?, display_name = ?, role = ?, avatar_url = ?
+      WHERE id = ?
+    `).run(
+      updated.username,
+      updated.password || null,
+      updated.displayName,
+      updated.role,
+      updated.avatarUrl || null,
+      id
+    );
+
     this.logAudit(
       staffId,
       staffName,
@@ -931,20 +1048,21 @@ class Store {
   }
 
   public deleteEmployee(id: string, staffId: string, staffName: string): boolean {
-    const current = this.db.employees.find((e) => e.id === id);
+    const current = this.getEmployeeById(id);
     if (!current) {
       throw new Error('Employee not found');
     }
 
     // Prevent deleting the last admin
     if (current.role === 'admin') {
-      const adminCount = this.db.employees.filter((e) => e.role === 'admin').length;
-      if (adminCount <= 1) {
+      const adminCountRow = this.sqlite.prepare("SELECT count(*) as count FROM employees WHERE role = 'admin'").get() as { count: number };
+      if (!adminCountRow || adminCountRow.count <= 1) {
         throw new Error('ไม่สามารถลบบัญชี Admin คนสุดท้ายของระบบได้');
       }
     }
 
-    this.db.employees = this.db.employees.filter((e) => e.id !== id);
+    this.sqlite.prepare('DELETE FROM employees WHERE id = ?').run(id);
+
     this.logAudit(
       staffId,
       staffName,
@@ -966,12 +1084,11 @@ class Store {
     staffId: string,
     staffName: string
   ): boolean {
-    const index = this.db.employees.findIndex((e) => e.id === id);
-    if (index === -1) {
+    const current = this.getEmployeeById(id);
+    if (!current) {
       throw new Error('ไม่พบบัญชีผู้ใช้งานในระบบ');
     }
 
-    const current = this.db.employees[index];
     if (current.password && current.password !== oldPassword) {
       throw new Error('รหัสผ่านเดิมไม่ถูกต้อง');
     }
@@ -980,8 +1097,8 @@ class Store {
       throw new Error('รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 4 ตัวอักษร');
     }
 
-    current.password = newPassword.trim();
-    this.db.employees[index] = current;
+    const updatedPassword = newPassword.trim();
+    this.sqlite.prepare('UPDATE employees SET password = ? WHERE id = ?').run(updatedPassword, id);
 
     this.logAudit(
       staffId,
@@ -999,7 +1116,8 @@ class Store {
 
   // Clients
   public getClients(): Client[] {
-    return this.db.clients;
+    const rows = this.sqlite.prepare('SELECT * FROM clients ORDER BY rowid DESC').all();
+    return rows.map(rowToClient);
   }
 
   public getAllClientsExportData() {
@@ -1007,7 +1125,7 @@ class Store {
     const now = new Date();
     const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    return this.db.clients.map((client) => {
+    return this.getClients().map((client) => {
       const coinBalance = this.getCoinBalance(client.id);
       const pointsWallet = this.getPointsWallet(client.id);
       const packages = this.db.clientPackages.filter((p) => p.clientId === client.id);
@@ -1049,7 +1167,13 @@ class Store {
   }
 
   public getClientById(id: string): Client | undefined {
-    return this.db.clients.find((c) => c.id === id || c.memberCode === id || c.lineUserId === id);
+    if (!id || typeof id !== 'string') return undefined;
+    const row = this.sqlite.prepare(`
+      SELECT * FROM clients
+      WHERE id = ? OR member_code = ? OR line_user_id = ?
+      LIMIT 1
+    `).get(id, id, id);
+    return row ? rowToClient(row) : undefined;
   }
 
   public getClientByLineUserId(lineUserId: string): Client | undefined {
@@ -1057,7 +1181,8 @@ class Store {
       return undefined;
     }
     const cleanId = lineUserId.trim();
-    return this.db.clients.find((c) => c.lineUserId && c.lineUserId.trim() === cleanId);
+    const row = this.sqlite.prepare('SELECT * FROM clients WHERE line_user_id = ? LIMIT 1').get(cleanId);
+    return row ? rowToClient(row) : undefined;
   }
 
   public findOrCreateClientByLineProfile(lineProfile: {
@@ -1080,7 +1205,11 @@ class Store {
         updated = true;
       }
       if (updated) {
-        this.saveToDisk();
+        this.sqlite.prepare(`
+          UPDATE clients
+          SET profile_pic = ?, display_name = ?
+          WHERE id = ?
+        `).run(client.profilePic || null, client.displayName, client.id);
       }
       return client;
     }
@@ -1101,9 +1230,10 @@ class Store {
 
   public createClient(clientData: Partial<Client>, staffId: string, staffName: string): Client {
     // Collect all existing member codes to find the smallest unused sequential number
+    const rows = this.sqlite.prepare('SELECT member_code FROM clients').all() as { member_code: string }[];
     const usedNumbers = new Set<number>();
-    for (const c of this.db.clients) {
-      const match = c.memberCode?.match(/^MMM-(\d+)$/);
+    for (const r of rows) {
+      const match = r.member_code?.match(/^MMM-(\d+)$/);
       if (match) {
         usedNumbers.add(parseInt(match[1], 10));
       }
@@ -1124,9 +1254,28 @@ class Store {
       profilePic: clientData.profilePic || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
       notes: clientData.notes || '',
       createdAt: new Date().toISOString(),
+      consentAccepted: false,
     };
 
-    this.db.clients.unshift(newClient);
+    this.sqlite.prepare(`
+      INSERT INTO clients (
+        id, member_code, line_user_id, display_name, nickname, phone,
+        birthday, profile_pic, notes, created_at, consent_accepted, consent_accepted_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL)
+    `).run(
+      newClient.id,
+      newClient.memberCode,
+      newClient.lineUserId || null,
+      newClient.displayName,
+      newClient.nickname || null,
+      newClient.phone || null,
+      newClient.birthday || null,
+      newClient.profilePic || null,
+      newClient.notes || null,
+      newClient.createdAt
+    );
+
     this.db.coinWallets[newClient.id] = 0;
     this.db.pointsWallets[newClient.id] = {
       clientId: newClient.id,
@@ -1157,7 +1306,7 @@ class Store {
   }
 
   public deleteClientPermanently(clientId: string, staffId: string, staffName: string, reason: string): void {
-    const client = this.db.clients.find((c) => c.id === clientId);
+    const client = this.getClientById(clientId);
     if (!client) {
       throw new Error('ไม่พบข้อมูลลูกค้ารายนี้');
     }
@@ -1174,8 +1323,8 @@ class Store {
       null
     );
 
-    // Remove client record only - preserve transactions/financial/history for auditing
-    this.db.clients = this.db.clients.filter((c) => c.id !== clientId);
+    // Remove client record from SQLite
+    this.sqlite.prepare('DELETE FROM clients WHERE id = ?').run(client.id);
     this.saveToDisk();
   }
 
@@ -1185,7 +1334,7 @@ class Store {
     staffId: string = 'SYSTEM_USER',
     staffName: string = 'Member Self Service'
   ): Client {
-    const client = this.db.clients.find((c) => c.id === clientId || c.memberCode === clientId);
+    const client = this.getClientById(clientId);
     if (!client) {
       throw new Error('ไม่พบข้อมูลลูกค้ารายนี้');
     }
@@ -1196,7 +1345,8 @@ class Store {
     // check if there's an existing staff-created profile with this phone number but no lineUserId yet.
     if (trimmedPhone && client.lineUserId) {
       const normalizedInput = trimmedPhone.replace(/[^0-9]/g, '');
-      const existingWithPhone = this.db.clients.find(
+      const allClients = this.getClients();
+      const existingWithPhone = allClients.find(
         (c) =>
           c.id !== client.id &&
           c.phone &&
@@ -1214,11 +1364,21 @@ class Store {
           existingWithPhone.displayName = profileData.displayName.trim();
         }
 
-        // Remove the temporary auto-created client profile
-        const index = this.db.clients.findIndex((c) => c.id === client.id);
-        if (index !== -1) {
-          this.db.clients.splice(index, 1);
-        }
+        this.sqlite.prepare(`
+          UPDATE clients
+          SET line_user_id = ?, profile_pic = ?, birthday = ?, nickname = ?, display_name = ?
+          WHERE id = ?
+        `).run(
+          existingWithPhone.lineUserId || null,
+          existingWithPhone.profilePic || null,
+          existingWithPhone.birthday || null,
+          existingWithPhone.nickname || null,
+          existingWithPhone.displayName,
+          existingWithPhone.id
+        );
+
+        // Remove the temporary auto-created client profile from SQLite
+        this.sqlite.prepare('DELETE FROM clients WHERE id = ?').run(client.id);
 
         this.logAudit(
           staffId,
@@ -1243,6 +1403,18 @@ class Store {
     if (profileData.nickname !== undefined) client.nickname = profileData.nickname.trim();
     if (profileData.displayName !== undefined && profileData.displayName.trim()) client.displayName = profileData.displayName.trim();
 
+    this.sqlite.prepare(`
+      UPDATE clients
+      SET phone = ?, birthday = ?, nickname = ?, display_name = ?
+      WHERE id = ?
+    `).run(
+      client.phone || null,
+      client.birthday || null,
+      client.nickname || null,
+      client.displayName,
+      client.id
+    );
+
     this.logAudit(
       staffId,
       staffName,
@@ -1264,12 +1436,14 @@ class Store {
     staffId: string,
     staffName: string
   ): Client {
-    const client = this.db.clients.find((c) => c.id === clientId || c.memberCode === clientId);
+    const client = this.getClientById(clientId);
     if (!client) {
       throw new Error('ไม่พบข้อมูลลูกค้ารายนี้');
     }
     const oldNotes = client.notes || '';
     client.notes = notes ? notes.trim() : '';
+
+    this.sqlite.prepare('UPDATE clients SET notes = ? WHERE id = ?').run(client.notes || null, client.id);
 
     this.logAudit(
       staffId,
@@ -1286,12 +1460,19 @@ class Store {
   }
 
   public acceptConsent(clientId: string): Client {
-    const client = this.db.clients.find((c) => c.id === clientId || c.memberCode === clientId);
+    const client = this.getClientById(clientId);
     if (!client) {
       throw new Error('ไม่พบข้อมูลลูกค้ารายนี้');
     }
     client.consentAccepted = true;
     client.consentAcceptedAt = new Date().toISOString();
+
+    this.sqlite.prepare(`
+      UPDATE clients
+      SET consent_accepted = 1, consent_accepted_at = ?
+      WHERE id = ?
+    `).run(client.consentAcceptedAt, client.id);
+
     this.saveToDisk();
     return client;
   }
@@ -1340,7 +1521,7 @@ class Store {
 
     this.db.coinTransactions.unshift(tx);
 
-    const client = this.db.clients.find((c) => c.id === clientId || c.memberCode === clientId);
+    const client = this.getClientById(clientId);
 
     if (isBonus) {
       // Bonus Coins do NOT count as company revenue!
@@ -2068,7 +2249,7 @@ class Store {
     return this.db.clientOneTimeBookings
       .filter((b) => b.status === 'booked' && new Date(b.bookingDateTime) >= now)
       .map((b) => {
-        const client = this.db.clients.find((c) => c.id === b.clientId);
+        const client = this.getClientById(b.clientId);
         return {
           ...b,
           clientName: client ? `${client.displayName}${client.nickname ? ` (${client.nickname})` : ''}` : 'ไม่พบข้อมูลลูกค้า',
@@ -2092,7 +2273,7 @@ class Store {
     remainingSessions: number;
     expiryDate: string;
   }> {
-    if (!this.db.clientPackages || !this.db.clients) return [];
+    if (!this.db.clientPackages) return [];
     const result: Array<{
       packageId: string;
       clientId: string;
@@ -2105,7 +2286,8 @@ class Store {
       remainingSessions: number;
       expiryDate: string;
     }> = [];
-    for (const client of this.db.clients) {
+    const allClients = this.getClients();
+    for (const client of allClients) {
       const packages = this.db.clientPackages.filter(
         (p) => p.clientId === client.id && (p.status === 'active' || p.status === 'expiring_soon')
       );
@@ -2449,7 +2631,7 @@ class Store {
     const nowMs = Date.now();
 
     const clientMap = new Map<string, Client>();
-    this.db.clients.forEach((c) => clientMap.set(c.id, c));
+    this.getClients().forEach((c) => clientMap.set(c.id, c));
 
     // Process Packages
     this.db.clientPackages.forEach((pkg) => {
@@ -2658,7 +2840,7 @@ class Store {
 
     // Helper to format client name safely
     const formatClientName = (clientId: string): string => {
-      const client = this.db.clients.find((c) => c.id === clientId);
+      const client = this.getClientById(clientId);
       if (!client) return 'ไม่พบข้อมูลลูกค้า (ถูกลบแล้ว)';
       return `${client.displayName}${client.nickname ? ` (${client.nickname})` : ''}`;
     };
@@ -2977,7 +3159,7 @@ class Store {
     targets: { deleteClients?: boolean; deleteCatalog?: boolean; deleteTransactions?: boolean }
   ) {
     // 1. Check staff exists and is admin
-    const emp = this.db.employees.find((e) => e.id === staffId);
+    const emp = this.getEmployeeById(staffId);
     if (!emp) {
       throw new Error('ไม่พบข้อมูลบัญชีพนักงาน');
     }
@@ -2998,8 +3180,9 @@ class Store {
 
     // 3. Purge Clients
     if (targets.deleteClients) {
-      counts.clients = this.db.clients.length;
-      this.db.clients = [];
+      const countRow = this.sqlite.prepare('SELECT count(*) as count FROM clients').get() as { count: number };
+      counts.clients = countRow ? countRow.count : 0;
+      this.sqlite.prepare('DELETE FROM clients').run();
       this.db.coinWallets = {};
       this.db.pointsWallets = {};
       this.db.clientPackages = [];
@@ -3106,17 +3289,18 @@ class Store {
 
   public getFullBackupData() {
     const timestamp = new Date().toISOString();
+    const allClients = this.getClients();
     return {
       appName: 'Me.My.Mind Membership',
       backupTimestamp: timestamp,
       summary: {
-        totalClients: this.db.clients.length,
+        totalClients: allClients.length,
         totalCoinTransactions: this.db.coinTransactions ? this.db.coinTransactions.length : 0,
         totalPointsTransactions: this.db.pointsTransactions ? this.db.pointsTransactions.length : 0,
         totalFinancialEntries: this.db.financialEntries ? this.db.financialEntries.length : 0,
         totalCatalogItems: this.db.catalogItems.length,
       },
-      clients: this.db.clients.map((c) => ({
+      clients: allClients.map((c) => ({
         ...c,
         coinBalance: this.db.coinWallets[c.id] || 0,
         pointsWallet: this.db.pointsWallets[c.id] || { totalPoints: 0, currentTier: 'SILVER' },
