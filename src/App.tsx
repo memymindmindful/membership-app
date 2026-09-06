@@ -124,7 +124,31 @@ export default function App() {
   };
 
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [currentStaff, setCurrentStaff] = useState<Employee | null>(null);
+  const [currentStaff, setCurrentStaff] = useState<Employee | null>(() => {
+    try {
+      const saved = localStorage.getItem('mmm_logged_in_staff');
+      const token = localStorage.getItem('mmm_staff_token');
+      if (saved && token) {
+        return JSON.parse(saved);
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    if (currentStaff) {
+      try {
+        localStorage.setItem('mmm_logged_in_staff', JSON.stringify(currentStaff));
+      } catch (e) {
+        console.warn('Failed to save staff to localStorage:', e);
+      }
+    } else {
+      localStorage.removeItem('mmm_logged_in_staff');
+      localStorage.removeItem('mmm_staff_token');
+    }
+  }, [currentStaff]);
 
   const [allClients, setAllClients] = useState<Client[]>([]);
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
@@ -190,8 +214,8 @@ export default function App() {
         }
       }
 
-      // Check if there is a previously verified session in sessionStorage
-      const storedClientId = sessionStorage.getItem('mmm_logged_in_client_id');
+      // Check if there is a previously verified session in localStorage
+      const storedClientId = localStorage.getItem('mmm_logged_in_client_id');
       if (storedClientId) {
         try {
           const restoredData = await api.getClientById(storedClientId);
@@ -200,9 +224,10 @@ export default function App() {
             setClientData(restoredData);
           }
         } catch (e) {
-          console.warn('Could not restore client session from sessionStorage:', e);
-          sessionStorage.removeItem('mmm_logged_in_client_id');
-          sessionStorage.removeItem('mmm_logged_in_line_user_id');
+          console.warn('Could not restore client session from localStorage:', e);
+          localStorage.removeItem('mmm_logged_in_client_id');
+          localStorage.removeItem('mmm_logged_in_line_user_id');
+          localStorage.removeItem('mmm_session_token');
         }
       } else if (isDemoMode && clientList.length > 0) {
         // Default to first client ONLY for explicit web demo mode (?demo=true)
@@ -303,9 +328,11 @@ export default function App() {
     try {
       setIsLiffInitializing(true);
       setLiffError(null);
-      // Immediately reset client state to null before token retrieval or login verification
-      setCurrentClient(null);
-      setClientData(null);
+      const hasStoredClient = !!localStorage.getItem('mmm_logged_in_client_id');
+      if (!hasStoredClient) {
+        setCurrentClient(null);
+        setClientData(null);
+      }
 
       await liff.init({ liffId });
       setIsLiffApp(true);
@@ -324,10 +351,10 @@ export default function App() {
           setCurrentClient(fullData.client);
           setClientData(fullData);
           if (fullData.token || fullData.sessionToken) {
-            sessionStorage.setItem('mmm_session_token', fullData.token || fullData.sessionToken || '');
+            localStorage.setItem('mmm_session_token', fullData.token || fullData.sessionToken || '');
           }
-          sessionStorage.setItem('mmm_logged_in_client_id', fullData.client.id);
-          sessionStorage.setItem('mmm_logged_in_line_user_id', fullData.client.lineUserId || profile.userId);
+          localStorage.setItem('mmm_logged_in_client_id', fullData.client.id);
+          localStorage.setItem('mmm_logged_in_line_user_id', fullData.client.lineUserId || profile.userId);
           if (!window.location.search.includes('staff=true')) {
             setViewMode('customer');
           }
@@ -335,9 +362,11 @@ export default function App() {
           setIsLiffLoggedIn(false);
         }
       } else {
-        // Clear stale client data if user is not logged into LINE
-        setCurrentClient(null);
-        setClientData(null);
+        // Clear stale client data if user is not logged into LINE and no stored session
+        if (!hasStoredClient) {
+          setCurrentClient(null);
+          setClientData(null);
+        }
         setIsLiffLoggedIn(false);
         // User is not logged into LINE yet
         // NEVER auto-trigger liff.login() inside an iframe or external web preview,

@@ -39,8 +39,8 @@ export interface FullClientData {
 }
 
 function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
-  const staffToken = sessionStorage.getItem('mmm_staff_token');
-  const token = staffToken || sessionStorage.getItem('mmm_session_token');
+  const staffToken = localStorage.getItem('mmm_staff_token');
+  const token = staffToken || localStorage.getItem('mmm_session_token');
   const headers: Record<string, string> = { ...extraHeaders };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -64,7 +64,7 @@ export const api = {
     }
     const data = await res.json();
     if (data.staffToken) {
-      sessionStorage.setItem('mmm_staff_token', data.staffToken);
+      localStorage.setItem('mmm_staff_token', data.staffToken);
     }
     return data;
   },

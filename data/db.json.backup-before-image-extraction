@@ -1,0 +1,625 @@
+{
+  "employees": [
+    {
+      "id": "EMP-01",
+      "username": "admin",
+      "password": "admin123",
+      "displayName": "Khun Nat (Admin)",
+      "role": "admin",
+      "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
+    },
+    {
+      "id": "EMP-02",
+      "username": "manager",
+      "password": "manager123",
+      "displayName": "Khun May (Manager)",
+      "role": "manager",
+      "avatarUrl": "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80"
+    },
+    {
+      "id": "EMP-03",
+      "username": "staff",
+      "password": "staff123",
+      "displayName": "Khun Joy (Therapist Staff)",
+      "role": "staff",
+      "avatarUrl": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80"
+    },
+    {
+      "id": "EMP-04",
+      "username": "accountant",
+      "password": "account123",
+      "displayName": "Khun Pim (Accountant)",
+      "role": "accountant",
+      "avatarUrl": "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=200&q=80"
+    }
+  ],
+  "clients": [
+    {
+      "id": "CLI-0001",
+      "memberCode": "MMM-0001",
+      "lineUserId": "U1001_SOMCHAI",
+      "displayName": "Khun Somchai Prasert",
+      "nickname": "Somchai",
+      "phone": "081-234-5678",
+      "birthday": "1988-05-15",
+      "profilePic": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
+      "notes": "Prefers medium pressure during facial massage",
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "CLI-0002",
+      "memberCode": "MMM-0002",
+      "lineUserId": "U1002_ANANYA",
+      "displayName": "Khun Ananya Sukhumvit",
+      "nickname": "Ann",
+      "phone": "089-876-5432",
+      "birthday": "1993-11-20",
+      "profilePic": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80",
+      "notes": "Allergic to peppermint essential oil",
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "CLI-0003",
+      "memberCode": "MMM-0003",
+      "lineUserId": "U1003_PATCHARA",
+      "displayName": "Khun Patchara Wong",
+      "nickname": "Pat",
+      "phone": "092-111-2233",
+      "birthday": "1995-02-10",
+      "profilePic": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
+      "createdAt": "2026-09-06T01:33:08.529Z"
+    }
+  ],
+  "coinWallets": {
+    "CLI-0001": 3500,
+    "CLI-0002": 8000,
+    "CLI-0003": 500
+  },
+  "coinTransactions": [
+    {
+      "id": "TX-COIN-001",
+      "clientId": "CLI-0001",
+      "amount": 5000,
+      "type": "credit_added",
+      "note": "พนักงานบันทึกการรับชำระเงินสดที่สตูดิโอ",
+      "resultingBalance": 5000,
+      "createdByStaffId": "EMP-02",
+      "createdByStaffName": "Khun May (Manager)",
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "TX-COIN-002",
+      "clientId": "CLI-0001",
+      "amount": -1500,
+      "type": "credit_used",
+      "note": "ตัด Coin ชำระค่าบริการนวดหน้า",
+      "resultingBalance": 3500,
+      "createdByStaffId": "EMP-03",
+      "createdByStaffName": "Khun Joy (Therapist)",
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "TX-COIN-003",
+      "clientId": "CLI-0002",
+      "amount": 8000,
+      "type": "credit_added",
+      "note": "พนักงานยืนยันการโอนเงินเข้าบัญชีธนาคาร",
+      "resultingBalance": 8000,
+      "createdByStaffId": "EMP-01",
+      "createdByStaffName": "Khun Nat (Admin)",
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "TX-COIN-004",
+      "clientId": "CLI-0003",
+      "amount": 500,
+      "type": "credit_added",
+      "note": "บันทึกการเติมเงินครั้งแรกโดยพนักงาน",
+      "resultingBalance": 500,
+      "createdByStaffId": "EMP-02",
+      "createdByStaffName": "Khun May (Manager)",
+      "createdAt": "2026-09-06T01:33:08.529Z"
+    }
+  ],
+  "pointsWallets": {
+    "CLI-0001": {
+      "clientId": "CLI-0001",
+      "balance": 850,
+      "lifetimeEarned": 1100,
+      "lifetimeRedeemed": 250,
+      "tier": "Silver"
+    },
+    "CLI-0002": {
+      "clientId": "CLI-0002",
+      "balance": 2400,
+      "lifetimeEarned": 2400,
+      "lifetimeRedeemed": 0,
+      "tier": "Gold"
+    },
+    "CLI-0003": {
+      "clientId": "CLI-0003",
+      "balance": 200,
+      "lifetimeEarned": 200,
+      "lifetimeRedeemed": 0,
+      "tier": "Bronze"
+    }
+  },
+  "pointsTransactions": [
+    {
+      "id": "TX-PTS-001",
+      "clientId": "CLI-0001",
+      "amount": 1100,
+      "type": "points_earned",
+      "note": "ได้รับคะแนนสะสมจากการซื้อแพ็กเกจ 12,000 บาท",
+      "sourceType": "package_sale",
+      "relatedPackageId": "PKG-001",
+      "resultingBalance": 1100,
+      "createdByStaffId": "EMP-02",
+      "createdByStaffName": "Khun May (Manager)",
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "TX-PTS-002",
+      "clientId": "CLI-0001",
+      "amount": -250,
+      "type": "points_redeemed",
+      "note": "ใช้คะแนนแลกรับของขวัญ Lip Balm หน้าร้าน",
+      "sourceType": "manual_award",
+      "resultingBalance": 850,
+      "createdByStaffId": "EMP-02",
+      "createdByStaffName": "Khun May (Manager)",
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "TX-PTS-003",
+      "clientId": "CLI-0002",
+      "amount": 2400,
+      "type": "points_earned",
+      "note": "ได้รับคะแนนสะสมจากการลงทะเบียนคอร์สเรียน",
+      "sourceType": "package_sale",
+      "resultingBalance": 2400,
+      "createdByStaffId": "EMP-01",
+      "createdByStaffName": "Khun Nat (Admin)",
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "TX-PTS-004",
+      "clientId": "CLI-0003",
+      "amount": 200,
+      "type": "points_earned",
+      "note": "คะแนนโบนัสต้อนรับสมาชิกใหม่",
+      "sourceType": "other",
+      "resultingBalance": 200,
+      "createdByStaffId": "EMP-02",
+      "createdByStaffName": "Khun May (Manager)",
+      "createdAt": "2026-09-06T01:33:08.529Z"
+    }
+  ],
+  "catalogItems": [
+    {
+      "id": "CAT-PKG-01",
+      "type": "package",
+      "name": "Glow & Lift Facial Package",
+      "description": "Deep cleansing, organic guasha facial massage, & collagen boost mask",
+      "imageUrl": "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=800&q=80",
+      "price": 12000,
+      "validityDays": 180,
+      "defaultSessions": 10,
+      "active": true,
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "CAT-PKG-02",
+      "type": "package",
+      "name": "Aroma Relaxation Massage (60 Min)",
+      "description": "Custom organic essential oil massage relieving neck, shoulder, and back tension",
+      "imageUrl": "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=800&q=80",
+      "price": 4500,
+      "validityDays": 90,
+      "defaultSessions": 5,
+      "active": true,
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "CAT-PKG-03",
+      "type": "package",
+      "name": "Singing Bowl Sound Bath Pass",
+      "description": "Immersive sound vibration therapy session for deep mental rest",
+      "imageUrl": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80",
+      "price": 2700,
+      "validityDays": 60,
+      "defaultSessions": 3,
+      "active": true,
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "CAT-CPN-01",
+      "type": "coupon",
+      "name": "500B Off Sound Bath Special Privilege",
+      "description": "500 Baht discount voucher applicable for Sound Bath group or private sessions",
+      "imageUrl": "https://images.unsplash.com/photo-1512290900673-3f149ff93ff2?auto=format&fit=crop&w=800&q=80",
+      "price": 0,
+      "validityDays": 30,
+      "active": true,
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "CAT-CPN-02",
+      "type": "coupon",
+      "name": "Complimentary Organic Herbal Compress",
+      "description": "Free warm herbal compress treatment add-on for any body massage session",
+      "imageUrl": "https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?auto=format&fit=crop&w=800&q=80",
+      "price": 0,
+      "validityDays": 45,
+      "active": true,
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "CAT-ONE-01",
+      "type": "onetime",
+      "name": "นวดหน้าออร์แกนิค กัวซา (รายครั้ง)",
+      "description": "บริการนวดหน้ารายครั้ง 60 นาที ล้างหน้า กัวซา มาร์คหน้าออร์แกนิค",
+      "imageUrl": "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=800&q=80",
+      "price": 1500,
+      "validityDays": 1,
+      "active": true,
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "CAT-ONE-02",
+      "type": "onetime",
+      "name": "นวดอโรม่าผ่อนคลาย (รายครั้ง)",
+      "description": "บริการนวดอโรม่ารายครั้ง 60 นาที ผ่อนคลายกล้ามเนื้อคอ บ่า ไหล่",
+      "imageUrl": "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=800&q=80",
+      "price": 1200,
+      "validityDays": 1,
+      "active": true,
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "CAT-ONE-03",
+      "type": "onetime",
+      "name": "สปามือและเท้าออร์แกนิค (รายครั้ง)",
+      "description": "สครับและบำรุงผิวมือเท้าด้วยสารสกัดธรรมชาติ 45 นาที",
+      "imageUrl": "https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?auto=format&fit=crop&w=800&q=80",
+      "price": 800,
+      "validityDays": 1,
+      "active": true,
+      "createdAt": "2026-08-07T01:33:08.529Z"
+    }
+  ],
+  "clientPackages": [
+    {
+      "id": "CPKG-001",
+      "clientId": "CLI-0001",
+      "catalogId": "CAT-PKG-01",
+      "name": "Glow & Lift Facial Package",
+      "description": "Deep cleansing, organic guasha facial massage, & collagen boost mask",
+      "imageUrl": "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=800&q=80",
+      "totalSessions": 10,
+      "remainingSessions": 8,
+      "pricePaid": 12000,
+      "purchaseDate": "2026-08-07T01:33:08.529Z",
+      "expiryDate": "2027-01-04T01:33:08.529Z",
+      "status": "active",
+      "createdAt": "2026-08-07T01:33:08.529Z",
+      "usageLogs": [
+        {
+          "id": "LOG-PKG-001-1",
+          "clientPackageId": "CPKG-001",
+          "clientId": "CLI-0001",
+          "sessionNumber": 1,
+          "usedAt": "2026-08-07T01:33:08.529Z",
+          "staffId": "EMP-02",
+          "staffName": "Khun May (Manager)",
+          "note": "First facial treatment completed"
+        },
+        {
+          "id": "LOG-PKG-001-2",
+          "clientPackageId": "CPKG-001",
+          "clientId": "CLI-0001",
+          "sessionNumber": 2,
+          "usedAt": "2026-08-07T01:33:08.529Z",
+          "staffId": "EMP-03",
+          "staffName": "Khun Joy (Therapist)",
+          "note": "Guasha massage session 2"
+        }
+      ]
+    },
+    {
+      "id": "CPKG-002",
+      "clientId": "CLI-0001",
+      "catalogId": "CAT-PKG-02",
+      "name": "Aroma Relaxation Massage (60 Min)",
+      "description": "Custom organic essential oil massage",
+      "imageUrl": "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=800&q=80",
+      "totalSessions": 5,
+      "remainingSessions": 0,
+      "pricePaid": 4500,
+      "purchaseDate": "2026-08-07T01:33:08.529Z",
+      "expiryDate": "2026-08-07T01:33:08.529Z",
+      "status": "used_up",
+      "usedUpAt": "2026-08-07T01:33:08.529Z",
+      "createdAt": "2026-08-07T01:33:08.529Z",
+      "usageLogs": [
+        {
+          "id": "LOG-PKG-002-1",
+          "clientPackageId": "CPKG-002",
+          "clientId": "CLI-0001",
+          "sessionNumber": 1,
+          "usedAt": "2026-08-07T01:33:08.529Z",
+          "staffId": "EMP-02",
+          "staffName": "Khun May (Manager)",
+          "note": "Completed session 1"
+        },
+        {
+          "id": "LOG-PKG-002-2",
+          "clientPackageId": "CPKG-002",
+          "clientId": "CLI-0001",
+          "sessionNumber": 2,
+          "usedAt": "2026-08-07T01:33:08.529Z",
+          "staffId": "EMP-02",
+          "staffName": "Khun May (Manager)",
+          "note": "Completed session 2"
+        },
+        {
+          "id": "LOG-PKG-002-3",
+          "clientPackageId": "CPKG-002",
+          "clientId": "CLI-0001",
+          "sessionNumber": 3,
+          "usedAt": "2026-08-07T01:33:08.529Z",
+          "staffId": "EMP-02",
+          "staffName": "Khun May (Manager)",
+          "note": "Completed session 3"
+        },
+        {
+          "id": "LOG-PKG-002-4",
+          "clientPackageId": "CPKG-002",
+          "clientId": "CLI-0001",
+          "sessionNumber": 4,
+          "usedAt": "2026-08-07T01:33:08.529Z",
+          "staffId": "EMP-02",
+          "staffName": "Khun May (Manager)",
+          "note": "Completed session 4"
+        },
+        {
+          "id": "LOG-PKG-002-5",
+          "clientPackageId": "CPKG-002",
+          "clientId": "CLI-0001",
+          "sessionNumber": 5,
+          "usedAt": "2026-08-07T01:33:08.529Z",
+          "staffId": "EMP-02",
+          "staffName": "Khun May (Manager)",
+          "note": "Completed session 5"
+        }
+      ]
+    },
+    {
+      "id": "CPKG-003",
+      "clientId": "CLI-0002",
+      "catalogId": "CAT-PKG-03",
+      "name": "Singing Bowl Sound Bath Pass",
+      "description": "Immersive sound vibration therapy session",
+      "imageUrl": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80",
+      "totalSessions": 3,
+      "remainingSessions": 1,
+      "pricePaid": 2700,
+      "purchaseDate": "2026-08-07T01:33:08.529Z",
+      "expiryDate": "2026-09-10T01:33:08.529Z",
+      "status": "expiring_soon",
+      "createdAt": "2026-08-07T01:33:08.529Z",
+      "usageLogs": [
+        {
+          "id": "LOG-PKG-003-1",
+          "clientPackageId": "CPKG-003",
+          "clientId": "CLI-0002",
+          "sessionNumber": 1,
+          "usedAt": "2026-08-07T01:33:08.529Z",
+          "staffId": "EMP-02",
+          "staffName": "Khun May (Manager)"
+        },
+        {
+          "id": "LOG-PKG-003-2",
+          "clientPackageId": "CPKG-003",
+          "clientId": "CLI-0002",
+          "sessionNumber": 2,
+          "usedAt": "2026-08-07T01:33:08.529Z",
+          "staffId": "EMP-03",
+          "staffName": "Khun Joy (Therapist)"
+        }
+      ]
+    }
+  ],
+  "clientCoupons": [
+    {
+      "id": "CCPN-001",
+      "clientId": "CLI-0001",
+      "catalogId": "CAT-CPN-01",
+      "name": "500B Off Sound Bath Special Privilege",
+      "description": "500 Baht discount voucher applicable for Sound Bath session",
+      "imageUrl": "https://images.unsplash.com/photo-1512290900673-3f149ff93ff2?auto=format&fit=crop&w=800&q=80",
+      "couponCode": "SB-MMM0001-4821",
+      "totalQuantity": 2,
+      "usedQuantity": 1,
+      "remainingQuantity": 1,
+      "pricePaid": 0,
+      "purchaseDate": "2026-08-07T01:33:08.529Z",
+      "expiryDate": "2027-01-04T01:33:08.529Z",
+      "status": "active",
+      "createdAt": "2026-08-07T01:33:08.529Z",
+      "redemptionLogs": [
+        {
+          "id": "LOG-CPN-001-1",
+          "clientCouponId": "CCPN-001",
+          "clientId": "CLI-0001",
+          "redemptionNumber": 1,
+          "redeemedAt": "2026-08-07T01:33:08.529Z",
+          "staffId": "EMP-02",
+          "staffName": "Khun May (Manager)",
+          "note": "Redeemed for Saturday Sound Bath class"
+        }
+      ]
+    },
+    {
+      "id": "CCPN-002",
+      "clientId": "CLI-0002",
+      "catalogId": "CAT-CPN-02",
+      "name": "Complimentary Organic Herbal Compress",
+      "description": "Free warm herbal compress add-on",
+      "imageUrl": "https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?auto=format&fit=crop&w=800&q=80",
+      "couponCode": "HC-MMM0002-9102",
+      "totalQuantity": 1,
+      "usedQuantity": 0,
+      "remainingQuantity": 1,
+      "pricePaid": 0,
+      "purchaseDate": "2026-08-07T01:33:08.529Z",
+      "expiryDate": "2026-09-10T01:33:08.529Z",
+      "status": "expiring_soon",
+      "createdAt": "2026-08-07T01:33:08.529Z",
+      "redemptionLogs": []
+    }
+  ],
+  "rewardCatalogItems": [
+    {
+      "id": "RWD-01",
+      "name": "Me.My.Mind Organic Lip Balm",
+      "description": "Pure beeswax & coconut oil nourishing lip treatment",
+      "pointsCost": 150,
+      "imageUrl": "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=800&q=80",
+      "active": true
+    },
+    {
+      "id": "RWD-02",
+      "name": "Aroma Essential Oil Roll-On (10ml)",
+      "description": "Blended therapeutic oils: Calm Lavender or Refreshing Eucalyptus",
+      "pointsCost": 300,
+      "imageUrl": "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=800&q=80",
+      "active": true
+    },
+    {
+      "id": "RWD-03",
+      "name": "30-Min Herbal Scalp Massage",
+      "description": "Warm oil Indian head & shoulder stress release massage",
+      "pointsCost": 600,
+      "imageUrl": "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?auto=format&fit=crop&w=800&q=80",
+      "active": true
+    },
+    {
+      "id": "RWD-04",
+      "name": "1x Free Sound Bath Group Pass",
+      "description": "Complimentary entry to weekend Singing Bowl Sound Bath",
+      "pointsCost": 1000,
+      "imageUrl": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80",
+      "active": true
+    }
+  ],
+  "notifications": [
+    {
+      "id": "NOTIF-001",
+      "clientId": "CLI-0001",
+      "title": "พนักงานยืนยันการเติม Coin",
+      "message": "พนักงานได้ทำการเติม 5,000 Me.My.Mind Coins เข้าบัญชีของคุณเรียบร้อยแล้ว",
+      "createdAt": "2026-08-07T01:33:08.529Z",
+      "read": true,
+      "reservedForLinePush": false
+    },
+    {
+      "id": "NOTIF-002",
+      "clientId": "CLI-0001",
+      "title": "ใช้บริการแพ็กเกจเรียบร้อย",
+      "message": "พนักงานได้ตัดใช้บริการ 1 ครั้ง จากแพ็กเกจ Glow & Lift Facial Package ของคุณ",
+      "createdAt": "2026-08-07T01:33:08.529Z",
+      "read": false,
+      "reservedForLinePush": true
+    },
+    {
+      "id": "NOTIF-003",
+      "clientId": "CLI-0002",
+      "title": "คูปองใกล้หมดอายุ",
+      "message": "คูปอง \"Complimentary Organic Herbal Compress\" ของคุณจะหมดอายุภายใน 4 วัน",
+      "createdAt": "2026-09-06T01:33:08.529Z",
+      "read": false,
+      "reservedForLinePush": true
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "AUDIT-001",
+      "staffId": "EMP-02",
+      "staffName": "Khun May (Manager)",
+      "action": "ADD_CREDIT",
+      "entityType": "coin",
+      "entityId": "CLI-0001",
+      "newData": {
+        "amount": 5000,
+        "note": "พนักงานบันทึกการรับชำระเงินสดที่สตูดิโอ"
+      },
+      "reason": "บันทึกการรับชำระเงินสดหน้าร้าน",
+      "timestamp": "2026-08-07T01:33:08.529Z"
+    },
+    {
+      "id": "AUDIT-002",
+      "staffId": "EMP-02",
+      "staffName": "Khun May (Manager)",
+      "action": "SELL_PACKAGE",
+      "entityType": "package",
+      "entityId": "CPKG-001",
+      "newData": {
+        "packageName": "Glow & Lift Facial Package",
+        "client": "CLI-0001",
+        "sessions": 10,
+        "price": 12000
+      },
+      "reason": "ลูกค้าชำระเงินซื้อแพ็กเกจที่สตูดิโอ",
+      "timestamp": "2026-08-07T01:33:08.529Z"
+    }
+  ],
+  "financialEntries": [
+    {
+      "id": "FIN-001",
+      "type": "income",
+      "category": "online_course",
+      "categoryNameTh": "คอร์สเรียนออนไลน์",
+      "title": "ขายคอร์สออนไลน์ นวดหน้าปรับโครงสร้างด้วยตัวเอง",
+      "amount": 3500,
+      "date": "2026-08-27",
+      "note": "นักเรียนสมัครผ่านเว็บไซต์ 1 ท่าน",
+      "createdByStaffId": "EMP-01",
+      "createdByStaffName": "Khun Nat (Admin)",
+      "createdAt": "2026-08-07T01:33:08.529Z",
+      "isAutoGenerated": false
+    },
+    {
+      "id": "FIN-002",
+      "type": "expense",
+      "category": "rent",
+      "categoryNameTh": "ค่าเช่าสถานที่ / ร้าน",
+      "title": "ค่าเช่าพื้นที่สตูดิโอ ประจำเดือน",
+      "amount": 15000,
+      "date": "2026-08-22",
+      "note": "ชำระค่าเช่าสถานที่ประจำเดือน",
+      "createdByStaffId": "EMP-01",
+      "createdByStaffName": "Khun Nat (Admin)",
+      "createdAt": "2026-08-07T01:33:08.529Z",
+      "isAutoGenerated": false
+    },
+    {
+      "id": "FIN-003",
+      "type": "expense",
+      "category": "supplies",
+      "categoryNameTh": "ค่าอุปกรณ์ / ผลิตภัณฑ์",
+      "title": "สั่งซื้อน้ำมันหอมระเหยและมาร์คหน้าออร์แกนิค",
+      "amount": 4200,
+      "date": "2026-09-01",
+      "note": "สั่งซื้อสต็อกน้ำมันนวดล็อตใหม่",
+      "createdByStaffId": "EMP-02",
+      "createdByStaffName": "Khun May (Manager)",
+      "createdAt": "2026-08-07T01:33:08.529Z",
+      "isAutoGenerated": false
+    }
+  ],
+  "clientOneTimeBookings": [],
+  "brandSettings": {
+    "promoPosterUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+  }
+}

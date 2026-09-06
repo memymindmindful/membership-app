@@ -1,9 +1,13 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { createServer as createViteServer } from 'vite';
 import { store } from './server/store';
+
+const DATA_DIR = path.join(process.cwd(), 'data');
+const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 
 const JWT_SECRET = process.env.SESSION_JWT_SECRET || process.env.SESSION_SECRET || 'mmm-facial-massage-session-secret-2026';
 
@@ -53,7 +57,7 @@ export function createStaffToken(staffId: string, staffName: string, role?: stri
   return jwt.sign(
     { staffId, staffName, role: role || 'staff' },
     JWT_SECRET,
-    { expiresIn: '12h' }
+    { expiresIn: '7d' }
   );
 }
 
@@ -123,6 +127,12 @@ async function startServer() {
   // JSON Body Parser with 10mb limit for base64 uploads
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+  // Static file serving for uploads directory (stored on persistent volume)
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  }
+  app.use('/uploads', express.static(UPLOADS_DIR));
 
   // --- REST API ENDPOINTS ---
 
@@ -1066,15 +1076,34 @@ async function startServer() {
     }
   });
 
-  // Image Upload helper endpoint (data URL / base64 string handler)
+  // Image Upload helper endpoint: saves base64 image to disk and returns static URL
   app.post('/api/upload-image', (req, res) => {
     try {
       const { base64Data, fileName } = req.body;
-      if (!base64Data) {
-        return res.status(400).json({ error: 'No image data provided' });
+      if (!base64Data || typeof base64Data !== 'string' || !base64Data.startsWith('data:image/')) {
+        return res.status(400).json({ error: 'Invalid image data' });
       }
-      // Return the data URL directly for fast, seamless thumbnail rendering
-      res.json({ imageUrl: base64Data });
+
+      if (!fs.existsSync(UPLOADS_DIR)) {
+        fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+      }
+
+      const matches = base64Data.match(/^data:image\/([\w\+\-\.]+);base64,(.+)$/);
+      if (!matches) {
+        return res.status(400).json({ error: 'Invalid base64 image format' });
+      }
+
+      const rawExt = matches[1].toLowerCase();
+      let ext = rawExt;
+      if (rawExt === 'jpeg') ext = 'jpg';
+      else if (rawExt === 'svg+xml') ext = 'svg';
+
+      const imageBuffer = Buffer.from(matches[2], 'base64');
+      const uniqueName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${ext}`;
+      const filePath = path.join(UPLOADS_DIR, uniqueName);
+      fs.writeFileSync(filePath, imageBuffer);
+
+      res.json({ imageUrl: `/uploads/${uniqueName}` });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
