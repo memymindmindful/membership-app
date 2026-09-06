@@ -60,11 +60,59 @@ function rowToClient(row: any): Client {
   };
 }
 
+function rowToCoinTransaction(row: any): CoinTransaction {
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    amount: Number(row.amount),
+    type: row.type as any,
+    note: row.note || '',
+    resultingBalance: Number(row.resulting_balance),
+    createdByStaffId: row.created_by_staff_id,
+    createdByStaffName: row.created_by_staff_name,
+    createdAt: row.created_at,
+    isBonus: Boolean(row.is_bonus),
+    reversed: Boolean(row.reversed),
+    reversalReason: row.reversal_reason || undefined,
+    reversedAt: row.reversed_at || undefined,
+    reversedByStaffName: row.reversed_by_staff_name || undefined,
+  };
+}
+
+function rowToPointsWallet(row: any): PointsWallet {
+  return {
+    clientId: row.client_id,
+    balance: Number(row.balance),
+    lifetimeEarned: Number(row.lifetime_earned),
+    lifetimeRedeemed: Number(row.lifetime_redeemed),
+    tier: (row.tier || 'Bronze') as any,
+  };
+}
+
+function rowToPointsTransaction(row: any): PointsTransaction {
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    amount: Number(row.amount),
+    type: row.type as any,
+    note: row.note || '',
+    sourceType: (row.source_type as any) || undefined,
+    relatedCoinTxId: row.related_coin_tx_id || undefined,
+    relatedPackageId: row.related_package_id || undefined,
+    relatedCouponId: row.related_coupon_id || undefined,
+    relatedOneTimeBookingId: row.related_onetime_booking_id || undefined,
+    resultingBalance: Number(row.resulting_balance),
+    createdByStaffId: row.created_by_staff_id,
+    createdByStaffName: row.created_by_staff_name,
+    createdAt: row.created_at,
+    reversed: Boolean(row.reversed),
+    reversalReason: row.reversal_reason || undefined,
+    reversedAt: row.reversed_at || undefined,
+    reversedByStaffName: row.reversed_by_staff_name || undefined,
+  };
+}
+
 interface DatabaseSchema {
-  coinWallets: Record<string, number>; // clientId -> balance
-  coinTransactions: CoinTransaction[];
-  pointsWallets: Record<string, PointsWallet>; // clientId -> wallet
-  pointsTransactions: PointsTransaction[];
   catalogItems: CatalogItem[];
   clientPackages: ClientPackage[];
   clientCoupons: ClientCoupon[];
@@ -183,36 +231,6 @@ function getInitialData(): DatabaseSchema {
   const pastDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const nearExpiryDate = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(); // 4 days from now
   const farExpiryDate = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString();
-
-  const coinWallets: Record<string, number> = {
-    'CLI-0001': 3500,
-    'CLI-0002': 8000,
-    'CLI-0003': 500,
-  };
-
-  const pointsWallets: Record<string, PointsWallet> = {
-    'CLI-0001': {
-      clientId: 'CLI-0001',
-      balance: 850,
-      lifetimeEarned: 1100,
-      lifetimeRedeemed: 250,
-      tier: 'Silver',
-    },
-    'CLI-0002': {
-      clientId: 'CLI-0002',
-      balance: 2400,
-      lifetimeEarned: 2400,
-      lifetimeRedeemed: 0,
-      tier: 'Gold',
-    },
-    'CLI-0003': {
-      clientId: 'CLI-0003',
-      balance: 200,
-      lifetimeEarned: 200,
-      lifetimeRedeemed: 0,
-      tier: 'Bronze',
-    },
-  };
 
   const catalogItems: CatalogItem[] = [
     {
@@ -494,105 +512,6 @@ function getInitialData(): DatabaseSchema {
     },
   ];
 
-  const coinTransactions: CoinTransaction[] = [
-    {
-      id: 'TX-COIN-001',
-      clientId: 'CLI-0001',
-      amount: 5000,
-      type: 'credit_added',
-      note: 'พนักงานบันทึกการรับชำระเงินสดที่สตูดิโอ',
-      resultingBalance: 5000,
-      createdByStaffId: 'EMP-02',
-      createdByStaffName: 'Khun May (Manager)',
-      createdAt: pastDate,
-    },
-    {
-      id: 'TX-COIN-002',
-      clientId: 'CLI-0001',
-      amount: -1500,
-      type: 'credit_used',
-      note: 'ตัด Coin ชำระค่าบริการนวดหน้า',
-      resultingBalance: 3500,
-      createdByStaffId: 'EMP-03',
-      createdByStaffName: 'Khun Joy (Therapist)',
-      createdAt: pastDate,
-    },
-    {
-      id: 'TX-COIN-003',
-      clientId: 'CLI-0002',
-      amount: 8000,
-      type: 'credit_added',
-      note: 'พนักงานยืนยันการโอนเงินเข้าบัญชีธนาคาร',
-      resultingBalance: 8000,
-      createdByStaffId: 'EMP-01',
-      createdByStaffName: 'Khun Nat (Admin)',
-      createdAt: pastDate,
-    },
-    {
-      id: 'TX-COIN-004',
-      clientId: 'CLI-0003',
-      amount: 500,
-      type: 'credit_added',
-      note: 'บันทึกการเติมเงินครั้งแรกโดยพนักงาน',
-      resultingBalance: 500,
-      createdByStaffId: 'EMP-02',
-      createdByStaffName: 'Khun May (Manager)',
-      createdAt: now,
-    },
-  ];
-
-  const pointsTransactions: PointsTransaction[] = [
-    {
-      id: 'TX-PTS-001',
-      clientId: 'CLI-0001',
-      amount: 1100,
-      type: 'points_earned',
-      note: 'ได้รับคะแนนสะสมจากการซื้อแพ็กเกจ 12,000 บาท',
-      sourceType: 'package_sale',
-      relatedPackageId: 'PKG-001',
-      resultingBalance: 1100,
-      createdByStaffId: 'EMP-02',
-      createdByStaffName: 'Khun May (Manager)',
-      createdAt: pastDate,
-    },
-    {
-      id: 'TX-PTS-002',
-      clientId: 'CLI-0001',
-      amount: -250,
-      type: 'points_redeemed',
-      note: 'ใช้คะแนนแลกรับของขวัญ Lip Balm หน้าร้าน',
-      sourceType: 'manual_award',
-      resultingBalance: 850,
-      createdByStaffId: 'EMP-02',
-      createdByStaffName: 'Khun May (Manager)',
-      createdAt: pastDate,
-    },
-    {
-      id: 'TX-PTS-003',
-      clientId: 'CLI-0002',
-      amount: 2400,
-      type: 'points_earned',
-      note: 'ได้รับคะแนนสะสมจากการลงทะเบียนคอร์สเรียน',
-      sourceType: 'package_sale',
-      resultingBalance: 2400,
-      createdByStaffId: 'EMP-01',
-      createdByStaffName: 'Khun Nat (Admin)',
-      createdAt: pastDate,
-    },
-    {
-      id: 'TX-PTS-004',
-      clientId: 'CLI-0003',
-      amount: 200,
-      type: 'points_earned',
-      note: 'คะแนนโบนัสต้อนรับสมาชิกใหม่',
-      sourceType: 'other',
-      resultingBalance: 200,
-      createdByStaffId: 'EMP-02',
-      createdByStaffName: 'Khun May (Manager)',
-      createdAt: now,
-    },
-  ];
-
   const notifications: InAppNotification[] = [
     {
       id: 'NOTIF-001',
@@ -694,10 +613,6 @@ function getInitialData(): DatabaseSchema {
   ];
 
   return {
-    coinWallets,
-    coinTransactions,
-    pointsWallets,
-    pointsTransactions,
     catalogItems,
     clientPackages,
     clientCoupons,
@@ -782,6 +697,34 @@ class Store {
       }
     }
 
+    // Ensure initial coin_wallets exist if table is empty
+    const coinWalletCount = db.prepare('SELECT count(*) as count FROM coin_wallets').get() as { count: number };
+    if (!coinWalletCount || coinWalletCount.count === 0) {
+      const initialBalances: Record<string, number> = {
+        'CLI-0001': 3500,
+        'CLI-0002': 8000,
+        'CLI-0003': 500,
+      };
+      const insertCoinWallet = db.prepare('INSERT OR REPLACE INTO coin_wallets (id, client_id, balance) VALUES (?, ?, ?)');
+      for (const [clientId, bal] of Object.entries(initialBalances)) {
+        insertCoinWallet.run(`CW-${clientId}`, clientId, bal);
+      }
+    }
+
+    // Ensure initial points_wallets exist if table is empty
+    const pointsWalletCount = db.prepare('SELECT count(*) as count FROM points_wallets').get() as { count: number };
+    if (!pointsWalletCount || pointsWalletCount.count === 0) {
+      const initialPoints: Record<string, { balance: number; earned: number; redeemed: number; tier: string }> = {
+        'CLI-0001': { balance: 850, earned: 1100, redeemed: 250, tier: 'Silver' },
+        'CLI-0002': { balance: 2400, earned: 2400, redeemed: 0, tier: 'Gold' },
+        'CLI-0003': { balance: 200, earned: 200, redeemed: 0, tier: 'Bronze' },
+      };
+      const insertPointsWallet = db.prepare('INSERT OR REPLACE INTO points_wallets (id, client_id, balance, lifetime_earned, lifetime_redeemed, tier) VALUES (?, ?, ?, ?, ?, ?)');
+      for (const [clientId, pw] of Object.entries(initialPoints)) {
+        insertPointsWallet.run(`PW-${clientId}`, clientId, pw.balance, pw.earned, pw.redeemed, pw.tier);
+      }
+    }
+
     return db;
   }
 
@@ -793,13 +736,23 @@ class Store {
       if (fs.existsSync(DATA_FILE)) {
         const fileData = fs.readFileSync(DATA_FILE, 'utf-8');
         const parsed: any = JSON.parse(fileData);
-        const hadClientsOrEmployees = 'clients' in parsed || 'employees' in parsed;
+        const hadOldFields =
+          'clients' in parsed ||
+          'employees' in parsed ||
+          'coinWallets' in parsed ||
+          'coinTransactions' in parsed ||
+          'pointsWallets' in parsed ||
+          'pointsTransactions' in parsed;
         delete parsed.clients;
         delete parsed.employees;
+        delete parsed.coinWallets;
+        delete parsed.coinTransactions;
+        delete parsed.pointsWallets;
+        delete parsed.pointsTransactions;
         if (!parsed.clientOneTimeBookings) {
           parsed.clientOneTimeBookings = [];
         }
-        if (hadClientsOrEmployees) {
+        if (hadOldFields) {
           this.saveToDisk(parsed);
         }
         return parsed as DatabaseSchema;
@@ -1135,7 +1088,7 @@ class Store {
       const pointsWallet = this.getPointsWallet(client.id);
       const packages = this.db.clientPackages.filter((p) => p.clientId === client.id);
       const coupons = this.db.clientCoupons.filter((c) => c.clientId === client.id);
-      const coinTxs = this.db.coinTransactions.filter((tx) => tx.clientId === client.id && !tx.reversed);
+      const coinTxs = this.getCoinTransactions(client.id).filter((tx) => !tx.reversed);
 
       const coinSpent = coinTxs
         .filter((tx) => tx.amount < 0)
@@ -1281,14 +1234,14 @@ class Store {
       newClient.createdAt
     );
 
-    this.db.coinWallets[newClient.id] = 0;
-    this.db.pointsWallets[newClient.id] = {
-      clientId: newClient.id,
-      balance: 0,
-      lifetimeEarned: 0,
-      lifetimeRedeemed: 0,
-      tier: 'Bronze',
-    };
+    this.sqlite.prepare(`
+      INSERT OR IGNORE INTO coin_wallets (id, client_id, balance) VALUES (?, ?, 0)
+    `).run(`CW-${newClient.id}`, newClient.id);
+
+    this.sqlite.prepare(`
+      INSERT OR IGNORE INTO points_wallets (id, client_id, balance, lifetime_earned, lifetime_redeemed, tier)
+      VALUES (?, ?, 0, 0, 0, 'Bronze')
+    `).run(`PW-${newClient.id}`, newClient.id);
 
     this.logAudit(staffId, staffName, 'CREATE_CLIENT', 'client', newClient.id, 'New client registered', null, newClient);
 
@@ -1328,8 +1281,12 @@ class Store {
       null
     );
 
-    // Remove client record from SQLite
+    // Remove client and wallet/tx records from SQLite
     this.sqlite.prepare('DELETE FROM clients WHERE id = ?').run(client.id);
+    this.sqlite.prepare('DELETE FROM coin_wallets WHERE client_id = ?').run(client.id);
+    this.sqlite.prepare('DELETE FROM coin_transactions WHERE client_id = ?').run(client.id);
+    this.sqlite.prepare('DELETE FROM points_wallets WHERE client_id = ?').run(client.id);
+    this.sqlite.prepare('DELETE FROM points_transactions WHERE client_id = ?').run(client.id);
     this.saveToDisk();
   }
 
@@ -1484,11 +1441,18 @@ class Store {
 
   // Coin Wallet Operations
   public getCoinBalance(clientId: string): number {
-    return this.db.coinWallets[clientId] ?? 0;
+    const row = this.sqlite.prepare('SELECT balance FROM coin_wallets WHERE client_id = ?').get(clientId) as { balance: number } | undefined;
+    return row ? Number(row.balance) : 0;
   }
 
   public getCoinTransactions(clientId: string): CoinTransaction[] {
-    return this.db.coinTransactions.filter((tx) => tx.clientId === clientId);
+    const rows = this.sqlite.prepare('SELECT * FROM coin_transactions WHERE client_id = ? ORDER BY created_at DESC').all(clientId);
+    return rows.map(rowToCoinTransaction);
+  }
+
+  public getAllCoinTransactions(): CoinTransaction[] {
+    const rows = this.sqlite.prepare('SELECT * FROM coin_transactions ORDER BY created_at DESC').all();
+    return rows.map(rowToCoinTransaction);
   }
 
   public addCoinCredit(
@@ -1505,7 +1469,14 @@ class Store {
 
     const currentBalance = this.getCoinBalance(clientId);
     const newBalance = currentBalance + amount;
-    this.db.coinWallets[clientId] = newBalance;
+
+    // Update wallet in SQLite
+    const existing = this.sqlite.prepare('SELECT id FROM coin_wallets WHERE client_id = ?').get(clientId) as { id: string } | undefined;
+    if (existing) {
+      this.sqlite.prepare('UPDATE coin_wallets SET balance = ? WHERE client_id = ?').run(newBalance, clientId);
+    } else {
+      this.sqlite.prepare('INSERT INTO coin_wallets (id, client_id, balance) VALUES (?, ?, ?)').run(`CW-${clientId}`, clientId, newBalance);
+    }
 
     const txNote = isBonus
       ? `(Bonus Coins) ${note || 'CRM Marketing Bonus Coins'}`
@@ -1524,7 +1495,26 @@ class Store {
       createdAt: new Date().toISOString(),
     };
 
-    this.db.coinTransactions.unshift(tx);
+    // Insert into SQLite
+    this.sqlite.prepare(`
+      INSERT INTO coin_transactions (
+        id, client_id, amount, type, note, resulting_balance,
+        created_by_staff_id, created_by_staff_name, created_at,
+        is_bonus, reversed, reversal_reason, reversed_at, reversed_by_staff_name
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, NULL)
+    `).run(
+      tx.id,
+      tx.clientId,
+      tx.amount,
+      tx.type,
+      tx.note,
+      tx.resultingBalance,
+      tx.createdByStaffId,
+      tx.createdByStaffName,
+      tx.createdAt,
+      tx.isBonus ? 1 : 0
+    );
 
     const client = this.getClientById(clientId);
 
@@ -1610,7 +1600,9 @@ class Store {
     }
 
     const newBalance = currentBalance - amount;
-    this.db.coinWallets[clientId] = newBalance;
+
+    // Update wallet in SQLite
+    this.sqlite.prepare('UPDATE coin_wallets SET balance = ? WHERE client_id = ?').run(newBalance, clientId);
 
     const tx: CoinTransaction = {
       id: `TX-COIN-${Date.now()}`,
@@ -1624,7 +1616,26 @@ class Store {
       createdAt: new Date().toISOString(),
     };
 
-    this.db.coinTransactions.unshift(tx);
+    // Insert into SQLite
+    this.sqlite.prepare(`
+      INSERT INTO coin_transactions (
+        id, client_id, amount, type, note, resulting_balance,
+        created_by_staff_id, created_by_staff_name, created_at,
+        is_bonus, reversed, reversal_reason, reversed_at, reversed_by_staff_name
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, NULL, NULL, NULL)
+    `).run(
+      tx.id,
+      tx.clientId,
+      tx.amount,
+      tx.type,
+      tx.note,
+      tx.resultingBalance,
+      tx.createdByStaffId,
+      tx.createdByStaffName,
+      tx.createdAt
+    );
+
     this.notifyClient(clientId, 'ตัด Coin ใช้บริการเรียบร้อย', `พนักงานได้ทำการตัด -${amount.toLocaleString()} Coins เพื่อชำระค่าบริการ ยอดคงเหลือคงเหลือ ${newBalance.toLocaleString()} Coins`);
     this.logAudit(staffId, staffName, 'DEDUCT_COIN_CREDIT', 'coin', clientId, note, { balance: currentBalance }, { balance: newBalance, amount });
 
@@ -1639,10 +1650,11 @@ class Store {
     staffId: string,
     staffName: string
   ): CoinTransaction {
-    const originalTx = this.db.coinTransactions.find((t) => t.id === txId);
-    if (!originalTx) {
+    const row = this.sqlite.prepare('SELECT * FROM coin_transactions WHERE id = ?').get(txId);
+    if (!row) {
       throw new Error('Transaction not found');
     }
+    const originalTx = rowToCoinTransaction(row);
     if (originalTx.reversed) {
       throw new Error('Transaction has already been reversed');
     }
@@ -1655,14 +1667,22 @@ class Store {
       throw new Error('Reversal would result in a negative coin balance');
     }
 
-    // Mark original as reversed
+    const reversedAt = new Date().toISOString();
+
+    // Mark original as reversed in SQLite
+    this.sqlite.prepare(`
+      UPDATE coin_transactions
+      SET reversed = 1, reversal_reason = ?, reversed_at = ?, reversed_by_staff_name = ?
+      WHERE id = ?
+    `).run(reason, reversedAt, staffName, originalTx.id);
+
     originalTx.reversed = true;
     originalTx.reversalReason = reason;
-    originalTx.reversedAt = new Date().toISOString();
+    originalTx.reversedAt = reversedAt;
     originalTx.reversedByStaffName = staffName;
 
-    // Update wallet
-    this.db.coinWallets[originalTx.clientId] = newBalance;
+    // Update wallet in SQLite
+    this.sqlite.prepare('UPDATE coin_wallets SET balance = ? WHERE client_id = ?').run(newBalance, originalTx.clientId);
 
     // Create adjustment transaction
     const adjustmentTx: CoinTransaction = {
@@ -1677,7 +1697,26 @@ class Store {
       createdAt: new Date().toISOString(),
     };
 
-    this.db.coinTransactions.unshift(adjustmentTx);
+    // Insert adjustment tx into SQLite
+    this.sqlite.prepare(`
+      INSERT INTO coin_transactions (
+        id, client_id, amount, type, note, resulting_balance,
+        created_by_staff_id, created_by_staff_name, created_at,
+        is_bonus, reversed, reversal_reason, reversed_at, reversed_by_staff_name
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, NULL, NULL, NULL)
+    `).run(
+      adjustmentTx.id,
+      adjustmentTx.clientId,
+      adjustmentTx.amount,
+      adjustmentTx.type,
+      adjustmentTx.note,
+      adjustmentTx.resultingBalance,
+      adjustmentTx.createdByStaffId,
+      adjustmentTx.createdByStaffName,
+      adjustmentTx.createdAt
+    );
+
     this.notifyClient(originalTx.clientId, 'ยกเลิกรายการธุรกรรม (Reversal)', `ระบบได้ทำการปรับปรุงยกเลิกรายการ #${originalTx.id} ยอดคงเหลือปัจจุบันคือ ${newBalance.toLocaleString()} Coins (เหตุผล: ${reason})`);
     this.logAudit(staffId, staffName, 'REVERSE_COIN_TX', 'coin', originalTx.clientId, reason, originalTx, adjustmentTx);
 
@@ -1687,20 +1726,32 @@ class Store {
 
   // Points Wallet Operations
   public getPointsWallet(clientId: string): PointsWallet {
-    if (!this.db.pointsWallets[clientId]) {
-      this.db.pointsWallets[clientId] = {
+    const row = this.sqlite.prepare('SELECT * FROM points_wallets WHERE client_id = ?').get(clientId);
+    if (!row) {
+      const initialWallet: PointsWallet = {
         clientId,
         balance: 0,
         lifetimeEarned: 0,
         lifetimeRedeemed: 0,
         tier: 'Bronze',
       };
+      this.sqlite.prepare(`
+        INSERT INTO points_wallets (id, client_id, balance, lifetime_earned, lifetime_redeemed, tier)
+        VALUES (?, ?, 0, 0, 0, 'Bronze')
+      `).run(`PW-${clientId}`, clientId);
+      return initialWallet;
     }
-    return this.db.pointsWallets[clientId];
+    return rowToPointsWallet(row);
   }
 
   public getPointsTransactions(clientId: string): PointsTransaction[] {
-    return this.db.pointsTransactions.filter((tx) => tx.clientId === clientId);
+    const rows = this.sqlite.prepare('SELECT * FROM points_transactions WHERE client_id = ? ORDER BY created_at DESC').all(clientId);
+    return rows.map(rowToPointsTransaction);
+  }
+
+  public getAllPointsTransactions(): PointsTransaction[] {
+    const rows = this.sqlite.prepare('SELECT * FROM points_transactions ORDER BY created_at DESC').all();
+    return rows.map(rowToPointsTransaction);
   }
 
   public addPoints(
@@ -1721,6 +1772,13 @@ class Store {
     wallet.lifetimeEarned += amount;
     wallet.tier = getTierFromPoints(wallet.lifetimeEarned);
 
+    // Update wallet in SQLite
+    this.sqlite.prepare(`
+      UPDATE points_wallets
+      SET balance = ?, lifetime_earned = ?, tier = ?
+      WHERE client_id = ?
+    `).run(wallet.balance, wallet.lifetimeEarned, wallet.tier, clientId);
+
     const tx: PointsTransaction = {
       id: `TX-PTS-${Date.now()}`,
       clientId,
@@ -1738,7 +1796,32 @@ class Store {
       createdAt: new Date().toISOString(),
     };
 
-    this.db.pointsTransactions.unshift(tx);
+    // Insert transaction into SQLite
+    this.sqlite.prepare(`
+      INSERT INTO points_transactions (
+        id, client_id, amount, type, note, source_type,
+        related_coin_tx_id, related_package_id, related_coupon_id, related_onetime_booking_id,
+        resulting_balance, created_by_staff_id, created_by_staff_name, created_at,
+        reversed, reversal_reason, reversed_at, reversed_by_staff_name
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, NULL)
+    `).run(
+      tx.id,
+      tx.clientId,
+      tx.amount,
+      tx.type,
+      tx.note,
+      tx.sourceType || null,
+      tx.relatedCoinTxId || null,
+      tx.relatedPackageId || null,
+      tx.relatedCouponId || null,
+      tx.relatedOneTimeBookingId || null,
+      tx.resultingBalance,
+      tx.createdByStaffId,
+      tx.createdByStaffName,
+      tx.createdAt
+    );
+
     this.notifyClient(clientId, 'ได้รับคะแนนสะสมใหม่', `คุณได้รับ +${amount.toLocaleString()} คะแนนสะสม! ยอดคะแนนสะสมรวมปัจจุบันคือ ${wallet.balance.toLocaleString()} คะแนน`);
     this.logAudit(staffId, staffName, 'AWARD_POINTS', 'points', clientId, note, null, wallet);
 
@@ -1765,10 +1848,17 @@ class Store {
     wallet.balance -= amount;
     wallet.lifetimeRedeemed += amount;
 
+    // Update wallet in SQLite
+    this.sqlite.prepare(`
+      UPDATE points_wallets
+      SET balance = ?, lifetime_redeemed = ?
+      WHERE client_id = ?
+    `).run(wallet.balance, wallet.lifetimeRedeemed, clientId);
+
     const tx: PointsTransaction = {
       id: `TX-PTS-${Date.now()}`,
       clientId,
-      amount: -amount,
+      amount,
       type: 'points_redeemed',
       note: note || 'Points redeemed for in-store reward',
       resultingBalance: wallet.balance,
@@ -1777,7 +1867,27 @@ class Store {
       createdAt: new Date().toISOString(),
     };
 
-    this.db.pointsTransactions.unshift(tx);
+    // Insert into SQLite
+    this.sqlite.prepare(`
+      INSERT INTO points_transactions (
+        id, client_id, amount, type, note, source_type,
+        related_coin_tx_id, related_package_id, related_coupon_id, related_onetime_booking_id,
+        resulting_balance, created_by_staff_id, created_by_staff_name, created_at,
+        reversed, reversal_reason, reversed_at, reversed_by_staff_name
+      )
+      VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, ?, ?, ?, ?, 0, NULL, NULL, NULL)
+    `).run(
+      tx.id,
+      tx.clientId,
+      tx.amount,
+      tx.type,
+      tx.note,
+      tx.resultingBalance,
+      tx.createdByStaffId,
+      tx.createdByStaffName,
+      tx.createdAt
+    );
+
     this.notifyClient(clientId, 'ใช้คะแนนแลกของรางวัล', `พนักงานทำการตัดคะแนน -${amount.toLocaleString()} คะแนน ยอดคะแนนสะสมคงเหลือคือ ${wallet.balance.toLocaleString()} คะแนน`);
     this.logAudit(staffId, staffName, 'REDEEM_POINTS', 'points', clientId, note, null, wallet);
 
@@ -1791,10 +1901,11 @@ class Store {
     staffId: string,
     staffName: string
   ): PointsTransaction {
-    const originalTx = this.db.pointsTransactions.find((t) => t.id === txId);
-    if (!originalTx) {
+    const row = this.sqlite.prepare('SELECT * FROM points_transactions WHERE id = ?').get(txId);
+    if (!row) {
       throw new Error('Points transaction not found');
     }
+    const originalTx = rowToPointsTransaction(row);
     if (originalTx.reversed) {
       throw new Error('Points transaction has already been reversed');
     }
@@ -1806,9 +1917,18 @@ class Store {
       throw new Error('Reversal would result in negative points balance');
     }
 
+    const reversedAt = new Date().toISOString();
+
+    // Mark original as reversed in SQLite
+    this.sqlite.prepare(`
+      UPDATE points_transactions
+      SET reversed = 1, reversal_reason = ?, reversed_at = ?, reversed_by_staff_name = ?
+      WHERE id = ?
+    `).run(reason, reversedAt, staffName, originalTx.id);
+
     originalTx.reversed = true;
     originalTx.reversalReason = reason;
-    originalTx.reversedAt = new Date().toISOString();
+    originalTx.reversedAt = reversedAt;
     originalTx.reversedByStaffName = staffName;
 
     wallet.balance += offsetAmount;
@@ -1818,6 +1938,13 @@ class Store {
     } else {
       wallet.lifetimeRedeemed = Math.max(0, wallet.lifetimeRedeemed - Math.abs(originalTx.amount));
     }
+
+    // Update wallet in SQLite
+    this.sqlite.prepare(`
+      UPDATE points_wallets
+      SET balance = ?, lifetime_earned = ?, lifetime_redeemed = ?, tier = ?
+      WHERE client_id = ?
+    `).run(wallet.balance, wallet.lifetimeEarned, wallet.lifetimeRedeemed, wallet.tier, originalTx.clientId);
 
     const adjustmentTx: PointsTransaction = {
       id: `TX-PTS-REV-${Date.now()}`,
@@ -1831,7 +1958,27 @@ class Store {
       createdAt: new Date().toISOString(),
     };
 
-    this.db.pointsTransactions.unshift(adjustmentTx);
+    // Insert adjustment tx in SQLite
+    this.sqlite.prepare(`
+      INSERT INTO points_transactions (
+        id, client_id, amount, type, note, source_type,
+        related_coin_tx_id, related_package_id, related_coupon_id, related_onetime_booking_id,
+        resulting_balance, created_by_staff_id, created_by_staff_name, created_at,
+        reversed, reversal_reason, reversed_at, reversed_by_staff_name
+      )
+      VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, ?, ?, ?, ?, 0, NULL, NULL, NULL)
+    `).run(
+      adjustmentTx.id,
+      adjustmentTx.clientId,
+      adjustmentTx.amount,
+      adjustmentTx.type,
+      adjustmentTx.note,
+      adjustmentTx.resultingBalance,
+      adjustmentTx.createdByStaffId,
+      adjustmentTx.createdByStaffName,
+      adjustmentTx.createdAt
+    );
+
     this.notifyClient(originalTx.clientId, 'ปรับปรุงยกเลิกรายการคะแนน', `ระบบได้ทำการยกเลิกรายการคะแนน #${originalTx.id} ยอดคะแนนสะสมปัจจุบันคือ ${wallet.balance.toLocaleString()} คะแนน (เหตุผล: ${reason})`);
     this.logAudit(staffId, staffName, 'REVERSE_POINTS_TX', 'points', originalTx.clientId, reason, originalTx, adjustmentTx);
 
@@ -2047,7 +2194,7 @@ class Store {
     pkg.voidReason = reason || 'ยกเลิกรายการโดยผู้ดูแลระบบ';
 
     // Reverse any points awarded for this package
-    const relatedPtsTx = this.db.pointsTransactions.find(
+    const relatedPtsTx = this.getAllPointsTransactions().find(
       (tx) => tx.relatedPackageId === clientPackageId && tx.type === 'points_earned' && !tx.reversed
     );
     if (relatedPtsTx) {
@@ -2225,7 +2372,7 @@ class Store {
     cpn.voidReason = reason || 'ยกเลิกรายการโดยผู้ดูแลระบบ';
 
     // Reverse any points awarded for this coupon
-    const relatedPtsTx = this.db.pointsTransactions.find(
+    const relatedPtsTx = this.getAllPointsTransactions().find(
       (tx) => tx.relatedCouponId === clientCouponId && tx.type === 'points_earned' && !tx.reversed
     );
     if (relatedPtsTx) {
@@ -2607,7 +2754,7 @@ class Store {
     booking.voidReason = reason || 'ยกเลิกรายการโดยผู้ดูแลระบบ';
 
     // Reverse any points awarded for this booking
-    const relatedPtsTxs = this.db.pointsTransactions.filter(
+    const relatedPtsTxs = this.getAllPointsTransactions().filter(
       (tx) => tx.relatedOneTimeBookingId === bookingId && tx.type === 'points_earned' && !tx.reversed
     );
     for (const ptsTx of relatedPtsTxs) {
@@ -2851,7 +2998,7 @@ class Store {
     };
 
     // 1. Auto-synthesize from Coin topups (ONLY non-bonus cash coin purchases)
-    for (const tx of this.db.coinTransactions) {
+    for (const tx of this.getAllCoinTransactions()) {
       if (tx.type === 'credit_added' && !tx.reversed && tx.amount > 0 && !tx.isBonus) {
         const clientName = formatClientName(tx.clientId);
         autoEntries.push({
@@ -2875,7 +3022,7 @@ class Store {
     }
 
     // 2. Auto-synthesize from Points transactions (Direct cash/promptpay payments ONLY - exclude points awarded for Coin topups, Bonus Coins, Package or Coupon sales, or One-Time bookings)
-    for (const tx of this.db.pointsTransactions) {
+    for (const tx of this.getAllPointsTransactions()) {
       if (tx.type === 'points_earned' && !tx.reversed) {
         const sourceType = tx.sourceType;
         const note = tx.note || '';
@@ -3188,8 +3335,8 @@ class Store {
       const countRow = this.sqlite.prepare('SELECT count(*) as count FROM clients').get() as { count: number };
       counts.clients = countRow ? countRow.count : 0;
       this.sqlite.prepare('DELETE FROM clients').run();
-      this.db.coinWallets = {};
-      this.db.pointsWallets = {};
+      this.sqlite.prepare('DELETE FROM coin_wallets').run();
+      this.sqlite.prepare('DELETE FROM points_wallets').run();
       this.db.clientPackages = [];
       this.db.clientCoupons = [];
       this.db.clientOneTimeBookings = [];
@@ -3205,13 +3352,15 @@ class Store {
 
     // 5. Purge Transactions & Financials & Audit Logs
     if (targets.deleteTransactions) {
+      const coinTxCount = (this.sqlite.prepare('SELECT count(*) as count FROM coin_transactions').get() as { count: number })?.count || 0;
+      const ptsTxCount = (this.sqlite.prepare('SELECT count(*) as count FROM points_transactions').get() as { count: number })?.count || 0;
       counts.transactions =
-        (this.db.coinTransactions ? this.db.coinTransactions.length : 0) +
-        (this.db.pointsTransactions ? this.db.pointsTransactions.length : 0) +
+        coinTxCount +
+        ptsTxCount +
         (this.db.financialEntries ? this.db.financialEntries.length : 0) +
         (this.db.auditLogs ? this.db.auditLogs.length : 0);
-      this.db.coinTransactions = [];
-      this.db.pointsTransactions = [];
+      this.sqlite.prepare('DELETE FROM coin_transactions').run();
+      this.sqlite.prepare('DELETE FROM points_transactions').run();
       this.db.financialEntries = [];
       this.db.auditLogs = [];
     }
@@ -3295,30 +3444,40 @@ class Store {
   public getFullBackupData() {
     const timestamp = new Date().toISOString();
     const allClients = this.getClients();
+    const allCoinTxs = this.getAllCoinTransactions();
+    const allPointsTxs = this.getAllPointsTransactions();
+    const coinWallets: Record<string, number> = {};
+    const pointsWallets: Record<string, PointsWallet> = {};
+
+    for (const c of allClients) {
+      coinWallets[c.id] = this.getCoinBalance(c.id);
+      pointsWallets[c.id] = this.getPointsWallet(c.id);
+    }
+
     return {
       appName: 'Me.My.Mind Membership',
       backupTimestamp: timestamp,
       summary: {
         totalClients: allClients.length,
-        totalCoinTransactions: this.db.coinTransactions ? this.db.coinTransactions.length : 0,
-        totalPointsTransactions: this.db.pointsTransactions ? this.db.pointsTransactions.length : 0,
+        totalCoinTransactions: allCoinTxs.length,
+        totalPointsTransactions: allPointsTxs.length,
         totalFinancialEntries: this.db.financialEntries ? this.db.financialEntries.length : 0,
         totalCatalogItems: this.db.catalogItems.length,
       },
       clients: allClients.map((c) => ({
         ...c,
-        coinBalance: this.db.coinWallets[c.id] || 0,
-        pointsWallet: this.db.pointsWallets[c.id] || { totalPoints: 0, currentTier: 'SILVER' },
+        coinBalance: coinWallets[c.id] || 0,
+        pointsWallet: pointsWallets[c.id] || { totalPoints: 0, currentTier: 'Bronze' },
         activePackagesCount: (this.db.clientPackages || []).filter((p) => p.clientId === c.id && p.status === 'active').length,
         activeCouponsCount: (this.db.clientCoupons || []).filter((cpn) => cpn.clientId === c.id && cpn.status === 'active').length,
       })),
-      coinWallets: this.db.coinWallets,
-      pointsWallets: this.db.pointsWallets,
+      coinWallets,
+      pointsWallets,
       clientPackages: this.db.clientPackages,
       clientCoupons: this.db.clientCoupons,
       clientOneTimeBookings: this.db.clientOneTimeBookings || [],
-      coinTransactions: this.db.coinTransactions,
-      pointsTransactions: this.db.pointsTransactions,
+      coinTransactions: allCoinTxs,
+      pointsTransactions: allPointsTxs,
       financialEntries: this.db.financialEntries,
       catalogItems: this.db.catalogItems,
       rewardCatalogItems: this.db.rewardCatalogItems,
