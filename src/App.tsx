@@ -186,9 +186,7 @@ export default function App() {
         if (empList.length > 0) setEmployees(empList);
         if (clientList.length > 0) {
           setAllClients(clientList);
-          if (!selectedStaffClient) {
-            setSelectedStaffClient(clientList[0]);
-          }
+          setSelectedStaffClient((prev) => prev || clientList[0]);
         }
       }
 
@@ -217,7 +215,7 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedStaffClient]);
+  }, []);
 
   // Ensure staff directory is loaded when switching to staff dashboard or staff logs in
   const ensureStaffData = useCallback(async () => {
@@ -229,14 +227,12 @@ export default function App() {
       if (empList.length > 0) setEmployees(empList);
       if (clientList.length > 0) {
         setAllClients(clientList);
-        if (!selectedStaffClient) {
-          setSelectedStaffClient(clientList[0]);
-        }
+        setSelectedStaffClient((prev) => prev || clientList[0]);
       }
     } catch (err) {
       console.error('Error loading staff background data:', err);
     }
-  }, [selectedStaffClient]);
+  }, []);
 
   useEffect(() => {
     if (viewMode === 'staff' || currentStaff) {
