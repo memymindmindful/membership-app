@@ -112,12 +112,48 @@ function rowToPointsTransaction(row: any): PointsTransaction {
   };
 }
 
+function rowToCatalogItem(row: any): CatalogItem {
+  let keywords: string[] | undefined = undefined;
+  if (row.keywords) {
+    try {
+      keywords = JSON.parse(row.keywords);
+    } catch {
+      keywords = [];
+    }
+  }
+  return {
+    id: row.id,
+    type: row.type as any,
+    name: row.name,
+    description: row.description || '',
+    imageUrl: row.image_url || '',
+    price: Number(row.price),
+    validityDays: Number(row.validity_days),
+    defaultSessions: row.default_sessions !== null && row.default_sessions !== undefined ? Number(row.default_sessions) : undefined,
+    category: row.category || undefined,
+    keywords,
+    active: Boolean(row.active),
+    createdAt: row.created_at,
+    isCrmMarketingVoucher: Boolean(row.is_crm_marketing_voucher),
+  };
+}
+
+function rowToRewardCatalogItem(row: any): RewardCatalogItem {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description || '',
+    pointsCost: Number(row.points_cost),
+    imageUrl: row.image_url || '',
+    active: Boolean(row.active),
+    minTier: (row.min_tier as any) || undefined,
+  };
+}
+
 interface DatabaseSchema {
-  catalogItems: CatalogItem[];
   clientPackages: ClientPackage[];
   clientCoupons: ClientCoupon[];
   clientOneTimeBookings?: ClientOneTimeBooking[];
-  rewardCatalogItems: RewardCatalogItem[];
   notifications: InAppNotification[];
   backupSettings?: {
     email: string;
@@ -225,14 +261,9 @@ function getInitialClients(): Client[] {
   ];
 }
 
-// Initial Seed Data
-function getInitialData(): DatabaseSchema {
-  const now = new Date().toISOString();
+function getInitialCatalogItems(): CatalogItem[] {
   const pastDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const nearExpiryDate = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(); // 4 days from now
-  const farExpiryDate = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString();
-
-  const catalogItems: CatalogItem[] = [
+  return [
     {
       id: 'CAT-PKG-01',
       type: 'package',
@@ -325,8 +356,10 @@ function getInitialData(): DatabaseSchema {
       createdAt: pastDate,
     },
   ];
+}
 
-  const rewardCatalogItems: RewardCatalogItem[] = [
+function getInitialRewardCatalogItems(): RewardCatalogItem[] {
+  return [
     {
       id: 'RWD-01',
       name: 'Me.My.Mind Organic Lip Balm',
@@ -360,6 +393,14 @@ function getInitialData(): DatabaseSchema {
       active: true,
     },
   ];
+}
+
+// Initial Seed Data
+function getInitialData(): DatabaseSchema {
+  const now = new Date().toISOString();
+  const pastDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const nearExpiryDate = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(); // 4 days from now
+  const farExpiryDate = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString();
 
   const clientPackages: ClientPackage[] = [
     {
@@ -613,10 +654,8 @@ function getInitialData(): DatabaseSchema {
   ];
 
   return {
-    catalogItems,
     clientPackages,
     clientCoupons,
-    rewardCatalogItems,
     notifications,
     auditLogs,
     financialEntries,
@@ -725,6 +764,64 @@ class Store {
       }
     }
 
+    // Ensure initial catalog_items exist if table is empty
+    const catalogCount = db.prepare('SELECT count(*) as count FROM catalog_items').get() as { count: number };
+    if (!catalogCount || catalogCount.count === 0) {
+      const initialCatalogs = getInitialCatalogItems();
+      const insertCatalog = db.prepare(`
+        INSERT OR REPLACE INTO catalog_items (
+          id, type, name, description, image_url, price, validity_days,
+          default_sessions, category, keywords, active, created_at, is_crm_marketing_voucher
+        )
+        VALUES (
+          @id, @type, @name, @description, @imageUrl, @price, @validityDays,
+          @defaultSessions, @category, @keywords, @active, @createdAt, @isCrmMarketingVoucher
+        )
+      `);
+      for (const item of initialCatalogs) {
+        insertCatalog.run({
+          id: item.id,
+          type: item.type,
+          name: item.name,
+          description: item.description || null,
+          imageUrl: item.imageUrl || null,
+          price: item.price,
+          validityDays: item.validityDays,
+          defaultSessions: item.defaultSessions !== undefined ? item.defaultSessions : null,
+          category: item.category || null,
+          keywords: item.keywords ? JSON.stringify(item.keywords) : null,
+          active: item.active ? 1 : 0,
+          createdAt: item.createdAt,
+          isCrmMarketingVoucher: item.isCrmMarketingVoucher ? 1 : 0,
+        });
+      }
+    }
+
+    // Ensure initial reward_catalog_items exist if table is empty
+    const rewardCount = db.prepare('SELECT count(*) as count FROM reward_catalog_items').get() as { count: number };
+    if (!rewardCount || rewardCount.count === 0) {
+      const initialRewards = getInitialRewardCatalogItems();
+      const insertReward = db.prepare(`
+        INSERT OR REPLACE INTO reward_catalog_items (
+          id, name, description, points_cost, image_url, active, min_tier
+        )
+        VALUES (
+          @id, @name, @description, @pointsCost, @imageUrl, @active, @minTier
+        )
+      `);
+      for (const item of initialRewards) {
+        insertReward.run({
+          id: item.id,
+          name: item.name,
+          description: item.description || null,
+          pointsCost: item.pointsCost,
+          imageUrl: item.imageUrl || null,
+          active: item.active ? 1 : 0,
+          minTier: item.minTier || null,
+        });
+      }
+    }
+
     return db;
   }
 
@@ -742,13 +839,17 @@ class Store {
           'coinWallets' in parsed ||
           'coinTransactions' in parsed ||
           'pointsWallets' in parsed ||
-          'pointsTransactions' in parsed;
+          'pointsTransactions' in parsed ||
+          'catalogItems' in parsed ||
+          'rewardCatalogItems' in parsed;
         delete parsed.clients;
         delete parsed.employees;
         delete parsed.coinWallets;
         delete parsed.coinTransactions;
         delete parsed.pointsWallets;
         delete parsed.pointsTransactions;
+        delete parsed.catalogItems;
+        delete parsed.rewardCatalogItems;
         if (!parsed.clientOneTimeBookings) {
           parsed.clientOneTimeBookings = [];
         }
@@ -1988,7 +2089,8 @@ class Store {
 
   // Catalog Templates Management
   public getCatalogItems(): CatalogItem[] {
-    return this.db.catalogItems;
+    const rows = this.sqlite.prepare('SELECT * FROM catalog_items ORDER BY created_at DESC').all();
+    return rows.map(rowToCatalogItem);
   }
 
   public createCatalogItem(
@@ -1996,8 +2098,9 @@ class Store {
     staffId: string,
     staffName: string
   ): CatalogItem {
+    const typePrefix = data.type === 'package' ? 'PKG' : data.type === 'onetime' ? 'ONE' : 'CPN';
     const newItem: CatalogItem = {
-      id: `CAT-${data.type === 'package' ? 'PKG' : 'CPN'}-${Date.now()}`,
+      id: `CAT-${typePrefix}-${Date.now()}`,
       type: data.type,
       name: data.name,
       description: data.description,
@@ -2012,7 +2115,28 @@ class Store {
       isCrmMarketingVoucher: data.type === 'coupon' ? Boolean(data.isCrmMarketingVoucher) : false,
     };
 
-    this.db.catalogItems.unshift(newItem);
+    this.sqlite.prepare(`
+      INSERT INTO catalog_items (
+        id, type, name, description, image_url, price, validity_days,
+        default_sessions, category, keywords, active, created_at, is_crm_marketing_voucher
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      newItem.id,
+      newItem.type,
+      newItem.name,
+      newItem.description || null,
+      newItem.imageUrl || null,
+      newItem.price,
+      newItem.validityDays,
+      newItem.defaultSessions !== undefined ? newItem.defaultSessions : null,
+      newItem.category || null,
+      newItem.keywords ? JSON.stringify(newItem.keywords) : null,
+      newItem.active ? 1 : 0,
+      newItem.createdAt,
+      newItem.isCrmMarketingVoucher ? 1 : 0
+    );
+
     this.logAudit(staffId, staffName, 'CREATE_CATALOG_ITEM', 'catalog', newItem.id, 'New catalog service created', null, newItem);
     this.saveToDisk();
     return newItem;
@@ -2024,15 +2148,37 @@ class Store {
     staffId: string,
     staffName: string
   ): CatalogItem {
-    const item = this.db.catalogItems.find((c) => c.id === id);
-    if (!item) throw new Error('Catalog item not found');
+    const row = this.sqlite.prepare('SELECT * FROM catalog_items WHERE id = ?').get(id);
+    if (!row) throw new Error('Catalog item not found');
 
+    const item = rowToCatalogItem(row);
     const prev = { ...item };
-    Object.assign(item, updates);
+    const updated = { ...item, ...updates };
 
-    this.logAudit(staffId, staffName, 'UPDATE_CATALOG_ITEM', 'catalog', item.id, 'Catalog service updated', prev, item);
+    this.sqlite.prepare(`
+      UPDATE catalog_items
+      SET type = ?, name = ?, description = ?, image_url = ?, price = ?,
+          validity_days = ?, default_sessions = ?, category = ?, keywords = ?,
+          active = ?, is_crm_marketing_voucher = ?
+      WHERE id = ?
+    `).run(
+      updated.type,
+      updated.name,
+      updated.description || null,
+      updated.imageUrl || null,
+      updated.price,
+      updated.validityDays,
+      updated.defaultSessions !== undefined ? updated.defaultSessions : null,
+      updated.category || null,
+      updated.keywords ? JSON.stringify(updated.keywords) : null,
+      updated.active ? 1 : 0,
+      updated.isCrmMarketingVoucher ? 1 : 0,
+      id
+    );
+
+    this.logAudit(staffId, staffName, 'UPDATE_CATALOG_ITEM', 'catalog', updated.id, 'Catalog service updated', prev, updated);
     this.saveToDisk();
-    return item;
+    return updated;
   }
 
   public bulkUpdateCatalogPrices(
@@ -2043,11 +2189,14 @@ class Store {
     staffName: string
   ): CatalogItem[] {
     const updatedItems: CatalogItem[] = [];
+    const getItemStmt = this.sqlite.prepare('SELECT * FROM catalog_items WHERE id = ?');
+    const updatePriceStmt = this.sqlite.prepare('UPDATE catalog_items SET price = ? WHERE id = ?');
 
     itemIds.forEach((id) => {
-      const item = this.db.catalogItems.find((c) => c.id === id);
-      if (!item) return;
+      const row = getItemStmt.get(id);
+      if (!row) return;
 
+      const item = rowToCatalogItem(row);
       const prevPrice = item.price;
       let newPrice = prevPrice;
 
@@ -2058,6 +2207,7 @@ class Store {
       }
 
       item.price = newPrice;
+      updatePriceStmt.run(newPrice, id);
       updatedItems.push(item);
 
       this.logAudit(
@@ -2091,7 +2241,7 @@ class Store {
     staffId: string,
     staffName: string
   ): ClientPackage {
-    const catalog = this.db.catalogItems.find((c) => c.id === catalogId);
+    const catalog = this.getCatalogItems().find((c) => c.id === catalogId);
     const client = this.getClientById(clientId);
     if (!client) throw new Error('Client not found');
 
@@ -2231,7 +2381,7 @@ class Store {
     staffId: string,
     staffName: string
   ): ClientCoupon {
-    const catalog = this.db.catalogItems.find((c) => c.id === catalogId);
+    const catalog = this.getCatalogItems().find((c) => c.id === catalogId);
     const client = this.getClientById(clientId);
     if (!client) throw new Error('Client not found');
 
@@ -2311,7 +2461,7 @@ class Store {
     cpn.redemptionLogs.unshift(log);
 
     if (cpn.isCrmMarketingVoucher) {
-      const catalog = this.db.catalogItems.find((c) => c.id === cpn.catalogId);
+      const catalog = this.getCatalogItems().find((c) => c.id === cpn.catalogId);
       const unitCost = catalog && catalog.price > 0
         ? catalog.price / cpn.totalQuantity
         : 0;
@@ -2525,7 +2675,7 @@ class Store {
     coinAmountUsed?: number,
     coinDiscountAtBooking?: number
   ): ClientOneTimeBooking {
-    const catalog = catalogId ? this.db.catalogItems.find((c) => c.id === catalogId) : undefined;
+    const catalog = catalogId ? this.getCatalogItems().find((c) => c.id === catalogId) : undefined;
     const finalName = customName?.trim() || catalog?.name || 'One-Time Service';
     const isFree = paymentStatusAtBooking === 'free';
     const isPrepaidOrFree = ['free', 'deduct_package', 'deduct_coupon', 'coin'].includes(paymentStatusAtBooking);
@@ -2915,7 +3065,8 @@ class Store {
 
   // Reward Catalog
   public getRewardCatalog(): RewardCatalogItem[] {
-    return this.db.rewardCatalogItems;
+    const rows = this.sqlite.prepare('SELECT * FROM reward_catalog_items').all();
+    return rows.map(rowToRewardCatalogItem);
   }
 
   public createRewardItem(data: Omit<RewardCatalogItem, 'id'>, staffId: string, staffName: string): RewardCatalogItem {
@@ -2928,25 +3079,51 @@ class Store {
       active: data.active ?? true,
       minTier: data.minTier || 'Bronze',
     };
-    this.db.rewardCatalogItems.unshift(item);
+
+    this.sqlite.prepare(`
+      INSERT INTO reward_catalog_items (id, name, description, points_cost, image_url, active, min_tier)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      item.id,
+      item.name,
+      item.description || null,
+      item.pointsCost,
+      item.imageUrl || null,
+      item.active ? 1 : 0,
+      item.minTier || null
+    );
+
     this.logAudit(staffId, staffName, 'CREATE_REWARD', 'reward', item.id, 'New reward catalog item added', null, item);
     this.saveToDisk();
     return item;
   }
 
   public updateRewardItem(id: string, updates: Partial<RewardCatalogItem>, staffId: string, staffName: string): RewardCatalogItem {
-    const item = this.db.rewardCatalogItems.find((r) => r.id === id);
-    if (!item) throw new Error('Reward catalog item not found');
-    if (updates.name !== undefined) item.name = updates.name;
-    if (updates.description !== undefined) item.description = updates.description;
-    if (updates.pointsCost !== undefined) item.pointsCost = Number(updates.pointsCost);
-    if (updates.imageUrl !== undefined) item.imageUrl = updates.imageUrl;
-    if (updates.active !== undefined) item.active = updates.active;
-    if (updates.minTier !== undefined) item.minTier = updates.minTier;
+    const row = this.sqlite.prepare('SELECT * FROM reward_catalog_items WHERE id = ?').get(id);
+    if (!row) throw new Error('Reward catalog item not found');
 
-    this.logAudit(staffId, staffName, 'UPDATE_REWARD', 'reward', item.id, 'Updated reward catalog item', null, item);
+    const item = rowToRewardCatalogItem(row);
+    const prev = { ...item };
+    const updated = { ...item, ...updates };
+    if (updates.pointsCost !== undefined) updated.pointsCost = Number(updates.pointsCost);
+
+    this.sqlite.prepare(`
+      UPDATE reward_catalog_items
+      SET name = ?, description = ?, points_cost = ?, image_url = ?, active = ?, min_tier = ?
+      WHERE id = ?
+    `).run(
+      updated.name,
+      updated.description || null,
+      updated.pointsCost,
+      updated.imageUrl || null,
+      updated.active ? 1 : 0,
+      updated.minTier || null,
+      id
+    );
+
+    this.logAudit(staffId, staffName, 'UPDATE_REWARD', 'reward', item.id, 'Updated reward catalog item', prev, updated);
     this.saveToDisk();
-    return item;
+    return updated;
   }
 
   // Notifications
@@ -3345,9 +3522,11 @@ class Store {
 
     // 4. Purge Catalog & Rewards
     if (targets.deleteCatalog) {
-      counts.catalog = this.db.catalogItems.length + (this.db.rewardCatalogItems ? this.db.rewardCatalogItems.length : 0);
-      this.db.catalogItems = [];
-      this.db.rewardCatalogItems = [];
+      const catCount = (this.sqlite.prepare('SELECT count(*) as count FROM catalog_items').get() as { count: number })?.count || 0;
+      const rwdCount = (this.sqlite.prepare('SELECT count(*) as count FROM reward_catalog_items').get() as { count: number })?.count || 0;
+      counts.catalog = catCount + rwdCount;
+      this.sqlite.prepare('DELETE FROM catalog_items').run();
+      this.sqlite.prepare('DELETE FROM reward_catalog_items').run();
     }
 
     // 5. Purge Transactions & Financials & Audit Logs
@@ -3446,6 +3625,8 @@ class Store {
     const allClients = this.getClients();
     const allCoinTxs = this.getAllCoinTransactions();
     const allPointsTxs = this.getAllPointsTransactions();
+    const allCatalogItems = this.getCatalogItems();
+    const allRewardItems = this.getRewardCatalog();
     const coinWallets: Record<string, number> = {};
     const pointsWallets: Record<string, PointsWallet> = {};
 
@@ -3462,7 +3643,7 @@ class Store {
         totalCoinTransactions: allCoinTxs.length,
         totalPointsTransactions: allPointsTxs.length,
         totalFinancialEntries: this.db.financialEntries ? this.db.financialEntries.length : 0,
-        totalCatalogItems: this.db.catalogItems.length,
+        totalCatalogItems: allCatalogItems.length,
       },
       clients: allClients.map((c) => ({
         ...c,
@@ -3479,8 +3660,8 @@ class Store {
       coinTransactions: allCoinTxs,
       pointsTransactions: allPointsTxs,
       financialEntries: this.db.financialEntries,
-      catalogItems: this.db.catalogItems,
-      rewardCatalogItems: this.db.rewardCatalogItems,
+      catalogItems: allCatalogItems,
+      rewardCatalogItems: allRewardItems,
       backupSettings: this.getBackupSettings(),
     };
   }
