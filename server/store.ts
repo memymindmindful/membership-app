@@ -833,7 +833,7 @@ class Store {
         delete payload.employees;
         delete payload.clients;
 
-        fs.writeFile(DATA_FILE, JSON.stringify(payload, null, 2), 'utf-8', (err) => {
+        fs.writeFile(DATA_FILE, JSON.stringify(payload), 'utf-8', (err) => {
           if (err) {
             console.error('Failed to save store to disk:', err);
           }
