@@ -563,7 +563,8 @@ export function buildBookingConfirmationText(params: {
       ];
       break;
     case 'deposit': {
-      const remaining = Math.max(0, booking.fullPrice - booking.depositAmount);
+      const coinDiscount = booking.coinAmountUsed || 0;
+      const remaining = Math.max(0, booking.fullPrice - booking.depositAmount - coinDiscount);
       paymentLines = [
         `ยอดรวม ${booking.fullPrice.toLocaleString()} บาท`,
         `🟢โอนจองเรียบร้อย ${booking.depositAmount.toLocaleString()} บาท`,
