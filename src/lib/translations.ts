@@ -521,4 +521,93 @@ export function translateTxNote(note: string, lang: AppLanguage = 'th'): string 
   return result;
 }
 
+/**
+ * Build a plain-text booking confirmation message for staff to copy & send to the client (e.g. via LINE).
+ */
+export function buildBookingConfirmationText(params: {
+  clientDisplayName: string;
+  clientNickname?: string;
+  clientPhone: string;
+  booking: {
+    name: string;
+    fullPrice: number;
+    depositAmount: number;
+    paymentStatusAtBooking: 'deposit' | 'paid_full' | 'free' | 'deduct_package' | 'deduct_coupon' | 'coin';
+    coinAmountUsed?: number;
+    bookingDateTime: string;
+    endDateTime?: string;
+    branch: string;
+  };
+}): string {
+  const { clientDisplayName, clientNickname, clientPhone, booking } = params;
+
+  const weekdays = ['วันอาทิตย์', 'วันจันทร์', 'วันอังคาร', 'วันพุธ', 'วันพฤหัสบดี', 'วันศุกร์', 'วันเสาร์'];
+  const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+
+  const start = new Date(booking.bookingDateTime);
+  const end = booking.endDateTime ? new Date(booking.endDateTime) : null;
+
+  const buddhistYear2Digit = String(start.getFullYear() + 543).slice(-2);
+  const dateLine = `${weekdays[start.getDay()]}ที่ ${start.getDate()} ${months[start.getMonth()]} ${buddhistYear2Digit}`;
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const startTime = `${pad(start.getHours())}.${pad(start.getMinutes())}`;
+  const timeLine = end ? `${startTime}-${pad(end.getHours())}.${pad(end.getMinutes())} น.` : `${startTime} น.`;
+
+  let paymentLines: string[] = [];
+  switch (booking.paymentStatusAtBooking) {
+    case 'paid_full':
+      paymentLines = [
+        `ยอดรวม ${booking.fullPrice.toLocaleString()} บาท`,
+        `✅ชำระเต็มจำนวนแล้ว`,
+      ];
+      break;
+    case 'deposit': {
+      const remaining = Math.max(0, booking.fullPrice - booking.depositAmount);
+      paymentLines = [
+        `ยอดรวม ${booking.fullPrice.toLocaleString()} บาท`,
+        `🟢โอนจองเรียบร้อย ${booking.depositAmount.toLocaleString()} บาท`,
+        `ชำระ ${remaining.toLocaleString()} บาท หลังนวด`,
+      ];
+      break;
+    }
+    case 'free':
+      paymentLines = [`🎁กิจกรรมฟรี ไม่มีค่าใช้จ่าย`];
+      break;
+    case 'deduct_package':
+      paymentLines = [`📦ตัดจากแพ็กเกจ ไม่มีค่าใช้จ่ายเพิ่มเติม`];
+      break;
+    case 'deduct_coupon':
+      paymentLines = [`🎫ใช้สิทธิ์คูปอง ไม่มีค่าใช้จ่ายเพิ่มเติม`];
+      break;
+    case 'coin': {
+      const coinUsed = booking.coinAmountUsed || 0;
+      const due = Math.max(0, booking.fullPrice - coinUsed);
+      paymentLines = [
+        `🪙ใช้ Coin ชำระ ${coinUsed.toLocaleString()} บาท`,
+        ...(due > 0 ? [`ชำระเพิ่มวันบริการ ${due.toLocaleString()} บาท`] : []),
+      ];
+      break;
+    }
+  }
+
+  const nameLine = clientNickname ? `${clientDisplayName} (${clientNickname})` : clientDisplayName;
+
+  return [
+    '✅Booking Confirmation',
+    '',
+    booking.name,
+    '',
+    ...paymentLines,
+    '',
+    `👩${nameLine}`,
+    clientPhone,
+    '',
+    `📆${dateLine}`,
+    `⏰${timeLine}`,
+    '',
+    `📍${booking.branch}`,
+  ].join('\n');
+}
+
 

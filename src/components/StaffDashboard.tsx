@@ -39,6 +39,7 @@ import {
   Lock,
   Trash2,
   Loader2,
+  Copy,
 } from 'lucide-react';
 import appLogo from '../assets/images/me_my_mind_logo_1785924412256.jpg';
 import { FinancialDashboard } from './FinancialDashboard';
@@ -58,7 +59,7 @@ import {
   BAHT_PER_POINT,
   RewardCatalogItem,
 } from '../types';
-import { translations, formatDate, formatShortDate, formatCurrency, translateTxNote } from '../lib/translations';
+import { translations, formatDate, formatShortDate, formatCurrency, translateTxNote, buildBookingConfirmationText } from '../lib/translations';
 import { api, FullClientData } from '../services/api';
 import { ConfirmationModal } from './ConfirmationModal';
 import { QrScannerModal } from './QrScannerModal';
@@ -327,6 +328,22 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   const [staffNewDateTime, setStaffNewDateTime] = useState('');
   const [staffNewEndDateTime, setStaffNewEndDateTime] = useState('');
   const [isSubmittingRescheduleStaff, setIsSubmittingRescheduleStaff] = useState(false);
+
+  // Copy One-Time Booking Confirmation State
+  const [copiedOneTimeBookingId, setCopiedOneTimeBookingId] = useState<string | null>(null);
+
+  const handleCopyOneTimeBookingConfirmation = (booking: ClientOneTimeBooking) => {
+    if (!selectedClientData) return;
+    const text = buildBookingConfirmationText({
+      clientDisplayName: selectedClientData.client.displayName,
+      clientNickname: selectedClientData.client.nickname,
+      clientPhone: selectedClientData.client.phone,
+      booking,
+    });
+    navigator.clipboard.writeText(text);
+    setCopiedOneTimeBookingId(booking.id);
+    setTimeout(() => setCopiedOneTimeBookingId((prev) => (prev === booking.id ? null : prev)), 2000);
+  };
 
   // Filter clients by search query
   const filteredClients = allClients.filter(
@@ -1265,6 +1282,19 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                               >
                                 <Calendar className="w-3.5 h-3.5 text-[#D87085]" />
                                 <span>{lang === 'th' ? 'เลื่อนนัด' : 'Reschedule'}</span>
+                              </button>
+
+                              {/* Copy Booking Confirmation Button (NEW) */}
+                              <button
+                                onClick={() => handleCopyOneTimeBookingConfirmation(booking)}
+                                className="px-3.5 py-2 bg-white border border-[#F2E3E1] text-[#8C6D5E] hover:bg-[#FAF0ED] hover:text-[#D87085] text-xs font-bold rounded-xl shadow-2xs transition flex items-center gap-1.5"
+                              >
+                                <Copy className="w-3.5 h-3.5 text-[#D87085]" />
+                                <span>
+                                  {copiedOneTimeBookingId === booking.id
+                                    ? (lang === 'th' ? 'คัดลอกแล้ว!' : 'Copied!')
+                                    : (lang === 'th' ? 'คัดลอกข้อความยืนยัน' : 'Copy Confirmation')}
+                                </span>
                               </button>
                             </div>
                           </div>

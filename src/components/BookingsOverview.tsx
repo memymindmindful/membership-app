@@ -24,12 +24,13 @@ import {
   ChevronDown,
   ChevronUp,
   AlertTriangle,
+  Copy,
 } from 'lucide-react';
 import { AppLanguage, ClientOneTimeBooking, Employee } from '../types';
 import { api } from '../services/api';
 import { ExpiringAlertTasks } from './ExpiringAlertTasks';
 import { ConfirmationModal } from './ConfirmationModal';
-import { formatCurrency } from '../lib/translations';
+import { formatCurrency, buildBookingConfirmationText } from '../lib/translations';
 
 type BookingWithClient = ClientOneTimeBooking & {
   clientName: string;
@@ -96,6 +97,20 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
   const [selectedCalendarDateStr, setSelectedCalendarDateStr] = useState<string>(
     new Date().toISOString().slice(0, 10)
   );
+
+  // Copy Confirmation State
+  const [copiedBookingId, setCopiedBookingId] = useState<string | null>(null);
+
+  const handleCopyBookingConfirmation = (booking: BookingWithClient) => {
+    const text = buildBookingConfirmationText({
+      clientDisplayName: booking.clientName,
+      clientPhone: booking.clientPhone,
+      booking,
+    });
+    navigator.clipboard.writeText(text);
+    setCopiedBookingId(booking.id);
+    setTimeout(() => setCopiedBookingId((prev) => (prev === booking.id ? null : prev)), 2000);
+  };
 
   // Update clock every second
   useEffect(() => {
@@ -217,9 +232,10 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
   };
 
   const filteredBookings = useMemo(() => {
-    if (!searchQuery.trim()) return upcomingBookings;
+    const bookedOnly = upcomingBookings.filter((b) => b.status === 'booked');
+    if (!searchQuery.trim()) return bookedOnly;
     const q = searchQuery.toLowerCase();
-    return upcomingBookings.filter(
+    return bookedOnly.filter(
       (b) =>
         b.clientName.toLowerCase().includes(q) ||
         b.clientPhone.toLowerCase().includes(q) ||
@@ -663,6 +679,22 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
                             <Calendar className="w-3.5 h-3.5 text-[#D87085]" />
                             <span>{lang === 'th' ? 'เลื่อนนัด' : 'Reschedule'}</span>
                           </button>
+
+                          {/* Copy Booking Confirmation Button (NEW) */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyBookingConfirmation(booking);
+                            }}
+                            className="px-3 py-1.5 bg-white border border-[#F2E3E1] text-[#8C6D5E] hover:bg-[#FAF0ED] hover:text-[#D87085] text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <Copy className="w-3.5 h-3.5 text-[#D87085]" />
+                            <span>
+                              {copiedBookingId === booking.id
+                                ? (lang === 'th' ? 'คัดลอกแล้ว!' : 'Copied!')
+                                : (lang === 'th' ? 'คัดลอกข้อความยืนยัน' : 'Copy Confirmation')}
+                            </span>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -971,27 +1003,36 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
 
                         <div className="flex items-center gap-1.5 flex-wrap self-end sm:self-center">
                           {renderPaymentBadge(b)}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setUseTarget(b);
-                            }}
-                            className="px-2.5 py-1 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-lg transition flex items-center gap-1 cursor-pointer"
-                          >
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span>{lang === 'th' ? 'ใช้บริการ' : 'Use'}</span>
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setRescheduleTarget(b);
-                              setNewDateTime(b.bookingDateTime ? b.bookingDateTime.slice(0, 16) : '');
-                              setNewEndDateTime(b.endDateTime ? b.endDateTime.slice(0, 16) : '');
-                            }}
-                            className="px-2.5 py-1 bg-white border border-[#F2E3E1] text-[#8C6D5E] hover:bg-[#FAF0ED] hover:text-[#D87085] text-xs font-bold rounded-lg transition cursor-pointer"
-                          >
-                            {lang === 'th' ? 'เลื่อนนัด' : 'Reschedule'}
-                          </button>
+                          {b.status === 'booked' ? (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setUseTarget(b);
+                                }}
+                                className="px-2.5 py-1 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-lg transition flex items-center gap-1 cursor-pointer"
+                              >
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>{lang === 'th' ? 'ใช้บริการ' : 'Use'}</span>
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRescheduleTarget(b);
+                                  setNewDateTime(b.bookingDateTime ? b.bookingDateTime.slice(0, 16) : '');
+                                  setNewEndDateTime(b.endDateTime ? b.endDateTime.slice(0, 16) : '');
+                                }}
+                                className="px-2.5 py-1 bg-white border border-[#F2E3E1] text-[#8C6D5E] hover:bg-[#FAF0ED] hover:text-[#D87085] text-xs font-bold rounded-lg transition cursor-pointer"
+                              >
+                                {lang === 'th' ? 'เลื่อนนัด' : 'Reschedule'}
+                              </button>
+                            </>
+                          ) : b.status === 'used' ? (
+                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full border border-emerald-300 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                              {lang === 'th' ? 'ใช้บริการแล้ว' : 'Completed'}
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                     ))}
