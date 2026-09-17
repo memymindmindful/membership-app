@@ -2982,11 +2982,9 @@ class Store {
 
   // One-Time Service Bookings Operations
   public getAllOneTimeBookings(): (ClientOneTimeBooking & { clientName: string; clientPhone: string; clientProfilePic?: string; clientCoinBalance?: number })[] {
-    const now = new Date();
     const rows = this.sqlite.prepare("SELECT * FROM client_one_time_bookings WHERE status = 'booked' ORDER BY booking_date_time ASC").all();
     const allBookings = rows.map(rowToClientOneTimeBooking);
     return allBookings
-      .filter((b) => new Date(b.bookingDateTime) >= now)
       .map((b) => {
         const client = this.getClientById(b.clientId);
         return {

@@ -861,7 +861,9 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
                   const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
                   const dayBookings = bookingsByDate[dateStr] || [];
                   const isSelected = selectedCalendarDateStr === dateStr;
-                  const isToday = new Date().toISOString().slice(0, 10) === dateStr;
+                  const todayStr = new Date().toISOString().slice(0, 10);
+                  const isToday = todayStr === dateStr;
+                  const isPastDate = dateStr < todayStr;
 
                   return (
                     <button
@@ -886,14 +888,22 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
                           {dayNum}
                         </span>
                         {dayBookings.length > 0 && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#D87085] text-white">
+                          <span
+                            className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full text-white ${
+                              isPastDate ? 'bg-gray-400' : 'bg-[#D87085]'
+                            }`}
+                          >
                             {dayBookings.length}
                           </span>
                         )}
                       </div>
 
                       {dayBookings.length > 0 ? (
-                        <div className="text-[10px] text-[#D87085] font-semibold truncate hidden sm:block">
+                        <div
+                          className={`text-[10px] font-semibold truncate hidden sm:block ${
+                            isPastDate ? 'text-gray-400' : 'text-[#D87085]'
+                          }`}
+                        >
                           {dayBookings[0].name}
                         </div>
                       ) : (
