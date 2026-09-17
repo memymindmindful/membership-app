@@ -1248,7 +1248,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               {role === 'admin' && (
                                 <button
                                   onClick={() => {
@@ -1259,16 +1259,17 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                                   className="px-2.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition flex items-center gap-1"
                                 >
                                   <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                                  <span>{lang === 'th' ? 'ยกเลิก (Admin)' : 'Void'}</span>
+                                  <span className="hidden sm:inline">{lang === 'th' ? 'ยกเลิก' : 'Void'}</span>
                                 </button>
                               )}
 
                               <button
                                 onClick={() => setUseTargetOneTimeBooking(booking)}
-                                className="px-3.5 py-2 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-xl shadow-2xs transition flex items-center gap-1.5"
+                                title={lang === 'th' ? 'บันทึกการใช้บริการ' : 'Mark as Used'}
+                                className="px-2.5 sm:px-3.5 py-2 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-xl shadow-2xs transition flex items-center gap-1.5"
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>{lang === 'th' ? 'บันทึกการใช้บริการ' : 'Mark as Used'}</span>
+                                <span className="hidden sm:inline">{lang === 'th' ? 'ใช้บริการ' : 'Mark Used'}</span>
                               </button>
 
                               {/* Reschedule Button */}
@@ -1278,22 +1279,32 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                                   setStaffNewDateTime(booking.bookingDateTime ? booking.bookingDateTime.slice(0, 16) : '');
                                   setStaffNewEndDateTime(booking.endDateTime ? booking.endDateTime.slice(0, 16) : '');
                                 }}
-                                className="px-3.5 py-2 bg-white border border-[#F2E3E1] text-[#8C6D5E] hover:bg-[#FAF0ED] hover:text-[#D87085] text-xs font-bold rounded-xl shadow-2xs transition flex items-center gap-1.5"
+                                title={lang === 'th' ? 'เลื่อนนัด' : 'Reschedule'}
+                                className="px-2.5 sm:px-3.5 py-2 bg-white border border-[#F2E3E1] text-[#8C6D5E] hover:bg-[#FAF0ED] hover:text-[#D87085] text-xs font-bold rounded-xl shadow-2xs transition flex items-center gap-1.5"
                               >
                                 <Calendar className="w-3.5 h-3.5 text-[#D87085]" />
-                                <span>{lang === 'th' ? 'เลื่อนนัด' : 'Reschedule'}</span>
+                                <span className="hidden sm:inline">{lang === 'th' ? 'เลื่อนนัด' : 'Reschedule'}</span>
                               </button>
 
                               {/* Copy Booking Confirmation Button (NEW) */}
                               <button
                                 onClick={() => handleCopyOneTimeBookingConfirmation(booking)}
-                                className="px-3.5 py-2 bg-white border border-[#F2E3E1] text-[#8C6D5E] hover:bg-[#FAF0ED] hover:text-[#D87085] text-xs font-bold rounded-xl shadow-2xs transition flex items-center gap-1.5"
+                                title={
+                                  copiedOneTimeBookingId === booking.id
+                                    ? (lang === 'th' ? 'คัดลอกแล้ว!' : 'Copied!')
+                                    : (lang === 'th' ? 'คัดลอกข้อความยืนยัน' : 'Copy Confirmation')
+                                }
+                                className="px-2.5 sm:px-3.5 py-2 bg-white border border-[#F2E3E1] text-[#8C6D5E] hover:bg-[#FAF0ED] hover:text-[#D87085] text-xs font-bold rounded-xl shadow-2xs transition flex items-center gap-1.5"
                               >
-                                <Copy className="w-3.5 h-3.5 text-[#D87085]" />
-                                <span>
+                                {copiedOneTimeBookingId === booking.id ? (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5 text-[#D87085]" />
+                                )}
+                                <span className="hidden sm:inline">
                                   {copiedOneTimeBookingId === booking.id
                                     ? (lang === 'th' ? 'คัดลอกแล้ว!' : 'Copied!')
-                                    : (lang === 'th' ? 'คัดลอกข้อความยืนยัน' : 'Copy Confirmation')}
+                                    : (lang === 'th' ? 'คัดลอกข้อความ' : 'Copy')}
                                 </span>
                               </button>
                             </div>
