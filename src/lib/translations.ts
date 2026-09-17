@@ -568,6 +568,7 @@ export function buildBookingConfirmationText(params: {
       paymentLines = [
         `ยอดรวม ${booking.fullPrice.toLocaleString()} บาท`,
         `🟢โอนจองเรียบร้อย ${booking.depositAmount.toLocaleString()} บาท`,
+        ...(coinDiscount > 0 ? [`🎁ใช้ Coin เป็นส่วนลด ${coinDiscount.toLocaleString()} บาท`] : []),
         `ชำระ ${remaining.toLocaleString()} บาท หลังนวด`,
       ];
       break;
