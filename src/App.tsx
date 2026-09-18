@@ -570,6 +570,7 @@ export default function App() {
             catalogItems={catalogItems}
             currentStaff={currentStaff}
             lang={lang}
+            moduleSettings={moduleSettings}
             onBack={() => setActiveSubView('main')}
             onRefreshCatalog={async () => {
               const freshCat = await api.getCatalog();

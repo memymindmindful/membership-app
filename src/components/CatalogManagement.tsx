@@ -28,7 +28,7 @@ import {
   Settings2,
   Zap,
 } from 'lucide-react';
-import { AppLanguage, CatalogItem, CatalogType, Employee, RewardCatalogItem, PointsTier } from '../types';
+import { AppLanguage, CatalogItem, CatalogType, Employee, RewardCatalogItem, PointsTier, ModuleSettings } from '../types';
 import { translations, formatCurrency } from '../lib/translations';
 import { api } from '../services/api';
 
@@ -36,6 +36,7 @@ interface CatalogManagementProps {
   catalogItems: CatalogItem[];
   currentStaff: Employee;
   lang: AppLanguage;
+  moduleSettings?: ModuleSettings;
   onBack: () => void;
   onRefreshCatalog: () => void;
 }
@@ -44,10 +45,26 @@ export const CatalogManagement: React.FC<CatalogManagementProps> = ({
   catalogItems,
   currentStaff,
   lang,
+  moduleSettings,
   onBack,
   onRefreshCatalog,
 }) => {
   const t = translations[lang];
+
+  const isTypeEnabled = (type: CatalogType): boolean => {
+    if (!moduleSettings) return true;
+    if (type === 'package') return moduleSettings.package !== false;
+    if (type === 'coupon') return moduleSettings.coupon !== false;
+    if (type === 'onetime') return moduleSettings.booking !== false;
+    return true;
+  };
+
+  const getDefaultEnabledType = (): CatalogType => {
+    if (isTypeEnabled('package')) return 'package';
+    if (isTypeEnabled('onetime')) return 'onetime';
+    if (isTypeEnabled('coupon')) return 'coupon';
+    return 'package';
+  };
 
   // Active Management Mode Tab ('service' or 'reward')
   const [activeTab, setActiveTab] = useState<'service' | 'reward'>('service');
@@ -120,6 +137,7 @@ export const CatalogManagement: React.FC<CatalogManagementProps> = ({
     setIsCrmMarketingVoucher(false);
     setEditingItemId(null);
     setError(null);
+    setServiceType(getDefaultEnabledType());
   };
 
   const resetRewardForm = () => {
@@ -329,9 +347,9 @@ export const CatalogManagement: React.FC<CatalogManagementProps> = ({
 
   const filterPills = [
     { id: 'all', label: 'ทั้งหมด (All)' },
-    { id: 'package', label: 'คอร์ส (Packages)' },
-    { id: 'coupon', label: 'คูปอง (Coupons)' },
-    { id: 'onetime', label: 'รายครั้ง (One-Time)' },
+    ...(isTypeEnabled('package') ? [{ id: 'package', label: 'คอร์ส (Packages)' }] : []),
+    ...(isTypeEnabled('coupon') ? [{ id: 'coupon', label: 'คูปอง (Coupons)' }] : []),
+    ...(isTypeEnabled('onetime') ? [{ id: 'onetime', label: 'รายครั้ง (One-Time)' }] : []),
     ...presetKeywords.map((kw) => ({ id: kw, label: kw })),
     ...existingCategories
       .filter((c) => !presetKeywords.includes(c))
@@ -340,6 +358,8 @@ export const CatalogManagement: React.FC<CatalogManagementProps> = ({
 
   // Filtered Catalog Items based on category & search
   const filteredCatalogItems = catalogItems.filter((item) => {
+    if (!isTypeEnabled(item.type)) return false;
+
     if (selectedCategory !== 'all') {
       const catLower = selectedCategory.toLowerCase();
       const itemCat = (item.category || '').toLowerCase();
@@ -524,59 +544,65 @@ export const CatalogManagement: React.FC<CatalogManagementProps> = ({
                   {t.serviceTypeLabel}
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setServiceType('onetime')}
-                    className={`p-3.5 rounded-xl border flex items-center gap-3 transition text-left ${
-                      serviceType === 'onetime'
-                        ? 'bg-[#F2EDE4] border-[#8C6D5E] text-[#2D2926] ring-2 ring-[#8C6D5E]/20 font-semibold'
-                        : 'bg-[#F9F8F6] border-[#D1CEC7] text-[#2D2926]/70 hover:bg-[#F2EDE4]'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg ${serviceType === 'onetime' ? 'bg-[#8C6D5E] text-white' : 'bg-[#D1CEC7]'}`}>
-                      <Sparkles className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold block">บริการรายครั้ง (One-Time)</span>
-                      <p className="text-[10px] text-[#2D2926]/60">เช่น นวดหน้ารายครั้ง 1,500฿, นวดอโรม่า 1,200฿</p>
-                    </div>
-                  </button>
+                  {isTypeEnabled('onetime') && (
+                    <button
+                      type="button"
+                      onClick={() => setServiceType('onetime')}
+                      className={`p-3.5 rounded-xl border flex items-center gap-3 transition text-left ${
+                        serviceType === 'onetime'
+                          ? 'bg-[#F2EDE4] border-[#8C6D5E] text-[#2D2926] ring-2 ring-[#8C6D5E]/20 font-semibold'
+                          : 'bg-[#F9F8F6] border-[#D1CEC7] text-[#2D2926]/70 hover:bg-[#F2EDE4]'
+                      }`}
+                    >
+                      <div className={`p-2 rounded-lg ${serviceType === 'onetime' ? 'bg-[#8C6D5E] text-white' : 'bg-[#D1CEC7]'}`}>
+                        <Sparkles className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold block">บริการรายครั้ง (One-Time)</span>
+                        <p className="text-[10px] text-[#2D2926]/60">เช่น นวดหน้ารายครั้ง 1,500฿, นวดอโรม่า 1,200฿</p>
+                      </div>
+                    </button>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => setServiceType('package')}
-                    className={`p-3.5 rounded-xl border flex items-center gap-3 transition text-left ${
-                      serviceType === 'package'
-                        ? 'bg-[#F2EDE4] border-[#8C6D5E] text-[#2D2926] ring-2 ring-[#8C6D5E]/20 font-semibold'
-                        : 'bg-[#F9F8F6] border-[#D1CEC7] text-[#2D2926]/70 hover:bg-[#F2EDE4]'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg ${serviceType === 'package' ? 'bg-[#8C6D5E] text-white' : 'bg-[#D1CEC7]'}`}>
-                      <Package className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold block">{t.packageOptionTitle} (คอร์ส)</span>
-                      <p className="text-[10px] text-[#2D2926]/60">เช่น คอร์สนวดหน้า 10 ครั้ง, คอร์สนวดอโรม่า 5 ครั้ง</p>
-                    </div>
-                  </button>
+                  {isTypeEnabled('package') && (
+                    <button
+                      type="button"
+                      onClick={() => setServiceType('package')}
+                      className={`p-3.5 rounded-xl border flex items-center gap-3 transition text-left ${
+                        serviceType === 'package'
+                          ? 'bg-[#F2EDE4] border-[#8C6D5E] text-[#2D2926] ring-2 ring-[#8C6D5E]/20 font-semibold'
+                          : 'bg-[#F9F8F6] border-[#D1CEC7] text-[#2D2926]/70 hover:bg-[#F2EDE4]'
+                      }`}
+                    >
+                      <div className={`p-2 rounded-lg ${serviceType === 'package' ? 'bg-[#8C6D5E] text-white' : 'bg-[#D1CEC7]'}`}>
+                        <Package className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold block">{t.packageOptionTitle} (คอร์ส)</span>
+                        <p className="text-[10px] text-[#2D2926]/60">เช่น คอร์สนวดหน้า 10 ครั้ง, คอร์สนวดอโรม่า 5 ครั้ง</p>
+                      </div>
+                    </button>
+                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => setServiceType('coupon')}
-                    className={`p-3.5 rounded-xl border flex items-center gap-3 transition text-left ${
-                      serviceType === 'coupon'
-                        ? 'bg-[#F2EDE4] border-[#8C6D5E] text-[#2D2926] ring-2 ring-[#8C6D5E]/20 font-semibold'
-                        : 'bg-[#F9F8F6] border-[#D1CEC7] text-[#2D2926]/70 hover:bg-[#F2EDE4]'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg ${serviceType === 'coupon' ? 'bg-[#8C6D5E] text-white' : 'bg-[#D1CEC7]'}`}>
-                      <Ticket className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold block">{t.couponOptionTitle} (คูปอง)</span>
-                      <p className="text-[10px] text-[#2D2926]/60">เช่น คูปองส่วนลด 500 บาท, ส่วนลดเพิ่มสปา</p>
-                    </div>
-                  </button>
+                  {isTypeEnabled('coupon') && (
+                    <button
+                      type="button"
+                      onClick={() => setServiceType('coupon')}
+                      className={`p-3.5 rounded-xl border flex items-center gap-3 transition text-left ${
+                        serviceType === 'coupon'
+                          ? 'bg-[#F2EDE4] border-[#8C6D5E] text-[#2D2926] ring-2 ring-[#8C6D5E]/20 font-semibold'
+                          : 'bg-[#F9F8F6] border-[#D1CEC7] text-[#2D2926]/70 hover:bg-[#F2EDE4]'
+                      }`}
+                    >
+                      <div className={`p-2 rounded-lg ${serviceType === 'coupon' ? 'bg-[#8C6D5E] text-white' : 'bg-[#D1CEC7]'}`}>
+                        <Ticket className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold block">{t.couponOptionTitle} (คูปอง)</span>
+                        <p className="text-[10px] text-[#2D2926]/60">เช่น คูปองส่วนลด 500 บาท, ส่วนลดเพิ่มสปา</p>
+                      </div>
+                    </button>
+                  )}
                 </div>
               </div>
 
