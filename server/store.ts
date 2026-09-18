@@ -831,6 +831,9 @@ class Store {
     if (!settingsColumns.some(col => col.name === 'module_settings')) {
       db.exec("ALTER TABLE settings ADD COLUMN module_settings TEXT");
     }
+    if (!settingsColumns.some(col => col.name === 'legal_settings')) {
+      db.exec("ALTER TABLE settings ADD COLUMN legal_settings TEXT");
+    }
 
     // Ensure initial employees exist if table is empty
     const empCount = db.prepare('SELECT count(*) as count FROM employees').get() as { count: number };
@@ -4218,6 +4221,83 @@ class Store {
       VALUES ('app_settings', ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         module_settings = excluded.module_settings,
+        updated_at = excluded.updated_at
+    `).run(JSON.stringify(merged), new Date().toISOString());
+    return merged;
+  }
+
+  public getLegalSettings() {
+    const defaultLegal = {
+      businessInfo: {
+        businessName: '',
+        address: '',
+        website: '',
+        contactPerson: '',
+        email: '',
+        phone: '',
+        lineId: '',
+      },
+      pdpa: { useCustom: false, customTextTh: '', customTextEn: '' },
+      terms: { useCustom: false, customTextTh: '', customTextEn: '' },
+    };
+
+    const row = this.sqlite.prepare('SELECT legal_settings FROM settings WHERE id = ?').get('app_settings') as { legal_settings: string | null } | undefined;
+    if (row && row.legal_settings) {
+      try {
+        const parsed = JSON.parse(row.legal_settings);
+        return {
+          businessInfo: { ...defaultLegal.businessInfo, ...(parsed.businessInfo || {}) },
+          pdpa: { ...defaultLegal.pdpa, ...(parsed.pdpa || {}) },
+          terms: { ...defaultLegal.terms, ...(parsed.terms || {}) },
+        };
+      } catch {
+        return defaultLegal;
+      }
+    }
+
+    this.sqlite.prepare(`
+      INSERT INTO settings (id, legal_settings, updated_at)
+      VALUES ('app_settings', ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        legal_settings = excluded.legal_settings,
+        updated_at = excluded.updated_at
+    `).run(JSON.stringify(defaultLegal), new Date().toISOString());
+
+    return defaultLegal;
+  }
+
+  public updateLegalSettings(settings: {
+    businessInfo?: { businessName?: string; address?: string; website?: string; contactPerson?: string; email?: string; phone?: string; lineId?: string };
+    pdpa?: { useCustom?: boolean; customTextTh?: string; customTextEn?: string };
+    terms?: { useCustom?: boolean; customTextTh?: string; customTextEn?: string };
+  }) {
+    const current = this.getLegalSettings();
+    const merged = {
+      businessInfo: {
+        businessName: settings.businessInfo?.businessName !== undefined ? settings.businessInfo.businessName : current.businessInfo.businessName,
+        address: settings.businessInfo?.address !== undefined ? settings.businessInfo.address : current.businessInfo.address,
+        website: settings.businessInfo?.website !== undefined ? settings.businessInfo.website : current.businessInfo.website,
+        contactPerson: settings.businessInfo?.contactPerson !== undefined ? settings.businessInfo.contactPerson : current.businessInfo.contactPerson,
+        email: settings.businessInfo?.email !== undefined ? settings.businessInfo.email : current.businessInfo.email,
+        phone: settings.businessInfo?.phone !== undefined ? settings.businessInfo.phone : current.businessInfo.phone,
+        lineId: settings.businessInfo?.lineId !== undefined ? settings.businessInfo.lineId : current.businessInfo.lineId,
+      },
+      pdpa: {
+        useCustom: settings.pdpa?.useCustom !== undefined ? settings.pdpa.useCustom : current.pdpa.useCustom,
+        customTextTh: settings.pdpa?.customTextTh !== undefined ? settings.pdpa.customTextTh : current.pdpa.customTextTh,
+        customTextEn: settings.pdpa?.customTextEn !== undefined ? settings.pdpa.customTextEn : current.pdpa.customTextEn,
+      },
+      terms: {
+        useCustom: settings.terms?.useCustom !== undefined ? settings.terms.useCustom : current.terms.useCustom,
+        customTextTh: settings.terms?.customTextTh !== undefined ? settings.terms.customTextTh : current.terms.customTextTh,
+        customTextEn: settings.terms?.customTextEn !== undefined ? settings.terms.customTextEn : current.terms.customTextEn,
+      },
+    };
+    this.sqlite.prepare(`
+      INSERT INTO settings (id, legal_settings, updated_at)
+      VALUES ('app_settings', ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        legal_settings = excluded.legal_settings,
         updated_at = excluded.updated_at
     `).run(JSON.stringify(merged), new Date().toISOString());
     return merged;

@@ -9,6 +9,7 @@ import {
   AuditLog,
   BrandSettings,
   ModuleSettings,
+  LegalSettings,
 } from './types';
 import { api, FullClientData } from './services/api';
 import { Header } from './components/Header';
@@ -35,6 +36,7 @@ import {
   RotateCcw,
   KeyRound,
   Sliders,
+  FileText,
 } from 'lucide-react';
 import { StaffManagementModal } from './components/StaffManagementModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
@@ -42,6 +44,7 @@ import { ExportClientsModal } from './components/ExportClientsModal';
 import { FactoryResetModal } from './components/FactoryResetModal';
 import { BackupSettingsModal } from './components/BackupSettingsModal';
 import { ModuleSettingsModal } from './components/ModuleSettingsModal';
+import { LegalSettingsModal } from './components/LegalSettingsModal';
 import { translations } from './lib/translations';
 import defaultAppLogo from './assets/images/me_my_mind_logo_1785924412256.jpg';
 
@@ -77,6 +80,8 @@ export default function App() {
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
   const [isModuleSettingsOpen, setIsModuleSettingsOpen] = useState(false);
+  const [isLegalSettingsOpen, setIsLegalSettingsOpen] = useState(false);
+  const [legalSettings, setLegalSettings] = useState<LegalSettings | undefined>(undefined);
 
   const [moduleSettings, setModuleSettings] = useState<ModuleSettings>({
     coin: true,
@@ -215,6 +220,16 @@ export default function App() {
         }
       } catch (e) {
         console.warn('Could not load module settings from backend:', e);
+      }
+
+      // Sync Legal Settings from Backend Server
+      try {
+        const serverLegal = await api.getLegalSettings();
+        if (serverLegal) {
+          setLegalSettings(serverLegal);
+        }
+      } catch (e) {
+        console.warn('Could not load legal settings from backend:', e);
       }
 
       const [catList, rewardList] = await Promise.all([
@@ -683,6 +698,7 @@ export default function App() {
       <ConsentModal
         isOpen={showConsentModal}
         initialLang={lang}
+        legalSettings={legalSettings}
         onAccept={async () => {
           let updatedClient = currentClient;
           if (currentClient) {
@@ -771,6 +787,13 @@ export default function App() {
             onSettingsUpdated={(newSettings) => {
               setModuleSettings(newSettings);
             }}
+          />
+
+          <LegalSettingsModal
+            isOpen={isLegalSettingsOpen}
+            onClose={() => setIsLegalSettingsOpen(false)}
+            lang={lang}
+            onSettingsUpdated={(newSettings) => setLegalSettings(newSettings)}
           />
         </>
       )}
@@ -900,6 +923,17 @@ export default function App() {
                     >
                       <Sliders className="w-4 h-4 text-[#D87085] shrink-0" />
                       <span>{lang === 'th' ? 'เปิด/ปิดโมดูลระบบ (Module Settings)' : 'Module Settings'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsLegalSettingsOpen(true);
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
+                    >
+                      <FileText className="w-4 h-4 text-[#D87085] shrink-0" />
+                      <span>{lang === 'th' ? 'ตั้งค่าเอกสารกฎหมาย (PDPA/Terms)' : 'Legal Documents Settings'}</span>
                     </button>
                   </>
                 )}

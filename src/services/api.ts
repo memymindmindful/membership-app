@@ -15,6 +15,7 @@ import {
   FinancialEntry,
   InAppNotification,
   ModuleSettings,
+  LegalSettings,
   PointsTransaction,
   PointsWallet,
   PointsSourceType,
@@ -933,6 +934,26 @@ export const api = {
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Failed to update module settings');
+    }
+    return res.json();
+  },
+
+  async getLegalSettings(): Promise<LegalSettings> {
+    const res = await fetch('/api/legal-settings');
+    if (!res.ok) throw new Error('Failed to fetch legal settings');
+    return res.json();
+  },
+
+  async updateLegalSettings(settings: Partial<LegalSettings>): Promise<LegalSettings> {
+    const headers = getAuthHeaders({ 'Content-Type': 'application/json' });
+    const res = await fetch('/api/legal-settings', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(settings),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to update legal settings');
     }
     return res.json();
   },

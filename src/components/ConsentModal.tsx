@@ -1,24 +1,39 @@
-import React, { useState } from 'react';
-import { ShieldCheck, FileText, CheckCircle2, Globe, Lock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, FileText, CheckCircle2, Lock } from 'lucide-react';
+import { LegalSettings } from '../types';
+import { api } from '../services/api';
 
 interface ConsentModalProps {
   isOpen: boolean;
   onAccept: () => void;
   initialLang?: 'th' | 'en';
+  legalSettings?: LegalSettings;
 }
 
 export const ConsentModal: React.FC<ConsentModalProps> = ({
   isOpen,
   onAccept,
   initialLang = 'th',
+  legalSettings,
 }) => {
   const [lang, setLang] = useState<'th' | 'en'>(initialLang);
   const [activeTab, setActiveTab] = useState<'privacy' | 'terms'>('privacy');
+  const [settings, setSettings] = useState<LegalSettings | undefined>(legalSettings);
 
   const [acceptedPdpa, setAcceptedPdpa] = useState<boolean>(false);
   const [acceptedTerms, setAcceptedTerms] = useState<boolean>(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    if (legalSettings) {
+      setSettings(legalSettings);
+    } else if (isOpen) {
+      api.getLegalSettings().then(setSettings).catch((err) => {
+        console.warn('Failed to load legal settings for consent modal:', err);
+      });
+    }
+  }, [legalSettings, isOpen]);
+
+  useEffect(() => {
     if (isOpen) {
       setAcceptedPdpa(false);
       setAcceptedTerms(false);
@@ -29,10 +44,31 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
 
   const isAllChecked = acceptedPdpa && acceptedTerms;
 
+  const bInfo = settings?.businessInfo || {
+    businessName: '',
+    address: '',
+    website: '',
+    contactPerson: '',
+    email: '',
+    phone: '',
+    lineId: '',
+  };
+
+  const isPdpaCustom = Boolean(
+    settings?.pdpa?.useCustom &&
+      ((lang === 'th' && settings?.pdpa?.customTextTh?.trim()) ||
+        (lang === 'en' && settings?.pdpa?.customTextEn?.trim()))
+  );
+
+  const isTermsCustom = Boolean(
+    settings?.terms?.useCustom &&
+      ((lang === 'th' && settings?.terms?.customTextTh?.trim()) ||
+        (lang === 'en' && settings?.terms?.customTextEn?.trim()))
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[90vh] border border-[#F2E3E1] animate-in fade-in zoom-in-95 duration-200">
-        
         {/* Header */}
         <div className="p-5 border-b border-[#F2E3E1] bg-[#FAF0ED] rounded-t-2xl flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -105,9 +141,21 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
         {/* Scrollable Content Area */}
         <div className="p-5 overflow-y-auto flex-1 text-xs text-[#4A4441] leading-relaxed space-y-4 bg-[#FCF9F8]">
           {activeTab === 'privacy' ? (
-            lang === 'th' ? <ThaiPrivacyPolicy /> : <EnglishPrivacyPolicy />
+            isPdpaCustom ? (
+              <div className="space-y-4 whitespace-pre-wrap font-sans text-xs text-[#3D3835]">
+                {lang === 'th' ? settings?.pdpa.customTextTh : settings?.pdpa.customTextEn}
+              </div>
+            ) : (
+              lang === 'th' ? <ThaiPrivacyPolicy bInfo={bInfo} /> : <EnglishPrivacyPolicy bInfo={bInfo} />
+            )
           ) : (
-            lang === 'th' ? <ThaiTermsOfUse /> : <EnglishTermsOfUse />
+            isTermsCustom ? (
+              <div className="space-y-4 whitespace-pre-wrap font-sans text-xs text-[#3D3835]">
+                {lang === 'th' ? settings?.terms.customTextTh : settings?.terms.customTextEn}
+              </div>
+            ) : (
+              lang === 'th' ? <ThaiTermsOfUse bInfo={bInfo} /> : <EnglishTermsOfUse bInfo={bInfo} />
+            )
           )}
         </div>
 
@@ -164,31 +212,44 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
             </span>
           </button>
         </div>
-
       </div>
     </div>
   );
 };
 
+interface LegalSectionProps {
+  bInfo: LegalSettings['businessInfo'];
+}
+
 /* --- Thai Privacy Policy --- */
-function ThaiPrivacyPolicy() {
+function ThaiPrivacyPolicy({ bInfo }: LegalSectionProps) {
+  const storeName = bInfo.businessName || 'แอปพลิเคชันสมาชิก';
+  const address = bInfo.address || '-';
+  const website = bInfo.website || '-';
+  const contact = [
+    bInfo.contactPerson && `ผู้ติดต่อ: ${bInfo.contactPerson}`,
+    bInfo.email && `อีเมล: ${bInfo.email}`,
+    bInfo.phone && `เบอร์โทรศัพท์: ${bInfo.phone}`,
+    bInfo.lineId && `LINE: ${bInfo.lineId}`,
+  ].filter(Boolean).join(' | ') || '-';
+
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-bold text-[#3D3835]">นโยบายความเป็นส่วนตัว — Me.My.Mind Membership App</h3>
-        <p className="text-[11px] text-[#8C827A]">ปรับปรุงล่าสุด: 06/08/2569</p>
+        <h3 className="text-sm font-bold text-[#3D3835]">นโยบายความเป็นส่วนตัว — {storeName}</h3>
+        <p className="text-[11px] text-[#8C827A]">ปรับปรุงล่าสุด: 2569</p>
       </div>
 
       <p>
-        Me.My.Mind Studio ("ร้าน" "เรา") เคารพความเป็นส่วนตัวของท่าน นโยบายฉบับนี้อธิบายว่าเราเก็บรวบรวม ใช้ เปิดเผย และดูแลรักษาข้อมูลส่วนบุคคลของท่านอย่างไรเมื่อท่านใช้งานแอปพลิเคชันสมาชิก Me.My.Mind ("แอป") ซึ่งจัดทำขึ้นตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)
+        {storeName} ("เรา") เคารพความเป็นส่วนตัวของท่าน นโยบายฉบับนี้อธิบายว่าเราเก็บรวบรวม ใช้ เปิดเผย และดูแลรักษาข้อมูลส่วนบุคคลของท่านอย่างไรเมื่อท่านใช้งานแอปพลิเคชันสมาชิก ("แอป") ซึ่งจัดทำขึ้นตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)
       </p>
 
       <div>
         <h4 className="font-bold text-[#3D3835] mb-1">1. ผู้ควบคุมข้อมูลส่วนบุคคล</h4>
-        <p><strong>ชื่อผู้ประกอบการ:</strong> Me.My.Mind Mindfulness Studio</p>
-        <p><strong>ที่อยู่:</strong> 43/2 ม.1 ต.วัดไทรย์ อ.เมือง นครสวรรค์</p>
-        <p><strong>เว็บไซต์:</strong> www.me-my-mind.com</p>
-        <p className="mt-1"><strong>ช่องทางติดต่อเรื่องข้อมูลส่วนบุคคล:</strong> สุภาภิชญ์ ทรายแก้ว | E-mail: me.my.mind.facialmassage@gmail.com | Tel: 084-974-1697 | LINE: @me.my.mind.mindful</p>
+        <p><strong>ชื่อผู้ประกอบการ:</strong> {storeName}</p>
+        <p><strong>ที่อยู่:</strong> {address}</p>
+        <p><strong>เว็บไซต์:</strong> {website}</p>
+        <p className="mt-1"><strong>ช่องทางติดต่อเรื่องข้อมูลส่วนบุคคล:</strong> {contact}</p>
       </div>
 
       <div>
@@ -202,7 +263,7 @@ function ThaiPrivacyPolicy() {
           <li><strong>บันทึกจากพนักงาน:</strong> หมายเหตุประกอบรายการ (เช่น อ้างอิงการโอนเงิน)</li>
         </ul>
         <p className="mt-2 text-[#D87085] font-medium bg-[#FFF2F4] p-2 rounded-lg border border-[#FAD0D8]">
-          * เราไม่เก็บข้อมูลบัตรเครดิต/เดบิต หรือข้อมูลบัญชีธนาคารของท่านในระบบแอปนี้ การชำระเงินเกิดขึ้นนอกแอปเท่านั้น
+          * เราไม่เก็บข้อมูลบัตรเครดิต/เดบิต หรือข้อมูลบัญชีธนาคารของท่านในระบบแอปนี้ การชำระเงินเกิดขึ้นภายนอกระบบเท่านั้น
         </p>
       </div>
 
@@ -227,7 +288,7 @@ function ThaiPrivacyPolicy() {
 
       <div>
         <h4 className="font-bold text-[#3D3835] mb-1">5. การเปิดเผยข้อมูลแก่บุคคลภายนอก</h4>
-        <p>เราจะไม่ขายหรือให้เช่าข้อมูลส่วนบุคคลของท่าน เปิดเผยเฉพาะผู้ประมวลผลข้อมูลเท่าที่จำเป็น เช่น LY Corporation (LINE) และ Hostinger (ผู้ให้บริการเซิร์ฟเวอร์ VPS)</p>
+        <p>เราจะไม่ขายหรือให้เช่าข้อมูลส่วนบุคคลของท่าน เปิดเผยเฉพาะผู้ประมวลผลข้อมูลเท่าที่จำเป็น เช่น LY Corporation (LINE) และผู้ให้บริการเซิร์ฟเวอร์คลาวด์</p>
       </div>
 
       <div>
@@ -252,31 +313,41 @@ function ThaiPrivacyPolicy() {
 
       <div>
         <h4 className="font-bold text-[#3D3835] mb-1">10. การเปลี่ยนแปลงนโยบายและช่องทางติดต่อ</h4>
-        <p>ติดต่อสอบถามหรือใช้สิทธิได้ที่ ครูบี สุภาภิชญ์ ทรายแก้ว โทร 084-974-1697 หรืออีเมล me.my.mind.facialmassage@gmail.com</p>
+        <p>ติดต่อสอบถามหรือใช้สิทธิได้ที่: {contact}</p>
       </div>
     </div>
   );
 }
 
 /* --- English Privacy Policy --- */
-function EnglishPrivacyPolicy() {
+function EnglishPrivacyPolicy({ bInfo }: LegalSectionProps) {
+  const storeName = bInfo.businessName || 'Membership App';
+  const address = bInfo.address || '-';
+  const website = bInfo.website || '-';
+  const contact = [
+    bInfo.contactPerson && `Contact: ${bInfo.contactPerson}`,
+    bInfo.email && `Email: ${bInfo.email}`,
+    bInfo.phone && `Tel: ${bInfo.phone}`,
+    bInfo.lineId && `LINE: ${bInfo.lineId}`,
+  ].filter(Boolean).join(' | ') || '-';
+
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-bold text-[#3D3835]">Privacy Policy — Me.My.Mind Membership App</h3>
-        <p className="text-[11px] text-[#8C827A]">Last updated: 06/08/2026</p>
+        <h3 className="text-sm font-bold text-[#3D3835]">Privacy Policy — {storeName}</h3>
+        <p className="text-[11px] text-[#8C827A]">Last updated: 2026</p>
       </div>
 
       <p>
-        Me.My.Mind Studio ("we," "us," "the Studio") respects your privacy. This Policy explains how we collect, use, disclose, and protect your personal data when you use the Me.My.Mind membership application (the "App"), prepared in accordance with Thailand's Personal Data Protection Act B.E. 2562 (2019) ("PDPA").
+        {storeName} ("we," "us," "the Studio") respects your privacy. This Policy explains how we collect, use, disclose, and protect your personal data when you use the membership application (the "App"), prepared in accordance with Thailand's Personal Data Protection Act B.E. 2562 (2019) ("PDPA").
       </p>
 
       <div>
         <h4 className="font-bold text-[#3D3835] mb-1">1. Data Controller</h4>
-        <p><strong>Business Name:</strong> Me.My.Mind Mindfulness Studio</p>
-        <p><strong>Address:</strong> 43/2 Moo.1 T.Watsai A.Muang Nakhonsawan</p>
-        <p><strong>Website:</strong> www.me-my-mind.com</p>
-        <p className="mt-1"><strong>Contact:</strong> Supapit Saikaew | E-mail: me.my.mind.facialmassage@gmail.com | Tel: 084-974-1697 | LINE: @me.my.mind.mindful</p>
+        <p><strong>Business Name:</strong> {storeName}</p>
+        <p><strong>Address:</strong> {address}</p>
+        <p><strong>Website:</strong> {website}</p>
+        <p className="mt-1"><strong>Contact Information:</strong> {contact}</p>
       </div>
 
       <div>
@@ -299,7 +370,7 @@ function EnglishPrivacyPolicy() {
         <ol className="list-decimal pl-5 space-y-1">
           <li>Create and verify your membership account</li>
           <li>Record and display credit balances, points, packages, and coupons</li>
-          <li>Enable staff to serve you accurately at the studio</li>
+          <li>Enable staff to serve you accurately at the store</li>
           <li>Send in-app notifications regarding balances and benefits</li>
           <li>Investigate and correct transaction errors</li>
           <li>Comply with applicable legal obligations</li>
@@ -315,28 +386,41 @@ function EnglishPrivacyPolicy() {
 
       <div>
         <h4 className="font-bold text-[#3D3835] mb-1">5. Data Sharing & Third Parties</h4>
-        <p>We do not sell or rent data. We share data only with essential processors: LY Corporation (LINE) and Hostinger (VPS server host).</p>
+        <p>We do not sell or rent data. We share data only with essential service processors such as LY Corporation (LINE) and server hosting providers.</p>
       </div>
 
       <div>
         <h4 className="font-bold text-[#3D3835] mb-1">6. Data Subject Rights (PDPA)</h4>
         <p>You have rights to access, rectify, erase, restrict, object, withdraw consent, and lodge complaints with the PDPC.</p>
       </div>
+
+      <div>
+        <h4 className="font-bold text-[#3D3835] mb-1">7. Contact Us</h4>
+        <p>Inquiries and rights requests: {contact}</p>
+      </div>
     </div>
   );
 }
 
 /* --- Thai Terms of Use --- */
-function ThaiTermsOfUse() {
+function ThaiTermsOfUse({ bInfo }: LegalSectionProps) {
+  const storeName = bInfo.businessName || 'แอปพลิเคชันสมาชิก';
+  const contact = [
+    bInfo.contactPerson && `ผู้ติดต่อ: ${bInfo.contactPerson}`,
+    bInfo.email && `อีเมล: ${bInfo.email}`,
+    bInfo.phone && `เบอร์โทรศัพท์: ${bInfo.phone}`,
+    bInfo.lineId && `LINE: ${bInfo.lineId}`,
+  ].filter(Boolean).join(' | ') || '-';
+
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-bold text-[#3D3835]">ข้อกำหนดการใช้งาน — Me.My.Mind Membership App</h3>
-        <p className="text-[11px] text-[#8C827A]">ปรับปรุงล่าสุด: 06/08/2569</p>
+        <h3 className="text-sm font-bold text-[#3D3835]">ข้อกำหนดการใช้งาน — {storeName}</h3>
+        <p className="text-[11px] text-[#8C827A]">ปรับปรุงล่าสุด: 2569</p>
       </div>
 
       <p>
-        ข้อกำหนดการใช้งานนี้ ("ข้อกำหนด") ใช้กับการใช้งานแอปพลิเคชันสมาชิก Me.My.Mind ("แอป") ไม่ว่าจะเข้าถึงผ่าน LINE Official Account หรือช่องทางอื่นใดที่ Me.My.Mind Studio ("ร้าน" "เรา") จัดให้ การสมัครใช้งานหรือใช้งานแอปถือว่าท่านยอมรับข้อกำหนดนี้
+        ข้อกำหนดการใช้งานนี้ ("ข้อกำหนด") ใช้กับการใช้งานแอปพลิเคชันสมาชิก {storeName} ("แอป") ไม่ว่าจะเข้าถึงผ่าน LINE Official Account หรือช่องทางอื่นใดที่ {storeName} ("ร้าน" "เรา") จัดให้ การสมัครใช้งานหรือใช้งานแอปถือว่าท่านยอมรับข้อกำหนดนี้
       </p>
 
       <div>
@@ -345,8 +429,8 @@ function ThaiTermsOfUse() {
       </div>
 
       <div>
-        <h4 className="font-bold text-[#3D3835] mb-1">2. Me.My.Mind Coin (เครดิตร้าน)</h4>
-        <p>Me.My.Mind Coin เป็น<strong>เครดิตภายในร้านสำหรับใช้บริการกับ Me.My.Mind เท่านั้น</strong> ไม่ใช่เงินอิเล็กทรอนิกส์ ไม่สามารถถอนเป็นเงินสด โอนให้ผู้อื่น หรือแลกเปลี่ยนเป็นสิ่งอื่นนอกเหนือจากบริการของร้านได้ การเติมเครดิตเกิดขึ้นนอกแอปผ่านการโอนหรือจ่ายสดที่ร้านเท่านั้น</p>
+        <h4 className="font-bold text-[#3D3835] mb-1">2. Cash Coin / เครดิตร้าน</h4>
+        <p>Coin และเครดิตเป็น<strong>เครดิตภายในร้านสำหรับใช้บริการกับทางร้านเท่านั้น</strong> ไม่ใช่เงินอิเล็กทรอนิกส์ ไม่สามารถถอนเป็นเงินสด โอนให้ผู้อื่น หรือแลกเปลี่ยนเป็นสิ่งอื่นนอกเหนือจากบริการของร้านได้ การเติมเครดิตเกิดขึ้นนอกแอปผ่านการโอนหรือจ่ายสดที่ร้านเท่านั้น</p>
       </div>
 
       <div>
@@ -366,23 +450,31 @@ function ThaiTermsOfUse() {
 
       <div>
         <h4 className="font-bold text-[#3D3835] mb-1">6. ช่องทางติดต่อร้าน</h4>
-        <p>Me.My.Mind Mindfulness Studio | สุภาภิชญ์ ทรายแก้ว | Tel: 084-974-1697 | E-mail: me.my.mind.facialmassage@gmail.com | LINE: @me.my.mind.mindful</p>
+        <p>{storeName} | {contact}</p>
       </div>
     </div>
   );
 }
 
 /* --- English Terms of Use --- */
-function EnglishTermsOfUse() {
+function EnglishTermsOfUse({ bInfo }: LegalSectionProps) {
+  const storeName = bInfo.businessName || 'Membership App';
+  const contact = [
+    bInfo.contactPerson && `Contact: ${bInfo.contactPerson}`,
+    bInfo.email && `Email: ${bInfo.email}`,
+    bInfo.phone && `Tel: ${bInfo.phone}`,
+    bInfo.lineId && `LINE: ${bInfo.lineId}`,
+  ].filter(Boolean).join(' | ') || '-';
+
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-bold text-[#3D3835]">Terms of Use — Me.My.Mind Membership App</h3>
-        <p className="text-[11px] text-[#8C827A]">Last updated: 06/08/2026</p>
+        <h3 className="text-sm font-bold text-[#3D3835]">Terms of Use — {storeName}</h3>
+        <p className="text-[11px] text-[#8C827A]">Last updated: 2026</p>
       </div>
 
       <p>
-        These Terms of Use ("Terms") govern your use of the Me.My.Mind membership application (the "App"). By registering for or using the App, you agree to these Terms.
+        These Terms of Use ("Terms") govern your use of the {storeName} membership application (the "App"). By registering for or using the App, you agree to these Terms.
       </p>
 
       <div>
@@ -391,8 +483,8 @@ function EnglishTermsOfUse() {
       </div>
 
       <div>
-        <h4 className="font-bold text-[#3D3835] mb-1">2. Me.My.Mind Coin (In-Store Credit)</h4>
-        <p>Me.My.Mind Coin is <strong>in-store credit for Me.My.Mind services only</strong>. It cannot be withdrawn as cash, transferred, or exchanged outside Studio services. This App has no online payment gateway.</p>
+        <h4 className="font-bold text-[#3D3835] mb-1">2. In-Store Credit & Coins</h4>
+        <p>Coin and store credits are <strong>in-store credit for shop services only</strong>. They cannot be withdrawn as cash, transferred, or exchanged outside shop services. This App has no online payment gateway.</p>
       </div>
 
       <div>
@@ -402,7 +494,7 @@ function EnglishTermsOfUse() {
 
       <div>
         <h4 className="font-bold text-[#3D3835] mb-1">4. Contact Information</h4>
-        <p>Me.My.Mind Mindfulness Studio | Tel: 084-974-1697 | E-mail: me.my.mind.facialmassage@gmail.com</p>
+        <p>{storeName} | {contact}</p>
       </div>
     </div>
   );

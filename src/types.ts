@@ -327,4 +327,26 @@ export interface ModuleSettings {
   accounting: boolean;
 }
 
+export interface LegalBusinessInfo {
+  businessName: string;
+  address: string;
+  website: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  lineId: string;
+}
+
+export interface LegalTextSetting {
+  useCustom: boolean;
+  customTextTh: string;
+  customTextEn: string;
+}
+
+export interface LegalSettings {
+  businessInfo: LegalBusinessInfo;
+  pdpa: LegalTextSetting;
+  terms: LegalTextSetting;
+}
+
 

@@ -189,6 +189,28 @@ async function startServer() {
     }
   });
 
+  // Legal Documents Settings (PDPA & Terms of Use)
+  app.get('/api/legal-settings', (req, res) => {
+    try {
+      res.json(store.getLegalSettings());
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/legal-settings', authenticateStaff, (req, res) => {
+    try {
+      const staff = (req as any).authenticatedStaff;
+      if (staff.role !== 'admin') {
+        return res.status(403).json({ error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถแก้ไขการตั้งค่านี้ได้' });
+      }
+      const updated = store.updateLegalSettings(req.body);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   // Staff Authentication & PIN verification
   app.post('/api/staff/verify-pin', (req, res) => {
     try {
