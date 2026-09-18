@@ -826,6 +826,12 @@ class Store {
       db.exec(schemaSql);
     }
 
+    // Migration: add module_settings column to settings table if missing
+    const settingsColumns = db.prepare("PRAGMA table_info(settings)").all() as { name: string }[];
+    if (!settingsColumns.some(col => col.name === 'module_settings')) {
+      db.exec("ALTER TABLE settings ADD COLUMN module_settings TEXT");
+    }
+
     // Ensure initial employees exist if table is empty
     const empCount = db.prepare('SELECT count(*) as count FROM employees').get() as { count: number };
     if (!empCount || empCount.count === 0) {
@@ -4162,6 +4168,56 @@ class Store {
       VALUES ('app_settings', ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         brand_settings = excluded.brand_settings,
+        updated_at = excluded.updated_at
+    `).run(JSON.stringify(merged), new Date().toISOString());
+    return merged;
+  }
+
+  public getModuleSettings() {
+    const defaultModules = {
+      coin: true,
+      package: true,
+      coupon: true,
+      points: true,
+      booking: true,
+      accounting: true,
+    };
+
+    const row = this.sqlite.prepare('SELECT module_settings FROM settings WHERE id = ?').get('app_settings') as { module_settings: string | null } | undefined;
+    if (row && row.module_settings) {
+      try {
+        return { ...defaultModules, ...JSON.parse(row.module_settings) };
+      } catch {
+        return defaultModules;
+      }
+    }
+
+    this.sqlite.prepare(`
+      INSERT INTO settings (id, module_settings, updated_at)
+      VALUES ('app_settings', ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        module_settings = excluded.module_settings,
+        updated_at = excluded.updated_at
+    `).run(JSON.stringify(defaultModules), new Date().toISOString());
+
+    return defaultModules;
+  }
+
+  public updateModuleSettings(settings: { coin?: boolean; package?: boolean; coupon?: boolean; points?: boolean; booking?: boolean; accounting?: boolean }) {
+    const current = this.getModuleSettings();
+    const merged = {
+      coin: settings.coin !== undefined ? settings.coin : current.coin,
+      package: settings.package !== undefined ? settings.package : current.package,
+      coupon: settings.coupon !== undefined ? settings.coupon : current.coupon,
+      points: settings.points !== undefined ? settings.points : current.points,
+      booking: settings.booking !== undefined ? settings.booking : current.booking,
+      accounting: settings.accounting !== undefined ? settings.accounting : current.accounting,
+    };
+    this.sqlite.prepare(`
+      INSERT INTO settings (id, module_settings, updated_at)
+      VALUES ('app_settings', ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        module_settings = excluded.module_settings,
         updated_at = excluded.updated_at
     `).run(JSON.stringify(merged), new Date().toISOString());
     return merged;

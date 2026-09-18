@@ -14,6 +14,7 @@ import {
   Employee,
   FinancialEntry,
   InAppNotification,
+  ModuleSettings,
   PointsTransaction,
   PointsWallet,
   PointsSourceType,
@@ -912,6 +913,26 @@ export const api = {
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || 'Failed to update brand settings');
+    }
+    return res.json();
+  },
+
+  async getModuleSettings(): Promise<ModuleSettings> {
+    const res = await fetch('/api/module-settings');
+    if (!res.ok) throw new Error('Failed to fetch module settings');
+    return res.json();
+  },
+
+  async updateModuleSettings(settings: Partial<ModuleSettings>): Promise<ModuleSettings> {
+    const headers = getAuthHeaders({ 'Content-Type': 'application/json' });
+    const res = await fetch('/api/module-settings', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(settings),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to update module settings');
     }
     return res.json();
   },

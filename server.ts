@@ -120,6 +120,15 @@ export function authenticateClientOrStaff(
   return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
 }
 
+function requireModuleEnabled(moduleKey: 'coin' | 'package' | 'coupon' | 'points' | 'booking' | 'accounting', res: any): boolean {
+  const settings = store.getModuleSettings();
+  if (!settings[moduleKey]) {
+    res.status(403).json({ error: `ฟังก์ชันนี้ถูกปิดใช้งานสำหรับร้านนี้อยู่ (${moduleKey})` });
+    return false;
+  }
+  return true;
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -152,6 +161,28 @@ async function startServer() {
   app.post('/api/brand-settings', authenticateStaff, (req, res) => {
     try {
       const updated = store.updateBrandSettings(req.body);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Module Settings
+  app.get('/api/module-settings', (req, res) => {
+    try {
+      res.json(store.getModuleSettings());
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/module-settings', authenticateStaff, (req, res) => {
+    try {
+      const staff = (req as any).authenticatedStaff;
+      if (staff.role !== 'admin') {
+        return res.status(403).json({ error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถแก้ไขการตั้งค่านี้ได้' });
+      }
+      const updated = store.updateModuleSettings(req.body);
       res.json(updated);
     } catch (err: any) {
       res.status(400).json({ error: err.message });
@@ -468,6 +499,7 @@ async function startServer() {
   // Coin Operations
   app.post('/api/clients/:id/coin/add', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('coin', res)) return;
       const { amount, note, staffId, staffName, isBonus } = req.body;
       const numAmount = Number(amount);
       if (isNaN(numAmount) || numAmount <= 0) {
@@ -486,6 +518,7 @@ async function startServer() {
 
   app.post('/api/clients/:id/coin/deduct', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('coin', res)) return;
       const { amount, note, staffId, staffName } = req.body;
       const numAmount = Number(amount);
       if (isNaN(numAmount) || numAmount <= 0) {
@@ -504,6 +537,7 @@ async function startServer() {
 
   app.post('/api/coin/reverse', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('coin', res)) return;
       const { txId, reason, staffId, staffName } = req.body;
       if (!txId || !reason || !staffId || !staffName) {
         return res.status(400).json({ error: 'Missing required parameters or reason' });
@@ -519,6 +553,7 @@ async function startServer() {
   // Points Operations
   app.post('/api/clients/:id/points/add', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('points', res)) return;
       const { amount, note, staffId, staffName, sourceType, relatedCoinTxId, relatedPackageId, relatedCouponId } = req.body;
       const numAmount = Number(amount);
       if (isNaN(numAmount) || numAmount <= 0) {
@@ -541,6 +576,7 @@ async function startServer() {
 
   app.post('/api/clients/:id/points/deduct', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('points', res)) return;
       const { amount, note, staffId, staffName } = req.body;
       const numAmount = Number(amount);
       if (isNaN(numAmount) || numAmount <= 0) {
@@ -555,6 +591,7 @@ async function startServer() {
 
   app.post('/api/points/reverse', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('points', res)) return;
       const { txId, reason, staffId, staffName } = req.body;
       if (!txId || !reason || !staffId || !staffName) {
         return res.status(400).json({ error: 'Missing required parameters or reason' });
@@ -582,6 +619,9 @@ async function startServer() {
       if (!itemData || !itemData.name || !itemData.type) {
         return res.status(400).json({ error: 'Name and service type are required' });
       }
+      const moduleMap: Record<string, 'package' | 'coupon' | 'booking'> = { package: 'package', coupon: 'coupon', onetime: 'booking' };
+      const requiredModule = moduleMap[itemData.type];
+      if (requiredModule && !requireModuleEnabled(requiredModule, res)) return;
       const newItem = store.createCatalogItem(itemData, staffId, staffName);
       res.status(201).json(newItem);
     } catch (err: any) {
@@ -592,6 +632,11 @@ async function startServer() {
   app.put('/api/catalog/:id', authenticateStaff, (req, res) => {
     try {
       const { updates, staffId, staffName } = req.body;
+      if (updates && updates.type) {
+        const moduleMap: Record<string, 'package' | 'coupon' | 'booking'> = { package: 'package', coupon: 'coupon', onetime: 'booking' };
+        const requiredModule = moduleMap[updates.type];
+        if (requiredModule && !requireModuleEnabled(requiredModule, res)) return;
+      }
       const item = store.updateCatalogItem(req.params.id, updates, staffId, staffName);
       res.json(item);
     } catch (err: any) {
@@ -621,6 +666,7 @@ async function startServer() {
   // Packages & Coupons
   app.post('/api/clients/:id/packages/sell', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('package', res)) return;
       const { catalogId, totalSessions, pricePaid, validityDays, staffId, staffName } = req.body;
       const numSessions = Number(totalSessions);
       const numPrice = Number(pricePaid);
@@ -647,6 +693,7 @@ async function startServer() {
 
   app.post('/api/packages/:id/use', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('package', res)) return;
       const { note, staffId, staffName } = req.body;
       const pkg = store.usePackageSession(req.params.id, note, staffId, staffName);
       res.json(pkg);
@@ -657,6 +704,7 @@ async function startServer() {
 
   app.post('/api/packages/:id/void', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('package', res)) return;
       const staff = (req as any).authenticatedStaff;
       if (staff.role !== 'admin') {
         return res.status(403).json({ error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถยกเลิกรายการได้' });
@@ -676,6 +724,7 @@ async function startServer() {
 
   app.post('/api/clients/:id/coupons/issue', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('coupon', res)) return;
       const { catalogId, totalQuantity, pricePaid, validityDays, staffId, staffName } = req.body;
       const numQty = Number(totalQuantity);
       const numPrice = Number(pricePaid);
@@ -702,6 +751,7 @@ async function startServer() {
 
   app.post('/api/coupons/:id/redeem', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('coupon', res)) return;
       const { note, staffId, staffName } = req.body;
       const cpn = store.redeemCouponUnit(req.params.id, note, staffId, staffName);
       res.json(cpn);
@@ -712,6 +762,7 @@ async function startServer() {
 
   app.post('/api/coupons/:id/void', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('coupon', res)) return;
       const staff = (req as any).authenticatedStaff;
       if (staff.role !== 'admin') {
         return res.status(403).json({ error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถยกเลิกรายการได้' });
@@ -757,6 +808,7 @@ async function startServer() {
 
   app.post('/api/onetime-bookings/:id/reschedule', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('booking', res)) return;
       const staff = (req as any).authenticatedStaff;
       const { bookingDateTime, endDateTime } = req.body;
       if (!bookingDateTime) {
@@ -777,6 +829,7 @@ async function startServer() {
 
   app.post('/api/clients/:id/onetime-bookings', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('booking', res)) return;
       const {
         catalogId,
         customName,
@@ -845,6 +898,7 @@ async function startServer() {
 
   app.post('/api/onetime-bookings/:id/mark-used', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('booking', res)) return;
       const { staffId, staffName, coinDiscountAmount } = req.body;
       const booking = store.markOneTimeBookingUsed(
         req.params.id,
@@ -860,6 +914,7 @@ async function startServer() {
 
   app.post('/api/onetime-bookings/:id/void', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('booking', res)) return;
       const staff = (req as any).authenticatedStaff;
       if (staff.role !== 'admin') {
         return res.status(403).json({ error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถยกเลิกรายการได้' });
@@ -956,6 +1011,7 @@ async function startServer() {
   // Financial Accounting
   app.get('/api/financial', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('accounting', res)) return;
       const entries = store.getFinancialEntries();
       res.json(entries);
     } catch (err: any) {
@@ -965,6 +1021,7 @@ async function startServer() {
 
   app.post('/api/financial', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('accounting', res)) return;
       const { entryData, staffId, staffName } = req.body;
       const entry = store.createFinancialEntry(entryData, staffId || 'EMP-01', staffName || 'Staff');
       res.status(201).json(entry);
@@ -975,6 +1032,7 @@ async function startServer() {
 
   app.delete('/api/financial/:id', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('accounting', res)) return;
       const { staffId, staffName } = req.body;
       store.deleteFinancialEntry(req.params.id, staffId || 'EMP-01', staffName || 'Staff');
       res.json({ success: true });
@@ -985,6 +1043,7 @@ async function startServer() {
 
   app.post('/api/financial-entries/void-auto', authenticateStaff, (req, res) => {
     try {
+      if (!requireModuleEnabled('accounting', res)) return;
       const staff = (req as any).authenticatedStaff;
       if (staff.role !== 'admin') {
         return res.status(403).json({ error: 'เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่สามารถยกเลิกรายการได้' });

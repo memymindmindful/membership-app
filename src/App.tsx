@@ -8,6 +8,7 @@ import {
   RewardCatalogItem,
   AuditLog,
   BrandSettings,
+  ModuleSettings,
 } from './types';
 import { api, FullClientData } from './services/api';
 import { Header } from './components/Header';
@@ -33,12 +34,14 @@ import {
   Database,
   RotateCcw,
   KeyRound,
+  Sliders,
 } from 'lucide-react';
 import { StaffManagementModal } from './components/StaffManagementModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { ExportClientsModal } from './components/ExportClientsModal';
 import { FactoryResetModal } from './components/FactoryResetModal';
 import { BackupSettingsModal } from './components/BackupSettingsModal';
+import { ModuleSettingsModal } from './components/ModuleSettingsModal';
 import { translations } from './lib/translations';
 import defaultAppLogo from './assets/images/me_my_mind_logo_1785924412256.jpg';
 
@@ -73,6 +76,16 @@ export default function App() {
   const [isFactoryResetOpen, setIsFactoryResetOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
+  const [isModuleSettingsOpen, setIsModuleSettingsOpen] = useState(false);
+
+  const [moduleSettings, setModuleSettings] = useState<ModuleSettings>({
+    coin: true,
+    package: true,
+    coupon: true,
+    points: true,
+    booking: true,
+    accounting: true,
+  });
 
   const [brandSettings, setBrandSettings] = useState<BrandSettings>(() => {
     try {
@@ -191,6 +204,16 @@ export default function App() {
         }
       } catch (e) {
         console.warn('Could not load brand settings from backend:', e);
+      }
+
+      // Sync Module Settings from Backend Server
+      try {
+        const serverModules = await api.getModuleSettings();
+        if (serverModules) {
+          setModuleSettings(serverModules);
+        }
+      } catch (e) {
+        console.warn('Could not load module settings from backend:', e);
       }
 
       const [catList, rewardList] = await Promise.all([
@@ -574,6 +597,7 @@ export default function App() {
               rewardCatalog={rewardCatalog}
               lang={lang}
               brandSettings={brandSettings}
+              moduleSettings={moduleSettings}
               onRefresh={refreshCurrentClientData}
               onOpenConsent={() => setShowConsentModal(true)}
               onOpenProfileSetup={() => setShowProfileSetupModal(true)}
@@ -617,6 +641,7 @@ export default function App() {
             rewardCatalog={rewardCatalog}
             lang={lang}
             brandSettings={brandSettings}
+            moduleSettings={moduleSettings}
             onUpdateBrandSettings={handleUpdateBrandSettings}
             onRefreshClient={async () => {
               const freshClients = await api.getClients();
@@ -736,6 +761,15 @@ export default function App() {
             isOpen={isBackupModalOpen}
             onClose={() => setIsBackupModalOpen(false)}
           />
+
+          <ModuleSettingsModal
+            isOpen={isModuleSettingsOpen}
+            onClose={() => setIsModuleSettingsOpen(false)}
+            lang={lang}
+            onSettingsUpdated={(newSettings) => {
+              setModuleSettings(newSettings);
+            }}
+          />
         </>
       )}
 
@@ -854,6 +888,17 @@ export default function App() {
                       <Database className="w-4 h-4 text-[#D87085] shrink-0" />
                       <span>{lang === 'th' ? 'สำรองข้อมูล & รายงานอัตโนมัติ' : 'Auto Backup & Reports'}</span>
                     </button>
+
+                    <button
+                      onClick={() => {
+                        setIsModuleSettingsOpen(true);
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#3D3835] hover:bg-[#FAF0ED] hover:text-[#D87085] rounded-xl transition text-left cursor-pointer"
+                    >
+                      <Sliders className="w-4 h-4 text-[#D87085] shrink-0" />
+                      <span>{lang === 'th' ? 'เปิด/ปิดโมดูลระบบ (Module Settings)' : 'Module Settings'}</span>
+                    </button>
                   </>
                 )}
 
@@ -904,7 +949,7 @@ export default function App() {
           <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#F2E3E1] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] z-40 px-3 py-2">
             <div className="max-w-3xl mx-auto flex items-center justify-around gap-1">
               {/* 1. Bookings Overview */}
-              {staffRole !== 'accountant' && (
+              {staffRole !== 'accountant' && (!moduleSettings || moduleSettings.booking !== false) && (
                 <button
                   onClick={() => {
                     setActiveSubView('bookings');
@@ -941,7 +986,7 @@ export default function App() {
               )}
 
               {/* 3. Financial Dashboard */}
-              {canAccessFinancial && (
+              {canAccessFinancial && (!moduleSettings || moduleSettings.accounting !== false) && (
                 <button
                   onClick={() => {
                     setActiveSubView('main');

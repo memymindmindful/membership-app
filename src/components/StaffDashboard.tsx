@@ -56,6 +56,7 @@ import {
   PointsTransaction,
   PointsWallet,
   BrandSettings,
+  ModuleSettings,
   BAHT_PER_POINT,
   RewardCatalogItem,
 } from '../types';
@@ -75,6 +76,7 @@ interface StaffDashboardProps {
   rewardCatalog?: RewardCatalogItem[];
   lang: AppLanguage;
   brandSettings?: BrandSettings;
+  moduleSettings?: ModuleSettings;
   onUpdateBrandSettings?: (newSettings: BrandSettings) => void;
   onRefreshClient: () => void;
   onRefreshEmployees?: () => void;
@@ -99,6 +101,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   rewardCatalog = [],
   lang,
   brandSettings,
+  moduleSettings,
   onUpdateBrandSettings,
   onRefreshClient,
   onRefreshEmployees,
@@ -963,186 +966,195 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
               </div>
 
               {/* Wallets Row: Coin & Points */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                {/* Coin Wallet Card */}
-                <div className="bg-gradient-to-br from-[#E88D9F] via-[#DF7B8F] to-[#D87085] text-white p-5 rounded-2xl shadow-sm border border-[#E07A90] space-y-4">
-                  <div className="flex justify-between items-center text-xs text-rose-100 font-medium">
-                    <span className="flex items-center gap-1.5 font-semibold">
-                      <Coins className="w-4 h-4 text-white" />
-                      {t.coinBalanceTitle}
-                    </span>
-                    <span className="text-[10px] bg-white/25 px-2.5 py-0.5 rounded-full text-white font-bold border border-white/30 backdrop-blur-xs">
-                      In-Store Credit
-                    </span>
-                  </div>
+              {(!moduleSettings || moduleSettings.coin !== false || moduleSettings.points !== false) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  
+                  {/* Coin Wallet Card */}
+                  {(!moduleSettings || moduleSettings.coin !== false) && (
+                    <div className="bg-gradient-to-br from-[#E88D9F] via-[#DF7B8F] to-[#D87085] text-white p-5 rounded-2xl shadow-sm border border-[#E07A90] space-y-4">
+                      <div className="flex justify-between items-center text-xs text-rose-100 font-medium">
+                        <span className="flex items-center gap-1.5 font-semibold">
+                          <Coins className="w-4 h-4 text-white" />
+                          {t.coinBalanceTitle}
+                        </span>
+                        <span className="text-[10px] bg-white/25 px-2.5 py-0.5 rounded-full text-white font-bold border border-white/30 backdrop-blur-xs">
+                          In-Store Credit
+                        </span>
+                      </div>
 
-                  <div className="text-3xl font-extrabold tracking-tight">
-                    {formatCurrency(selectedClientData.coinBalance)} <span className="text-sm font-normal text-rose-100">{t.currencyUnit}</span>
-                  </div>
+                      <div className="text-3xl font-extrabold tracking-tight">
+                        {formatCurrency(selectedClientData.coinBalance)} <span className="text-sm font-normal text-rose-100">{t.currencyUnit}</span>
+                      </div>
 
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/20">
-                    <button
-                      onClick={() => setActiveModal('add_coin')}
-                      className="py-2 px-3 bg-white text-[#D87085] hover:bg-rose-50 text-xs font-bold rounded-xl shadow-2xs transition flex items-center justify-center gap-1"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>{t.addCoinBtn}</span>
-                    </button>
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/20">
+                        <button
+                          onClick={() => setActiveModal('add_coin')}
+                          className="py-2 px-3 bg-white text-[#D87085] hover:bg-rose-50 text-xs font-bold rounded-xl shadow-2xs transition flex items-center justify-center gap-1"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>{t.addCoinBtn}</span>
+                        </button>
 
-                    <button
-                      onClick={() => {
-                        setUsedServiceName('');
-                        setActionNote('');
-                        setActiveModal('deduct_coin');
-                      }}
-                      className="py-2 px-3 bg-[#FAF0ED] text-[#D87085] hover:bg-white text-xs font-bold rounded-xl border border-rose-200 transition flex items-center justify-center gap-1"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                      <span>{t.deductCoinBtn}</span>
-                    </button>
-                  </div>
+                        <button
+                          onClick={() => {
+                            setUsedServiceName('');
+                            setActionNote('');
+                            setActiveModal('deduct_coin');
+                          }}
+                          className="py-2 px-3 bg-[#FAF0ED] text-[#D87085] hover:bg-white text-xs font-bold rounded-xl border border-rose-200 transition flex items-center justify-center gap-1"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                          <span>{t.deductCoinBtn}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Points Wallet Card */}
+                  {(!moduleSettings || moduleSettings.points !== false) && (
+                    <div className="bg-gradient-to-br from-[#FAF0ED] via-[#F8E2E6] to-[#F2D5DD] text-[#3D3835] p-5 rounded-2xl shadow-sm border border-[#F2C2CE] space-y-4">
+                      <div className="flex justify-between items-center text-xs text-[#D87085] font-semibold">
+                        <span className="flex items-center gap-1.5">
+                          <Award className="w-4 h-4 text-[#E88D9F]" />
+                          {t.pointsTitle}
+                        </span>
+                        <span className="bg-[#E88D9F] text-white px-2.5 py-0.5 rounded-full font-bold text-[10px]">
+                          {selectedClientData.pointsWallet.tier} Tier
+                        </span>
+                      </div>
+
+                      <div className="text-3xl font-extrabold tracking-tight text-[#3D3835]">
+                        {selectedClientData.pointsWallet.balance} <span className="text-sm font-normal text-[#6E6763]">{t.pointsUnit}</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#F2C2CE]/60">
+                        <button
+                          onClick={() => {
+                            setPtsServiceName('');
+                            setPtsSpendAmount('');
+                            setPointsAmount('');
+                            setActionNote('');
+                            setPtsPaymentMethod('เงินสดหน้างาน (Cash Direct)');
+                            setActiveModal('add_pts');
+                          }}
+                          className="py-2 px-3 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-xl shadow-2xs transition flex items-center justify-center gap-1"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>{t.awardPointsBtn}</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setPtsRedeemTierItem('');
+                            setPointsAmount(100);
+                            setActionNote('');
+                            setActiveModal('deduct_pts');
+                          }}
+                          className="py-2 px-3 bg-white hover:bg-[#FAF0ED] text-[#D87085] text-xs font-bold rounded-xl border border-[#F2C2CE] transition flex items-center justify-center gap-1"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                          <span>{t.deductPointsBtn}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-
-                {/* Points Wallet Card */}
-                <div className="bg-gradient-to-br from-[#FAF0ED] via-[#F8E2E6] to-[#F2D5DD] text-[#3D3835] p-5 rounded-2xl shadow-sm border border-[#F2C2CE] space-y-4">
-                  <div className="flex justify-between items-center text-xs text-[#D87085] font-semibold">
-                    <span className="flex items-center gap-1.5">
-                      <Award className="w-4 h-4 text-[#E88D9F]" />
-                      {t.pointsTitle}
-                    </span>
-                    <span className="bg-[#E88D9F] text-white px-2.5 py-0.5 rounded-full font-bold text-[10px]">
-                      {selectedClientData.pointsWallet.tier} Tier
-                    </span>
-                  </div>
-
-                  <div className="text-3xl font-extrabold tracking-tight text-[#3D3835]">
-                    {selectedClientData.pointsWallet.balance} <span className="text-sm font-normal text-[#6E6763]">{t.pointsUnit}</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#F2C2CE]/60">
-                    <button
-                      onClick={() => {
-                        setPtsServiceName('');
-                        setPtsSpendAmount('');
-                        setPointsAmount('');
-                        setActionNote('');
-                        setPtsPaymentMethod('เงินสดหน้างาน (Cash Direct)');
-                        setActiveModal('add_pts');
-                      }}
-                      className="py-2 px-3 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-xl shadow-2xs transition flex items-center justify-center gap-1"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>{t.awardPointsBtn}</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setPtsRedeemTierItem('');
-                        setPointsAmount(100);
-                        setActionNote('');
-                        setActiveModal('deduct_pts');
-                      }}
-                      className="py-2 px-3 bg-white hover:bg-[#FAF0ED] text-[#D87085] text-xs font-bold rounded-xl border border-[#F2C2CE] transition flex items-center justify-center gap-1"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                      <span>{t.deductPointsBtn}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
+              )}
 
               {/* Active Packages Panel */}
-              <div className="bg-white rounded-2xl p-5 border border-[#F2E3E1] shadow-2xs space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-[#FAF0ED]">
-                  <h3 className="text-sm font-bold text-[#3D3835] flex items-center gap-2">
-                    <Package className="w-4 h-4 text-[#E88D9F]" />
-                    Active Packages ({selectedClientData.packages.filter((p) => p.status !== 'used_up' && p.status !== 'voided').length})
-                  </h3>
+              {(!moduleSettings || moduleSettings.package !== false) && (
+                <div className="bg-white rounded-2xl p-5 border border-[#F2E3E1] shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#FAF0ED]">
+                    <h3 className="text-sm font-bold text-[#3D3835] flex items-center gap-2">
+                      <Package className="w-4 h-4 text-[#E88D9F]" />
+                      Active Packages ({selectedClientData.packages.filter((p) => p.status !== 'used_up' && p.status !== 'voided').length})
+                    </h3>
 
-                  <button
-                    onClick={() => {
-                      const firstPkg = catalogItems.find((c) => c.type === 'package');
-                      if (firstPkg) handleCatalogSelectChange(firstPkg.id);
-                      setActiveModal('sell_pkg');
-                    }}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-xl shadow-2xs transition"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t.sellPackageBtn}</span>
-                  </button>
-                </div>
+                    <button
+                      onClick={() => {
+                        const firstPkg = catalogItems.find((c) => c.type === 'package');
+                        if (firstPkg) handleCatalogSelectChange(firstPkg.id);
+                        setActiveModal('sell_pkg');
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-xl shadow-2xs transition"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{t.sellPackageBtn}</span>
+                    </button>
+                  </div>
 
-                <div className="space-y-3">
-                  {selectedClientData.packages.filter((p) => p.status !== 'used_up' && p.status !== 'voided').length === 0 ? (
-                    <p className="text-xs text-[#9C948E] py-3 text-center">{t.noActivePackages}</p>
-                  ) : (
-                    selectedClientData.packages
-                      .filter((p) => p.status !== 'used_up' && p.status !== 'voided')
-                      .map((pkg) => (
-                        <div
-                          key={pkg.id}
-                          className="p-3.5 bg-[#FAF0ED]/60 rounded-2xl border border-[#F2E3E1] flex flex-wrap items-center justify-between gap-3"
-                        >
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={pkg.imageUrl || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=200&q=80'}
-                              alt={pkg.name}
-                              className="w-12 h-12 rounded-xl object-cover border border-[#F2E3E1]"
-                            />
-                            <div>
-                              <h4 className="text-xs font-bold text-[#3D3835]">{pkg.name}</h4>
-                              <p className="text-[11px] text-[#6E6763]">
-                                {lang === 'th' ? `คงเหลือ ${pkg.remainingSessions} จากทั้งหมด ${pkg.totalSessions} ครั้ง` : `${pkg.remainingSessions} of ${pkg.totalSessions} sessions remaining`}
-                              </p>
-                              <p className="text-[10px] text-[#9C948E]">
-                                {lang === 'th' ? 'หมดอายุ:' : 'Expires:'} {formatShortDate(pkg.expiryDate, lang)}
-                              </p>
+                  <div className="space-y-3">
+                    {selectedClientData.packages.filter((p) => p.status !== 'used_up' && p.status !== 'voided').length === 0 ? (
+                      <p className="text-xs text-[#9C948E] py-3 text-center">{t.noActivePackages}</p>
+                    ) : (
+                      selectedClientData.packages
+                        .filter((p) => p.status !== 'used_up' && p.status !== 'voided')
+                        .map((pkg) => (
+                          <div
+                            key={pkg.id}
+                            className="p-3.5 bg-[#FAF0ED]/60 rounded-2xl border border-[#F2E3E1] flex flex-wrap items-center justify-between gap-3"
+                          >
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={pkg.imageUrl || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=200&q=80'}
+                                alt={pkg.name}
+                                className="w-12 h-12 rounded-xl object-cover border border-[#F2E3E1]"
+                              />
+                              <div>
+                                <h4 className="text-xs font-bold text-[#3D3835]">{pkg.name}</h4>
+                                <p className="text-[11px] text-[#6E6763]">
+                                  {lang === 'th' ? `คงเหลือ ${pkg.remainingSessions} จากทั้งหมด ${pkg.totalSessions} ครั้ง` : `${pkg.remainingSessions} of ${pkg.totalSessions} sessions remaining`}
+                                </p>
+                                <p className="text-[10px] text-[#9C948E]">
+                                  {lang === 'th' ? 'หมดอายุ:' : 'Expires:'} {formatShortDate(pkg.expiryDate, lang)}
+                                </p>
+                              </div>
                             </div>
-                          </div>
 
-                          <div className="flex items-center gap-2">
-                            {role === 'admin' && (
+                            <div className="flex items-center gap-2">
+                              {role === 'admin' && (
+                                <button
+                                  onClick={() => {
+                                    setVoidTargetItem({
+                                      type: 'package',
+                                      id: pkg.id,
+                                      name: pkg.name,
+                                      pricePaid: pkg.pricePaid,
+                                    });
+                                    setVoidReason('คีย์ข้อมูลผิดพลาด / ยกเลิกรายการ');
+                                  }}
+                                  title={lang === 'th' ? 'ยกเลิก/ลบแพ็กเกจ (Admin)' : 'Void Package (Admin)'}
+                                  className="px-2.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition flex items-center gap-1"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                                  <span>{lang === 'th' ? 'ยกเลิก (Admin)' : 'Void'}</span>
+                                </button>
+                              )}
+
                               <button
-                                onClick={() => {
-                                  setVoidTargetItem({
+                                onClick={() =>
+                                  setUseTargetItem({
                                     type: 'package',
                                     id: pkg.id,
                                     name: pkg.name,
-                                    pricePaid: pkg.pricePaid,
-                                  });
-                                  setVoidReason('คีย์ข้อมูลผิดพลาด / ยกเลิกรายการ');
-                                }}
-                                title={lang === 'th' ? 'ยกเลิก/ลบแพ็กเกจ (Admin)' : 'Void Package (Admin)'}
-                                className="px-2.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl border border-rose-200 transition flex items-center gap-1"
+                                  })
+                                }
+                                className="px-3.5 py-2 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-xl shadow-2xs transition"
                               >
-                                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                                <span>{lang === 'th' ? 'ยกเลิก (Admin)' : 'Void'}</span>
+                                {t.useOneSessionBtn}
                               </button>
-                            )}
-
-                            <button
-                              onClick={() =>
-                                setUseTargetItem({
-                                  type: 'package',
-                                  id: pkg.id,
-                                  name: pkg.name,
-                                })
-                              }
-                              className="px-3.5 py-2 bg-[#E88D9F] hover:bg-[#D87085] text-white text-xs font-bold rounded-xl shadow-2xs transition"
-                            >
-                              {t.useOneSessionBtn}
-                            </button>
+                            </div>
                           </div>
-                        </div>
-                      ))
-                  )}
+                        ))
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Active One-Time Bookings & Deposit Tracking Panel */}
-              <div className="bg-white rounded-2xl p-5 border border-[#F2E3E1] shadow-2xs space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-[#FAF0ED]">
+              {(!moduleSettings || moduleSettings.booking !== false) && (
+                <div className="bg-white rounded-2xl p-5 border border-[#F2E3E1] shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#FAF0ED]">
                   <h3 className="text-sm font-bold text-[#3D3835] flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-[#E88D9F]" />
                     {lang === 'th' ? 'การจองบริการรายครั้ง & เงินมัดจำ' : 'One-Time Bookings & Deposits'} ({selectedClientData.oneTimeBookings?.filter((b) => b.status === 'booked').length || 0})
@@ -1314,10 +1326,12 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                   )}
                 </div>
               </div>
+              )}
 
               {/* Active Coupons Panel */}
-              <div className="bg-white rounded-2xl p-5 border border-[#F2E3E1] shadow-2xs space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-[#FAF0ED]">
+              {(!moduleSettings || moduleSettings.coupon !== false) && (
+                <div className="bg-white rounded-2xl p-5 border border-[#F2E3E1] shadow-2xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#FAF0ED]">
                   <h3 className="text-sm font-bold text-[#3D3835] flex items-center gap-2">
                     <Ticket className="w-4 h-4 text-[#E88D9F]" />
                     {lang === 'th' ? 'คูปองที่ใช้งานได้อยู่' : 'Active Coupons'} ({selectedClientData.coupons.filter((c) => c.status !== 'used_up' && c.status !== 'voided').length})
@@ -1404,6 +1418,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                   )}
                 </div>
               </div>
+              )}
 
               {/* ALWAYS-VISIBLE & EXPANDED: COMPLETED & VOIDED ITEMS HISTORY SECTION */}
               <div className="bg-white text-[#3D3835] rounded-2xl p-5 shadow-2xs border border-[#F2E3E1] space-y-4">

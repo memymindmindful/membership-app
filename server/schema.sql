@@ -268,5 +268,6 @@ CREATE TABLE IF NOT EXISTS settings (
   id TEXT PRIMARY KEY,
   backup_settings TEXT, -- JSON string
   brand_settings TEXT, -- JSON string
+  module_settings TEXT, -- JSON string
   updated_at TEXT
 );

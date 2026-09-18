@@ -28,6 +28,7 @@ import {
   ClientPackage,
   CoinTransaction,
   InAppNotification,
+  ModuleSettings,
   PointsTransaction,
   PointsWallet,
   RewardCatalogItem,
@@ -57,6 +58,7 @@ interface CustomerAppProps {
   rewardCatalog: RewardCatalogItem[];
   lang: AppLanguage;
   brandSettings?: { brandName?: string; brandTagline?: string; logoUrl?: string; promoPosterUrl?: string; updatedAt?: number };
+  moduleSettings?: ModuleSettings;
   onRefresh: () => void;
   onOpenConsent?: () => void;
   onOpenProfileSetup?: () => void;
@@ -77,6 +79,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
   rewardCatalog,
   lang,
   brandSettings,
+  moduleSettings,
   onRefresh,
   onOpenConsent,
   onOpenProfileSetup,
@@ -224,80 +227,88 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
           {activeTab === 'home' && (
             <div className="space-y-4 animate-in fade-in">
               {/* Prominent Coin Balance Hero Card */}
-              <div className="bg-gradient-to-br from-[#E88D9F] via-[#DF7B8F] to-[#D87085] text-white rounded-2xl p-5 shadow-sm relative overflow-hidden border border-[#E07A90]">
-                <div className="absolute top-0 right-0 p-8 opacity-15 pointer-events-none">
-                  <Coins className="w-32 h-32 text-white" />
-                </div>
+              {(!moduleSettings || moduleSettings.coin !== false) && (
+                <div className="bg-gradient-to-br from-[#E88D9F] via-[#DF7B8F] to-[#D87085] text-white rounded-2xl p-5 shadow-sm relative overflow-hidden border border-[#E07A90]">
+                  <div className="absolute top-0 right-0 p-8 opacity-15 pointer-events-none">
+                    <Coins className="w-32 h-32 text-white" />
+                  </div>
 
-                <div className="flex items-center justify-between text-xs text-rose-100 font-medium">
-                  <span className="flex items-center gap-1.5 font-semibold">
-                    <Coins className="w-4 h-4 text-white" />
-                    {t.coinBalanceTitle}
-                  </span>
-                  <span className="bg-white/25 text-white text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider font-bold backdrop-blur-xs border border-white/30">
-                    In-Store Credit Only
-                  </span>
-                </div>
+                  <div className="flex items-center justify-between text-xs text-rose-100 font-medium">
+                    <span className="flex items-center gap-1.5 font-semibold">
+                      <Coins className="w-4 h-4 text-white" />
+                      {t.coinBalanceTitle}
+                    </span>
+                    <span className="bg-white/25 text-white text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider font-bold backdrop-blur-xs border border-white/30">
+                      In-Store Credit Only
+                    </span>
+                  </div>
 
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-3xl font-serif font-bold text-white tracking-tight">
-                    {formatCurrency(coinBalance)}
-                  </span>
-                  <span className="text-rose-100 font-semibold text-sm">{t.currencyUnit}</span>
-                </div>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-3xl font-serif font-bold text-white tracking-tight">
+                      {formatCurrency(coinBalance)}
+                    </span>
+                    <span className="text-rose-100 font-semibold text-sm">{t.currencyUnit}</span>
+                  </div>
 
-                {/* Non-cash Disclaimer Banner */}
-                <div className="mt-3.5 pt-3 border-t border-white/20 flex items-start gap-2 text-[11px] text-rose-50 leading-tight">
-                  <Info className="w-3.5 h-3.5 shrink-0 text-white/90 mt-0.5" />
-                  <p>{t.coinDisclaimer}</p>
+                  {/* Non-cash Disclaimer Banner */}
+                  <div className="mt-3.5 pt-3 border-t border-white/20 flex items-start gap-2 text-[11px] text-rose-50 leading-tight">
+                    <Info className="w-3.5 h-3.5 shrink-0 text-white/90 mt-0.5" />
+                    <p>{t.coinDisclaimer}</p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Quick Stats Grid */}
               <div className="grid grid-cols-3 gap-2.5">
-                <button
-                  onClick={() => setActiveTab('packages')}
-                  className="bg-white p-3 rounded-2xl border border-[#F2E3E1] shadow-2xs hover:border-[#E88D9F] transition text-left flex flex-col justify-between"
-                >
-                  <div className="flex items-center justify-between text-[#D87085]">
-                    <Package className="w-5 h-5" />
-                    <ChevronRight className="w-4 h-4 text-[#F2E3E1]" />
-                  </div>
-                  <div className="mt-3">
-                    <span className="text-xl font-serif font-bold text-[#3D3835]">{activePackages.length}</span>
-                    <p className="text-[11px] text-[#6E6763] font-medium leading-tight">{t.quickStatsPackages}</p>
-                  </div>
-                </button>
+                {(!moduleSettings || moduleSettings.package !== false || moduleSettings.booking !== false) && (
+                  <button
+                    onClick={() => setActiveTab('packages')}
+                    className="bg-white p-3 rounded-2xl border border-[#F2E3E1] shadow-2xs hover:border-[#E88D9F] transition text-left flex flex-col justify-between"
+                  >
+                    <div className="flex items-center justify-between text-[#D87085]">
+                      <Package className="w-5 h-5" />
+                      <ChevronRight className="w-4 h-4 text-[#F2E3E1]" />
+                    </div>
+                    <div className="mt-3">
+                      <span className="text-xl font-serif font-bold text-[#3D3835]">{activePackages.length}</span>
+                      <p className="text-[11px] text-[#6E6763] font-medium leading-tight">{t.quickStatsPackages}</p>
+                    </div>
+                  </button>
+                )}
 
-                <button
-                  onClick={() => setActiveTab('coupons')}
-                  className="bg-white p-3 rounded-2xl border border-[#F2E3E1] shadow-2xs hover:border-[#E88D9F] transition text-left flex flex-col justify-between"
-                >
-                  <div className="flex items-center justify-between text-[#D87085]">
-                    <Ticket className="w-5 h-5" />
-                    <ChevronRight className="w-4 h-4 text-[#F2E3E1]" />
-                  </div>
-                  <div className="mt-3">
-                    <span className="text-xl font-serif font-bold text-[#3D3835]">{activeCoupons.length}</span>
-                    <p className="text-[11px] text-[#6E6763] font-medium leading-tight">{t.quickStatsCoupons}</p>
-                  </div>
-                </button>
+                {(!moduleSettings || moduleSettings.coupon !== false) && (
+                  <button
+                    onClick={() => setActiveTab('coupons')}
+                    className="bg-white p-3 rounded-2xl border border-[#F2E3E1] shadow-2xs hover:border-[#E88D9F] transition text-left flex flex-col justify-between"
+                  >
+                    <div className="flex items-center justify-between text-[#D87085]">
+                      <Ticket className="w-5 h-5" />
+                      <ChevronRight className="w-4 h-4 text-[#F2E3E1]" />
+                    </div>
+                    <div className="mt-3">
+                      <span className="text-xl font-serif font-bold text-[#3D3835]">{activeCoupons.length}</span>
+                      <p className="text-[11px] text-[#6E6763] font-medium leading-tight">{t.quickStatsCoupons}</p>
+                    </div>
+                  </button>
+                )}
 
-                <button
-                  onClick={() => setActiveTab('points')}
-                  className="bg-white p-3 rounded-2xl border border-[#F2E3E1] shadow-2xs hover:border-[#E88D9F] transition text-left flex flex-col justify-between"
-                >
-                  <div className="flex items-center justify-between text-[#D87085]">
-                    <Award className="w-5 h-5" />
-                    <span className="text-[9px] bg-[#FAF0ED] text-[#D87085] uppercase font-bold px-1.5 py-0.2 rounded-full border border-[#F2E3E1]">
-                      {pointsWallet.tier}
-                    </span>
-                  </div>
-                  <div className="mt-3">
-                    <span className="text-xl font-serif font-bold text-[#3D3835]">{pointsWallet.balance}</span>
-                    <p className="text-[11px] text-[#6E6763] font-medium leading-tight">{t.quickStatsPoints}</p>
-                  </div>
-                </button>
+                {(!moduleSettings || moduleSettings.points !== false) && (
+                  <button
+                    onClick={() => setActiveTab('points')}
+                    className="bg-white p-3 rounded-2xl border border-[#F2E3E1] shadow-2xs hover:border-[#E88D9F] transition text-left flex flex-col justify-between"
+                  >
+                    <div className="flex items-center justify-between text-[#D87085]">
+                      <Award className="w-5 h-5" />
+                      <span className="text-[9px] bg-[#FAF0ED] text-[#D87085] uppercase font-bold px-1.5 py-0.2 rounded-full border border-[#F2E3E1]">
+                        {pointsWallet.tier}
+                      </span>
+                    </div>
+                    <div className="mt-3">
+                      <span className="text-xl font-serif font-bold text-[#3D3835]">{pointsWallet.balance}</span>
+                      <p className="text-[11px] text-[#6E6763] font-medium leading-tight">{t.quickStatsPoints}</p>
+                    </div>
+                  </button>
+                )}
               </div>
 
               {/* Quick Actions Bar */}
@@ -989,51 +1000,59 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
             <span className="text-[9px] uppercase tracking-wider">{t.navHome}</span>
           </button>
 
-          <button
-            onClick={() => setActiveTab('packages')}
-            className={`flex flex-col items-center gap-1 px-3 py-1 rounded-full transition ${
-              activeTab === 'packages' ? 'text-[#8C6D5E] font-bold' : 'text-[#2D2926]/50 hover:text-[#2D2926]'
-            }`}
-          >
-            <Package className="w-5 h-5" />
-            <span className="text-[9px] uppercase tracking-wider text-center leading-tight">
-              {lang === 'th' ? (
-                <>แพ็คเกจ &<br />การจอง</>
-              ) : (
-                t.navPackages
-              )}
-            </span>
-          </button>
+          {(!moduleSettings || moduleSettings.package !== false || moduleSettings.booking !== false) && (
+            <button
+              onClick={() => setActiveTab('packages')}
+              className={`flex flex-col items-center gap-1 px-3 py-1 rounded-full transition ${
+                activeTab === 'packages' ? 'text-[#8C6D5E] font-bold' : 'text-[#2D2926]/50 hover:text-[#2D2926]'
+              }`}
+            >
+              <Package className="w-5 h-5" />
+              <span className="text-[9px] uppercase tracking-wider text-center leading-tight">
+                {lang === 'th' ? (
+                  <>แพ็คเกจ &<br />การจอง</>
+                ) : (
+                  t.navPackages
+                )}
+              </span>
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveTab('coupons')}
-            className={`flex flex-col items-center gap-1 px-3 py-1 rounded-full transition ${
-              activeTab === 'coupons' ? 'text-[#8C6D5E] font-bold' : 'text-[#2D2926]/50 hover:text-[#2D2926]'
-            }`}
-          >
-            <Ticket className="w-5 h-5" />
-            <span className="text-[9px] uppercase tracking-wider">{t.navCoupons}</span>
-          </button>
+          {(!moduleSettings || moduleSettings.coupon !== false) && (
+            <button
+              onClick={() => setActiveTab('coupons')}
+              className={`flex flex-col items-center gap-1 px-3 py-1 rounded-full transition ${
+                activeTab === 'coupons' ? 'text-[#8C6D5E] font-bold' : 'text-[#2D2926]/50 hover:text-[#2D2926]'
+              }`}
+            >
+              <Ticket className="w-5 h-5" />
+              <span className="text-[9px] uppercase tracking-wider">{t.navCoupons}</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveTab('coin')}
-            className={`flex flex-col items-center gap-1 px-3 py-1 rounded-full transition ${
-              activeTab === 'coin' ? 'text-[#8C6D5E] font-bold' : 'text-[#2D2926]/50 hover:text-[#2D2926]'
-            }`}
-          >
-            <Coins className="w-5 h-5" />
-            <span className="text-[9px] uppercase tracking-wider">{t.navCoin}</span>
-          </button>
+          {(!moduleSettings || moduleSettings.coin !== false) && (
+            <button
+              onClick={() => setActiveTab('coin')}
+              className={`flex flex-col items-center gap-1 px-3 py-1 rounded-full transition ${
+                activeTab === 'coin' ? 'text-[#8C6D5E] font-bold' : 'text-[#2D2926]/50 hover:text-[#2D2926]'
+              }`}
+            >
+              <Coins className="w-5 h-5" />
+              <span className="text-[9px] uppercase tracking-wider">{t.navCoin}</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveTab('points')}
-            className={`flex flex-col items-center gap-1 px-3 py-1 rounded-full transition ${
-              activeTab === 'points' ? 'text-[#8C6D5E] font-bold' : 'text-[#2D2926]/50 hover:text-[#2D2926]'
-            }`}
-          >
-            <Award className="w-5 h-5" />
-            <span className="text-[9px] uppercase tracking-wider">{t.navPoints}</span>
-          </button>
+          {(!moduleSettings || moduleSettings.points !== false) && (
+            <button
+              onClick={() => setActiveTab('points')}
+              className={`flex flex-col items-center gap-1 px-3 py-1 rounded-full transition ${
+                activeTab === 'points' ? 'text-[#8C6D5E] font-bold' : 'text-[#2D2926]/50 hover:text-[#2D2926]'
+              }`}
+            >
+              <Award className="w-5 h-5" />
+              <span className="text-[9px] uppercase tracking-wider">{t.navPoints}</span>
+            </button>
+          )}
 
           <button
             onClick={() => setActiveTab('qr')}
