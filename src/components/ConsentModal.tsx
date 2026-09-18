@@ -45,8 +45,8 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
               </h2>
               <p className="text-xs text-[#6E6763]">
                 {lang === 'th'
-                  ? 'กรุณาอ่านและยอมรับข้อตกลงก่อนเริ่มใช้งาน Me.My.Mind Membership'
-                  : 'Please review and accept the terms to proceed with Me.My.Mind Membership'}
+                  ? 'กรุณาอ่านและยอมรับข้อตกลงก่อนเริ่มใช้งานแอปพลิเคชันสมาชิก'
+                  : 'Please review and accept the terms to proceed with the Membership App'}
               </p>
             </div>
           </div>
@@ -123,8 +123,8 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
               />
               <span>
                 {lang === 'th'
-                  ? 'ฉันได้อ่านและยอมรับ นโยบายความเป็นส่วนตัว (PDPA) ของ Me.My.Mind'
-                  : 'I have read and agree to the Me.My.Mind Privacy Policy (PDPA)'}
+                  ? 'ฉันได้อ่านและยอมรับ นโยบายความเป็นส่วนตัว (PDPA)'
+                  : 'I have read and agree to the Privacy Policy (PDPA)'}
               </span>
             </label>
 

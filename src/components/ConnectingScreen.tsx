@@ -23,7 +23,7 @@ export const ConnectingScreen: React.FC<ConnectingScreenProps> = ({
   isInitializing = true,
 }) => {
   const displayLogo = (brandSettings?.logoUrl && brandSettings.logoUrl.trim()) ? brandSettings.logoUrl : appLogo;
-  const displayName = brandSettings?.brandName || 'Me.My.Mind Membership';
+  const displayName = brandSettings?.brandName || 'แอปสมาชิกของคุณ';
   const displayTagline = brandSettings?.brandTagline || 'Your Daily Ritual of Self-Love';
 
   return (

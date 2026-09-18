@@ -155,7 +155,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   const [posterUploadError, setPosterUploadError] = useState<string | null>(null);
 
   const handleOpenBrandModal = () => {
-    setEditBrandName(brandSettings?.brandName || 'Me.My.Mind Membership');
+    setEditBrandName(brandSettings?.brandName || 'แอปสมาชิกของคุณ');
     setEditBrandTagline(brandSettings?.brandTagline || 'Your Daily Ritual of Self-Love');
     setEditLogoUrl(brandSettings?.logoUrl || appLogo);
     setEditPromoPosterUrl(brandSettings?.promoPosterUrl || '');
@@ -212,7 +212,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
     e.preventDefault();
     if (onUpdateBrandSettings) {
       onUpdateBrandSettings({
-        brandName: editBrandName.trim() || 'Me.My.Mind Membership',
+        brandName: editBrandName.trim() || 'แอปสมาชิกของคุณ',
         brandTagline: editBrandTagline.trim() || 'Your Daily Ritual of Self-Love',
         logoUrl: editLogoUrl || appLogo,
         promoPosterUrl: editPromoPosterUrl.trim(),
@@ -304,7 +304,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   const [onetimeCoinDiscountAtBooking, setOnetimeCoinDiscountAtBooking] = useState<number | ''>('');
   const [onetimeBookingDateTime, setOnetimeBookingDateTime] = useState('');
   const [onetimeEndDateTime, setOnetimeEndDateTime] = useState('');
-  const [onetimeBranch, setOnetimeBranch] = useState('Me.My.Mind Spa & Massage');
+  const [onetimeBranch, setOnetimeBranch] = useState('สาขาหลัก');
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
 
   // Pagination states for client detail history
@@ -537,7 +537,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
     const localEndIso = new Date(nextEndDate.getTime() - nextEndDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     setOnetimeEndDateTime(localEndIso);
 
-    setOnetimeBranch('Me.My.Mind Spa & Massage');
+    setOnetimeBranch('สาขาหลัก');
     setShowBookOneTimeModal(true);
   };
 
@@ -644,7 +644,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
         coinDiscountAtBooking: (onetimePaymentStatus === 'deposit' || onetimePaymentStatus === 'paid_full') && Number(onetimeCoinDiscountAtBooking) > 0 ? Number(onetimeCoinDiscountAtBooking) : undefined,
         bookingDateTime: onetimeBookingDateTime ? new Date(onetimeBookingDateTime).toISOString() : new Date().toISOString(),
         endDateTime: onetimeEndDateTime ? new Date(onetimeEndDateTime).toISOString() : undefined,
-        branch: onetimeBranch.trim() || 'Me.My.Mind Spa & Massage',
+        branch: onetimeBranch.trim() || 'สาขาหลัก',
         staffId: currentStaff.id,
         staffName: currentStaff.displayName,
       });
@@ -3397,7 +3397,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                   />
                   <div>
                     <h4 className="font-serif font-bold text-[#3D3835] text-sm flex items-center gap-1">
-                      {editBrandName || 'Me.My.Mind Membership'}
+                      {editBrandName || 'แอปสมาชิกของคุณ'}
                       <Sparkles className="w-3.5 h-3.5 text-[#E88D9F]" />
                     </h4>
                     <p className="text-[11px] text-[#D87085] font-medium">
@@ -3463,7 +3463,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Me.My.Mind Membership"
+                  placeholder="e.g. My Wellness Studio"
                   value={editBrandName}
                   onChange={(e) => setEditBrandName(e.target.value)}
                   className="w-full px-3.5 py-2.5 text-xs border border-[#F2E3E1] rounded-xl focus:outline-none focus:border-[#E88D9F] font-semibold text-[#3D3835]"

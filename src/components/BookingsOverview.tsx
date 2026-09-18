@@ -638,7 +638,7 @@ export const BookingsOverview: React.FC<BookingsOverviewProps> = ({
 
                             <div className="flex items-center gap-1.5">
                               <MapPin className="w-3.5 h-3.5 text-[#D87085] shrink-0" />
-                              <span>{booking.branch || 'Me.My.Mind Spa'}</span>
+                              <span>{booking.branch || 'สาขาหลัก'}</span>
                             </div>
                           </div>
                         </div>

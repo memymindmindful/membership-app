@@ -3159,7 +3159,7 @@ class Store {
       coinAmountUsed: paymentStatusAtBooking === 'coin' ? coinAmountUsed : (coinDiscountAtBooking || undefined),
       bookingDateTime,
       endDateTime: endDateTime || undefined,
-      branch: branch || 'Me.My.Mind Spa & Massage',
+      branch: branch || 'สาขาหลัก',
       status: 'booked',
       createdAt: new Date().toISOString(),
       createdByStaffId: staffId,
@@ -4076,13 +4076,13 @@ class Store {
 
   public getBackupSettings() {
     const defaultSettings = {
-      email: 'me.my.mind.facialmassage@gmail.com',
+      email: '',
       scheduleFrequency: 'daily',
       scheduleTime: '00:00',
       scheduleDayOfWeek: '1',
       scheduleDayOfMonth: '1',
       googleDriveAutoUpload: true,
-      googleDriveFolder: 'Me.My.Mind_Membership_Backups',
+      googleDriveFolder: 'Membership_Backups',
       includeClients: true,
       includeTransactions: true,
       includeCatalog: true,
@@ -4127,8 +4127,8 @@ class Store {
 
   public getBrandSettings() {
     const defaultBrand = {
-      brandName: 'Me.My.Mind Membership',
-      brandTagline: 'Your Daily Ritual of Self-Love',
+      brandName: 'แอปสมาชิกของคุณ',
+      brandTagline: 'Your Membership App',
       logoUrl: '',
       promoPosterUrl: '',
       updatedAt: Date.now(),
@@ -4243,7 +4243,7 @@ class Store {
     const allBookings = this.getAllRawOneTimeBookings();
 
     return {
-      appName: 'Me.My.Mind Membership',
+      appName: 'แอปสมาชิกของคุณ',
       backupTimestamp: timestamp,
       summary: {
         totalClients: allClients.length,

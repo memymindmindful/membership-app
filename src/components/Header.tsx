@@ -61,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
   const displayLogo = rawLogo.startsWith('data:')
     ? rawLogo
     : `${rawLogo}${rawLogo.includes('?') ? '&' : '?'}v=${brandSettings?.updatedAt || 1}`;
-  const displayName = brandSettings?.brandName || 'Me.My.Mind Membership';
+  const displayName = brandSettings?.brandName || 'แอปสมาชิกของคุณ';
   const displayTagline = brandSettings?.brandTagline || 'Your Daily Ritual of Self-Love';
 
   // Check URL parameters for explicit demo mode

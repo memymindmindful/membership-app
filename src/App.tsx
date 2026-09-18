@@ -46,8 +46,8 @@ import { translations } from './lib/translations';
 import defaultAppLogo from './assets/images/me_my_mind_logo_1785924412256.jpg';
 
 const DEFAULT_BRAND_SETTINGS: BrandSettings = {
-  brandName: 'Me.My.Mind Membership',
-  brandTagline: 'Your Daily Ritual of Self-Love',
+  brandName: 'แอปสมาชิกของคุณ',
+  brandTagline: 'Your Membership App',
   logoUrl: defaultAppLogo,
 };
 
@@ -196,6 +196,7 @@ export default function App() {
             updatedAt: serverBrand.updatedAt || Date.now(),
           };
           setBrandSettings(merged);
+          document.title = merged.brandName;
           try {
             localStorage.setItem('MMM_BRAND_SETTINGS', JSON.stringify(merged));
           } catch (e) {
@@ -502,7 +503,7 @@ export default function App() {
         </div>
         <div className="flex items-center gap-2 text-sm font-medium">
           <Loader2 className="w-5 h-5 text-amber-800 animate-spin" />
-          <span>Loading Me.My.Mind Membership App...</span>
+          <span>Loading Membership App...</span>
         </div>
       </div>
     );

@@ -880,7 +880,7 @@ async function startServer() {
         numDeposit,
         paymentStatusAtBooking || (numDeposit === numFullPrice ? 'paid_full' : 'deposit'),
         bookingDateTime || new Date().toISOString(),
-        branch || 'Me.My.Mind Spa & Massage',
+        branch || 'สาขาหลัก',
         staffId || 'EMP-01',
         staffName || 'Staff',
         endDateTime || undefined,

@@ -24,13 +24,13 @@ interface BackupSettingsModalProps {
 }
 
 export const BackupSettingsModal: React.FC<BackupSettingsModalProps> = ({ isOpen, onClose }) => {
-  const [email, setEmail] = useState('me.my.mind.facialmassage@gmail.com');
+  const [email, setEmail] = useState('');
   const [scheduleFrequency, setScheduleFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [scheduleTime, setScheduleTime] = useState('00:00');
   const [scheduleDayOfWeek, setScheduleDayOfWeek] = useState('1'); // 1 = Mon
   const [scheduleDayOfMonth, setScheduleDayOfMonth] = useState('1');
   const [googleDriveAutoUpload, setGoogleDriveAutoUpload] = useState(true);
-  const [googleDriveFolder, setGoogleDriveFolder] = useState('Me.My.Mind_Membership_Backups');
+  const [googleDriveFolder, setGoogleDriveFolder] = useState('Membership_Backups');
   const [includeClients, setIncludeClients] = useState(true);
   const [includeTransactions, setIncludeTransactions] = useState(true);
   const [includeCatalog, setIncludeCatalog] = useState(true);
@@ -52,13 +52,13 @@ export const BackupSettingsModal: React.FC<BackupSettingsModalProps> = ({ isOpen
       setLoading(true);
       const res = await api.getBackupSettings();
       if (res) {
-        setEmail(res.email || 'me.my.mind.facialmassage@gmail.com');
+        setEmail(res.email || '');
         setScheduleFrequency(res.scheduleFrequency || 'daily');
         setScheduleTime(res.scheduleTime || '00:00');
         setScheduleDayOfWeek(res.scheduleDayOfWeek || '1');
         setScheduleDayOfMonth(res.scheduleDayOfMonth || '1');
         setGoogleDriveAutoUpload(res.googleDriveAutoUpload !== false);
-        setGoogleDriveFolder(res.googleDriveFolder || 'Me.My.Mind_Membership_Backups');
+        setGoogleDriveFolder(res.googleDriveFolder || 'Membership_Backups');
         setIncludeClients(res.includeClients !== false);
         setIncludeTransactions(res.includeTransactions !== false);
         setIncludeCatalog(res.includeCatalog !== false);
@@ -106,7 +106,7 @@ export const BackupSettingsModal: React.FC<BackupSettingsModalProps> = ({ isOpen
       const downloadAnchor = document.createElement('a');
       const dateStr = new Date().toISOString().slice(0, 10);
       downloadAnchor.setAttribute('href', dataStr);
-      downloadAnchor.setAttribute('download', `MMM_Backup_${dateStr}.json`);
+      downloadAnchor.setAttribute('download', `Backup_${dateStr}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -350,12 +350,12 @@ export const BackupSettingsModal: React.FC<BackupSettingsModalProps> = ({ isOpen
                     type="text"
                     value={googleDriveFolder}
                     onChange={(e) => setGoogleDriveFolder(e.target.value)}
-                    placeholder="Me.My.Mind_Membership_Backups"
+                    placeholder="Membership_Backups"
                     className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-xl text-xs text-emerald-950 focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
                 <p className="text-[11px] text-emerald-700">
-                  ระบบจะสร้างไฟล์สำรองข้อมูลในชื่อ <span className="font-mono bg-white/80 px-1 py-0.5 rounded border border-emerald-200">MMM_Backup_YYYY-MM-DD.json</span> และบันทึกลงในโฟลเดอร์นี้โดยอัตโนมัติ
+                  ระบบจะสร้างไฟล์สำรองข้อมูลในชื่อ <span className="font-mono bg-white/80 px-1 py-0.5 rounded border border-emerald-200">Backup_YYYY-MM-DD.json</span> และบันทึกลงในโฟลเดอร์นี้โดยอัตโนมัติ
                 </p>
               </div>
             )}

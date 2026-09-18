@@ -8,7 +8,7 @@ import { AppLanguage, PointsTier } from '../types';
 export const translations = {
   th: {
     // General & Brand
-    brandName: 'Me.My.Mind Membership',
+    brandName: 'แอปสมาชิกของคุณ',
     brandTagline: 'Your Daily Ritual of Self-Love',
     currency: '฿',
     currencyUnit: 'บาท',
@@ -191,7 +191,7 @@ export const translations = {
   },
   en: {
     // General & Brand
-    brandName: 'Me.My.Mind Membership',
+    brandName: 'Your Membership App',
     brandTagline: 'Your Daily Ritual of Self-Love',
     currency: '฿',
     currencyUnit: 'THB',
