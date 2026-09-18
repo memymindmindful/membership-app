@@ -59,6 +59,7 @@ interface CustomerAppProps {
   lang: AppLanguage;
   brandSettings?: { brandName?: string; brandTagline?: string; logoUrl?: string; promoPosterUrl?: string; updatedAt?: number };
   moduleSettings?: ModuleSettings;
+  coinName?: string;
   onRefresh: () => void;
   onOpenConsent?: () => void;
   onOpenProfileSetup?: () => void;
@@ -80,6 +81,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
   lang,
   brandSettings,
   moduleSettings,
+  coinName = 'Cash Coin',
   onRefresh,
   onOpenConsent,
   onOpenProfileSetup,
@@ -236,7 +238,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
                   <div className="flex items-center justify-between text-xs text-rose-100 font-medium">
                     <span className="flex items-center gap-1.5 font-semibold">
                       <Coins className="w-4 h-4 text-white" />
-                      {t.coinBalanceTitle}
+                      {t.coinBalanceTitle.replace('{coinName}', coinName)}
                     </span>
                     <span className="bg-white/25 text-white text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider font-bold backdrop-blur-xs border border-white/30">
                       In-Store Credit Only
@@ -253,7 +255,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
                   {/* Non-cash Disclaimer Banner */}
                   <div className="mt-3.5 pt-3 border-t border-white/20 flex items-start gap-2 text-[11px] text-rose-50 leading-tight">
                     <Info className="w-3.5 h-3.5 shrink-0 text-white/90 mt-0.5" />
-                    <p>{t.coinDisclaimer}</p>
+                    <p>{t.coinDisclaimer.replace('{coinName}', coinName)}</p>
                   </div>
                 </div>
               )}
@@ -627,7 +629,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
                 <div className="flex justify-between items-center text-xs text-rose-100 font-medium relative z-10">
                   <span className="flex items-center gap-1.5 font-bold">
                     <Coins className="w-4 h-4 text-white" />
-                    {t.coinWalletTitle}
+                    {t.coinWalletTitle.replace('{coinName}', coinName)}
                   </span>
                   <span className="bg-white/25 text-white text-[10px] px-2.5 py-0.5 rounded-full uppercase font-bold backdrop-blur-xs border border-white/30 flex items-center gap-1">
                     <Sparkles className="w-3 h-3 text-white" />
@@ -642,7 +644,7 @@ export const CustomerApp: React.FC<CustomerAppProps> = ({
               {/* Disclaimer Banner - Standout Pink Card */}
               <div className="p-4 bg-gradient-to-r from-[#FAF0ED] via-[#FFF8F6] to-[#FAF0ED] text-[#D87085] border-2 border-[#F2E3E1] rounded-2xl text-xs leading-relaxed flex items-start gap-3 shadow-2xs relative">
                 <ShieldCheck className="w-5 h-5 text-[#E88D9F] shrink-0 mt-0.5" />
-                <p className="font-medium text-[#3D3835] leading-relaxed">{t.coinNoticeBanner}</p>
+                <p className="font-medium text-[#3D3835] leading-relaxed">{t.coinNoticeBanner.replace('{coinName}', coinName)}</p>
               </div>
 
               {/* Promotion Poster Banner (Shown between Coin Balance/Notice and Transaction History) */}

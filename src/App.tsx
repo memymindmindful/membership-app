@@ -524,6 +524,8 @@ export default function App() {
     );
   }
 
+  const coinName = (legalSettings?.businessInfo?.businessName?.trim() || 'Cash') + ' Coin';
+
   return (
     <div className="min-h-screen bg-stone-100 font-sans text-stone-800 selection:bg-amber-200 selection:text-amber-900">
       {/* Universal Top Header Bar */}
@@ -615,6 +617,7 @@ export default function App() {
               lang={lang}
               brandSettings={brandSettings}
               moduleSettings={moduleSettings}
+              coinName={coinName}
               onRefresh={refreshCurrentClientData}
               onOpenConsent={() => setShowConsentModal(true)}
               onOpenProfileSetup={() => setShowProfileSetupModal(true)}
@@ -659,6 +662,7 @@ export default function App() {
             lang={lang}
             brandSettings={brandSettings}
             moduleSettings={moduleSettings}
+            coinName={coinName}
             onUpdateBrandSettings={handleUpdateBrandSettings}
             onRefreshClient={async () => {
               const freshClients = await api.getClients();

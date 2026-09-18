@@ -405,6 +405,7 @@ function EnglishPrivacyPolicy({ bInfo }: LegalSectionProps) {
 /* --- Thai Terms of Use --- */
 function ThaiTermsOfUse({ bInfo }: LegalSectionProps) {
   const storeName = bInfo.businessName || 'แอปพลิเคชันสมาชิก';
+  const coinName = bInfo.businessName?.trim() || 'Cash';
   const contact = [
     bInfo.contactPerson && `ผู้ติดต่อ: ${bInfo.contactPerson}`,
     bInfo.email && `อีเมล: ${bInfo.email}`,
@@ -429,8 +430,8 @@ function ThaiTermsOfUse({ bInfo }: LegalSectionProps) {
       </div>
 
       <div>
-        <h4 className="font-bold text-[#3D3835] mb-1">2. Cash Coin / เครดิตร้าน</h4>
-        <p>Coin และเครดิตเป็น<strong>เครดิตภายในร้านสำหรับใช้บริการกับทางร้านเท่านั้น</strong> ไม่ใช่เงินอิเล็กทรอนิกส์ ไม่สามารถถอนเป็นเงินสด โอนให้ผู้อื่น หรือแลกเปลี่ยนเป็นสิ่งอื่นนอกเหนือจากบริการของร้านได้ การเติมเครดิตเกิดขึ้นนอกแอปผ่านการโอนหรือจ่ายสดที่ร้านเท่านั้น</p>
+        <h4 className="font-bold text-[#3D3835] mb-1">2. {coinName} Coin (เครดิตร้าน)</h4>
+        <p>{coinName} Coin เป็น<strong>เครดิตภายในร้านสำหรับใช้บริการกับทางร้านเท่านั้น</strong> ไม่ใช่เงินอิเล็กทรอนิกส์ ไม่สามารถถอนเป็นเงินสด โอนให้ผู้อื่น หรือแลกเปลี่ยนเป็นสิ่งอื่นนอกเหนือจากบริการของร้านได้ การเติมเครดิตเกิดขึ้นนอกแอปผ่านการโอนหรือจ่ายสดที่ร้านเท่านั้น</p>
       </div>
 
       <div>
@@ -459,6 +460,7 @@ function ThaiTermsOfUse({ bInfo }: LegalSectionProps) {
 /* --- English Terms of Use --- */
 function EnglishTermsOfUse({ bInfo }: LegalSectionProps) {
   const storeName = bInfo.businessName || 'Membership App';
+  const coinName = bInfo.businessName?.trim() || 'Cash';
   const contact = [
     bInfo.contactPerson && `Contact: ${bInfo.contactPerson}`,
     bInfo.email && `Email: ${bInfo.email}`,
@@ -483,8 +485,8 @@ function EnglishTermsOfUse({ bInfo }: LegalSectionProps) {
       </div>
 
       <div>
-        <h4 className="font-bold text-[#3D3835] mb-1">2. In-Store Credit & Coins</h4>
-        <p>Coin and store credits are <strong>in-store credit for shop services only</strong>. They cannot be withdrawn as cash, transferred, or exchanged outside shop services. This App has no online payment gateway.</p>
+        <h4 className="font-bold text-[#3D3835] mb-1">2. {coinName} Coin (In-Store Credit)</h4>
+        <p>{coinName} Coin is <strong>in-store credit for shop services only</strong>. It cannot be withdrawn as cash, transferred, or exchanged outside shop services. This App has no online payment gateway.</p>
       </div>
 
       <div>

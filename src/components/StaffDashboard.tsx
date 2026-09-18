@@ -77,6 +77,7 @@ interface StaffDashboardProps {
   lang: AppLanguage;
   brandSettings?: BrandSettings;
   moduleSettings?: ModuleSettings;
+  coinName?: string;
   onUpdateBrandSettings?: (newSettings: BrandSettings) => void;
   onRefreshClient: () => void;
   onRefreshEmployees?: () => void;
@@ -102,6 +103,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
   lang,
   brandSettings,
   moduleSettings,
+  coinName = 'Cash Coin',
   onUpdateBrandSettings,
   onRefreshClient,
   onRefreshEmployees,
@@ -975,7 +977,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                       <div className="flex justify-between items-center text-xs text-rose-100 font-medium">
                         <span className="flex items-center gap-1.5 font-semibold">
                           <Coins className="w-4 h-4 text-white" />
-                          {t.coinBalanceTitle}
+                          {t.coinBalanceTitle.replace('{coinName}', coinName)}
                         </span>
                         <span className="text-[10px] bg-white/25 px-2.5 py-0.5 rounded-full text-white font-bold border border-white/30 backdrop-blur-xs">
                           In-Store Credit

@@ -47,8 +47,8 @@ export const translations = {
     // Home Screen
     welcomeUser: 'ยินดีต้อนรับคุณ',
     memberCodeLabel: 'รหัสสมาชิก',
-    coinBalanceTitle: 'ยอดเงิน Me.My.Mind Coin',
-    coinDisclaimer: 'Me.My.Mind Coin คือเครดิตแทนเงินสดสำหรับใช้บริการต่าง ๆ ภายใน Me.My.Mind Mindfulness Studio ไม่ใช่เงินสดตามกฎหมาย ไม่สามารถถอนเป็นเงินสดหรือโอนย้ายได้',
+    coinBalanceTitle: 'ยอดเงิน {coinName}',
+    coinDisclaimer: '{coinName} คือเครดิตแทนเงินสดสำหรับใช้บริการต่าง ๆ ภายในร้าน ไม่ใช่เงินสดตามกฎหมาย ไม่สามารถถอนเป็นเงินสดหรือโอนย้ายได้',
     quickStatsPackages: 'แพ็กเกจคงเหลือ',
     quickStatsCoupons: 'คูปองใช้งานได้',
     quickStatsPoints: 'คะแนนสะสม',
@@ -73,8 +73,8 @@ export const translations = {
     couponNotice: 'กรุณาแสดงรหัสคูปองแก่พนักงานขณะรับบริการ (คูปองสแกนโดยพนักงานเท่านั้น)',
 
     // Coin & Points Views
-    coinWalletTitle: 'กระเป๋า Me.My.Mind Coin',
-    coinNoticeBanner: 'Me.My.Mind Coin คือเครดิตแทนเงินสดสำหรับใช้บริการต่าง ๆ ภายใน Me.My.Mind Mindfulness Studio ไม่ใช่เงินสดตามกฎหมาย ไม่สามารถถอนเป็นเงินสดหรือโอนย้ายได้',
+    coinWalletTitle: 'กระเป๋า {coinName}',
+    coinNoticeBanner: '{coinName} คือเครดิตแทนเงินสดสำหรับใช้บริการต่าง ๆ ภายในร้าน ไม่ใช่เงินสดตามกฎหมาย ไม่สามารถถอนเป็นเงินสดหรือโอนย้ายได้',
     coinTransactionHistory: 'ประวัติการเคลื่อนไหว Coin',
 
     pointsTitle: 'คะแนนสะสม & ระดับสมาชิก',
@@ -230,8 +230,8 @@ export const translations = {
     // Home Screen
     welcomeUser: 'Welcome,',
     memberCodeLabel: 'Member Code',
-    coinBalanceTitle: 'Me.My.Mind Coin Balance',
-    coinDisclaimer: 'In-store credit for Me.My.Mind services only (non-cash, non-refundable, non-transferable)',
+    coinBalanceTitle: '{coinName} Balance',
+    coinDisclaimer: '{coinName} is in-store credit for services only (non-cash, non-refundable, non-transferable)',
     quickStatsPackages: 'Active Packages',
     quickStatsCoupons: 'Available Coupons',
     quickStatsPoints: 'Loyalty Points',
@@ -256,8 +256,8 @@ export const translations = {
     couponNotice: 'Please show this coupon code to staff when receiving services. (Scanned by staff only)',
 
     // Coin & Points Views
-    coinWalletTitle: 'Me.My.Mind Coin Wallet',
-    coinNoticeBanner: 'Me.My.Mind Coin is in-store credit issued by Me.My.Mind Wellness Studio. It holds no cash value, cannot be withdrawn, and is non-transferable.',
+    coinWalletTitle: '{coinName} Wallet',
+    coinNoticeBanner: '{coinName} is in-store credit issued by the store. It holds no cash value, cannot be withdrawn, and is non-transferable.',
     coinTransactionHistory: 'Coin Transaction History',
 
     pointsTitle: 'Loyalty Points & Tier',
